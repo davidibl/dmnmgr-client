@@ -31,8 +31,6 @@
               "src/translations"
             ],
             "styles": [
-              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn.css",
-              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn-embedded.css",
               "src/assets/css/diagram-js.css",
               "src/assets/css/dmn-js-decision-table.css",
               "src/assets/css/dmn-js-decision-table-controls.css",
