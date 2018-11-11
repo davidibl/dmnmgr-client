@@ -1,9 +1,14 @@
-import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
+import { DmnXmlService } from '../../services/dmnXmlService';
+import { of, Observable, ReplaySubject } from 'rxjs';
+
+import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
+import SimpleDmnModdle from 'dmn-moddle/lib/simple.js';
 
 declare var DmnJS: {
-    new (object: object, object2?: object): DMNJS;
+    new(object: object, object2?: object): DMNJS;
 }
 
 declare interface DMNJS {
@@ -26,13 +31,16 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private _modeller: DMNJS;
 
-    public constructor(private _http: HttpClient) {}
+    @Input()
+    public type: string;
+
+    public constructor(private _http: HttpClient, private _dmnXmlService: DmnXmlService) { }
 
     public ngAfterViewInit(): void {
 
         var extensionModule = {
-            init: [ 'interactionLogger' ],
-            interactionLogger: [ 'row.add', eventBus => {
+            init: ['interactionLogger'],
+            interactionLogger: ['row.add', eventBus => {
                 eventBus.on('row.add', event => console.log(event));
             }]
         };
@@ -42,7 +50,8 @@ export class DmnModellerComponent implements AfterViewInit {
                 container: this._container.nativeElement,
                 decisionTable: {
                     additionalModules: [extensionModule]
-                }});
+                }
+            });
 
             this._modeller.importXML(xml, (err) => {
                 if (err) {
@@ -50,7 +59,25 @@ export class DmnModellerComponent implements AfterViewInit {
                 }
                 this.configureModeller();
             });
+
+            console.log(SimpleDmnModdle);
+            var moddle = new SimpleDmnModdle();
+            moddle.fromXML(xml, 'dmn:Definitions', function (err, result) {
+
+                console.log(result);
+            });
         });
+
+        this._dmnXmlService.registerModeller({
+            type: this.type,
+            saveFunc: () => {
+                const subject = new ReplaySubject<string>(1);
+                this._modeller.saveXML(null, (error, result) => {
+                    subject.next(result);
+                });
+                return subject.asObservable();
+            }
+        })
     }
 
     private configureModeller() {

@@ -1,3 +1,9 @@
 export const environment = {
-    production: true
+    production: true,
+    configuration: {
+        language: {
+            default: 'DE',
+            supported: 'DE'
+        },
+    },
 };

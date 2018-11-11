@@ -1,0 +1,27 @@
+<div class="flex flex-stretch full-width full-height">
+    <div class="flex-grow col-12 col-6-m">
+        <div>
+            <xn-button (click)="addDataModel()"
+                       *ngIf="!dataModel"
+                       [default]="true">Datenmodell hinzufügen</xn-button>
+        </div>
+        <xn-data-entity-view [root]="true" *ngIf="dataModel" [dataEntity]="dataModel"></xn-data-entity-view>
+    </div>
+    <div class="flex-grow col-12 col-6-m">
+        <h4>DMN testen</h4>
+        <xn-button class="small mr-1" [showSpinner]="evaluatingDecision" [disabled]="!dataModel" (click)="tryIt()">Ausprobieren</xn-button>
+        <xn-button class="small" [disabled]="true" (click)="tryIt()">Als Test übernehmen</xn-button>
+        <div class="mt-2" *ngIf="result || errorMessage">
+            <h4>Das Ergebnis der Abfrage</h4>
+            <p *ngIf="errorMessage">{{errorMessage}}</p>
+            <ul *ngIf="!errorMessage" class="result-tree">
+                <li *ngFor="let resultItem of result">
+                    {{resultItem.key}}: {{resultItem.value}}
+                </li>
+                <li *ngIf="result.length < 1">
+                    Es konnte keine Regel gefunden werden, die dem Datenmodell entspricht.
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

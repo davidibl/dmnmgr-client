@@ -1,0 +1,69 @@
+<div class="flex">
+    <xn-on-click-editor #entityNameEditor>
+        <h4 *ngIf="root" class="view mt-05">{{dataEntity.name}}</h4>
+        <p *ngIf="!root" class="view label mt-05">{{dataEntity.name}}</p>
+        <xn-input-form [label]="'Name der Entität'"
+                    class="editor"
+                    [showLabel]="false"
+                    [name]="dataEntity?.name"
+                    [iconAfterClass]="'fa-floppy-o'"
+                    (iconAfterClick)="entityNameEditor.onSaveClicked()"
+                    [validatable]="false"
+                    (keyup.enter)="entityNameEditor.onSaveClicked()"
+                    [(ngModel)]="dataEntity.name"></xn-input-form>
+    </xn-on-click-editor>
+    <h4 *ngIf="root" class="ml-05 mr-05 mt-05">-</h4>
+    <p *ngIf="!root" class="label ml-05 mr-05 mt-05">-</p>
+    <xn-on-click-editor #entityTypeEditor>
+        <h4 *ngIf="root" class="view mt-05">{{dataEntity.type}}</h4>
+        <p *ngIf="!root" class="view label mt-05">{{dataEntity.type}}</p>
+        <xn-dropdown [showLabel]="false"
+                    class="editor"
+                    [idPropertyPath]="null"
+                    [displayPropertyPath]="null"
+                    [validatable]="false"
+                    [name]="'dataEntity?.type'"
+                    (selectionChange)="entityTypeEditor.onSaveClicked()"
+                    [items]="['string', 'number', 'date', 'object', 'boolean']"
+                    (keyup.enter)="entityTypeEditor.onSaveClicked()"
+                    [(ngModel)]="dataEntity.type"></xn-dropdown>
+    </xn-on-click-editor>
+    <div class="ml-1" *ngIf="dataEntity.type !== 'object'">
+        <xn-input-form [title]="dataEntity?.name"
+                        [label]="'Abfragewert'"
+                        [showLabel]="false"
+                        [validatable]="false"
+                        *ngIf="dataEntity?.type === 'string'"
+                        [name]="dataEntity?.name"
+                        [(ngModel)]="dataEntity.value"></xn-input-form>
+        <xn-number-input-form [title]="dataEntity?.name"
+                        [label]="'Abfragewert'"
+                        [showLabel]="false"
+                        [validatable]="false"
+                        *ngIf="dataEntity?.type === 'number'"
+                        [name]="dataEntity?.name"
+                        [(ngModel)]="dataEntity.value"></xn-number-input-form>
+        <xn-datetime-picker [title]="dataEntity?.name"
+                            [label]="'Abfragedatum'"
+                            [showLabel]="false"
+                            [validatable]="false"
+                            *ngIf="dataEntity?.type === 'date'"
+                            [name]="dataEntity?.name"
+                            [(ngModel)]="dataEntity.value"></xn-datetime-picker>
+        <xn-checkbox [name]="dataEntity.name"
+                     [(ngModel)]="dataEntity.value"
+                     class="mt-05"
+                     *ngIf="dataEntity?.type === 'boolean'"></xn-checkbox>
+    </div>
+    <xn-button *ngIf="!root" (click)="onDeleteRowClick()" class="small ml-1">
+        <i class="fa fa-times" aria-hidden="true"></i>
+    </xn-button>
+</div>
+<div *ngIf="dataEntity.type === 'object'">
+    <ul>
+        <li class="mb-05" *ngFor="let property of dataEntity.properties">
+            <xn-data-entity-view (removeClick)="onRemoveClick($event)" [dataEntity]="property"></xn-data-entity-view>
+        </li>
+    </ul>
+    <xn-button class="small mt-1" (click)="addProperty()">Eigenschaft hinzufügen</xn-button>
+</div>
