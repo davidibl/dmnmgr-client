@@ -1,0 +1,459 @@
+.dmn-decision-table-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.dmn-decision-table-container .input-cell .input-label,
+.dmn-decision-table-container .input-cell .input-expression,
+.dmn-decision-table-container .input-cell .output-label,
+.dmn-decision-table-container .input-cell .output-name {
+  display: block;
+}
+
+.dmn-decision-table-container * {
+  box-sizing: border-box;
+}
+
+/** actionable icon */
+.dmn-decision-table-container .action-icon {
+  border-radius: 2px;
+  color: #52b415;
+  margin-left: 5px;
+}
+
+.dmn-decision-table-container .action-icon:before {
+  margin-left: .1em;
+  margin-right: .1em;
+}
+
+.dmn-decision-table-container .actionable:hover .action-icon {
+  background-color: #52b415;
+  color: white;
+}
+
+/** end actionable icon */
+
+
+/* basic styles */
+
+.dmn-decision-table-container {
+  color: #444;
+
+  max-height: 100%;
+}
+
+.dmn-decision-table-container .tjs-table {
+  min-width: 100%;
+}
+
+/* end basic styles */
+
+
+/* basic table styles */
+
+.dmn-decision-table-container {
+  font-family: 'Arial', sans-serif;
+  font-size: 14px;
+}
+
+.dmn-decision-table-container .tjs-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+
+  border: solid 1px #444;
+}
+
+.dmn-decision-table-container table thead {
+  border-bottom: 3px double #444;
+}
+
+.dmn-decision-table-container td,
+.dmn-decision-table-container th {
+  border: solid 1px #444;
+  padding: 4px;
+}
+
+.dmn-decision-table-container .tjs-table tr .output-cell {
+  border-left: 3px double #444;
+}
+
+.dmn-decision-table-container .tjs-table tr .output-cell + .output-cell {
+  border-left: 1px solid #444;
+}
+
+.dmn-decision-table-container th {
+  min-width: 192px;
+}
+
+.dmn-decision-table-container th,
+.dmn-decision-table-container td {
+  white-space: pre;
+}
+
+.dmn-decision-table-container th.hit-policy {
+  width: 40px;
+  min-width: 40px;
+
+  vertical-align: top;
+}
+
+.dmn-decision-table-container th {
+  font-weight: normal;
+}
+
+.dmn-decision-table-container th.header {
+  text-align: center;
+  font-weight: bold;
+}
+
+.dmn-decision-table-container th.annotation.header {
+  vertical-align: bottom;
+}
+
+.dmn-decision-table-container td.rule-index {
+  text-align: right;
+  padding-right: 8px;
+}
+
+.dmn-decision-table-container thead .input-expression,
+.dmn-decision-table-container thead .input-variable,
+.dmn-decision-table-container thead .output-name,
+.dmn-decision-table-container thead .type-ref,
+.dmn-decision-table-container .script-editor {
+  font-family: monospace;
+}
+
+/* end basic table styles */
+
+
+/* selection styles */
+
+.dmn-decision-table-container th,
+.dmn-decision-table-container td,
+.dmn-decision-table-container h3,
+.dmn-decision-table-container h5 {
+  position: relative;
+}
+
+.dmn-decision-table-container .selected:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  bottom: -1px;
+  right: -1px;
+  border: solid 2px #4285f4;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dmn-decision-table-container th.selected:not(.focussed) {
+  background: #e9f1ff;
+}
+
+/* end selection styles */
+
+
+/* footer styles */
+
+.dmn-decision-table-container tfoot.add-rule td.add-rule-add {
+  text-align: right;
+}
+
+.dmn-decision-table-container tfoot.add-rule td {
+  border-color: #AAA;
+  color: #AAA;
+}
+
+.dmn-decision-table-container tfoot.add-rule:hover td {
+  border-color: #444;
+  color: #444;
+}
+
+
+/* end footer styles */
+
+
+/* content editable styles */
+
+.dmn-decision-table-container [contenteditable],
+.dmn-decision-table-container [tabindex] {
+  outline: none;
+}
+
+/* end content editable styles */
+
+
+/* context menu styles */
+
+.dmn-decision-table-container {
+  overflow: auto;
+  position: relative;
+}
+
+/* decision table properties */
+.dmn-decision-table-container .decision-table-properties {
+  color: #444;
+  background-color: #fff;
+  display: inline-block;
+  border: solid 1px #444;
+  margin-bottom: -1px;
+  position: relative;
+  min-width: 100px;
+  max-width: 50%;
+}
+
+.dmn-decision-table-container .decision-table-name,
+.dmn-decision-table-container .decision-table-id {
+  margin: 0;
+  padding: 3px 6px;
+  text-align: center;
+  white-space: pre;
+}
+
+.dmn-decision-table-container .decision-table-id.invalid {
+  background: #f4cecd;
+  color: #c9302c;
+}
+
+.dmn-decision-table-container .decision-table-name {
+  font-size: 24px;
+  line-height: 30px;
+  padding: .3em;
+  font-weight: bold;
+}
+
+.dmn-decision-table-container .decision-table-id {
+  border-top: 1px solid #444;
+  font-family: monospace;
+  font-size: 18px;
+}
+
+/* end decision table properties */
+
+/* view drd */
+.dmn-decision-table-container .view-drd {
+  float: right;
+
+  margin-right: 10px;
+}
+
+.dmn-decision-table-container .view-drd .view-drd-button {
+  background: #fff;
+  padding: 8px;
+  border: solid 1px #CCC;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #444;
+  font-weight: bold;
+  cursor: pointer;
+  outline: none;
+}
+
+.dmn-decision-table-container .view-drd .view-drd-button:hover {
+  background: #f6f6f6;
+}
+
+/* end view drd */
+
+
+/* powered by */
+.dmn-decision-table-container .powered-by-logo {
+  float: right;
+  width: 38px;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.dmn-decision-table-container .powered-by-logo .logo {
+  width: 100%;
+}
+
+.dmn-decision-table-container .powered-by-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.dmn-decision-table-container .powered-by-overlay .powered-by-overlay-content {
+  background: #fff;
+  padding: 8px;
+  border: solid 1px #CCC;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #444;
+  display: flex;
+  flex-direction: row;
+  max-width: 260px;
+}
+
+.dmn-decision-table-container .powered-by-overlay .powered-by-overlay-content div:first-child {
+  margin-right: 8px;
+}
+
+/* end powered by */
+
+
+/* simple mode */
+
+.dmn-decision-table-container .simple-mode-button {
+  color: #444;
+  background-color: #f6f6f6;
+  position: absolute;
+  background: #fff;
+  padding: 4px;
+  border-radius: 2px;
+  border: solid 1px #CCC;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 2;
+  opacity: .8;
+  box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.dmn-decision-table-container .simple-mode-button:hover {
+  opacity: 1;
+}
+
+.dmn-decision-table-container .simple-mode-button.disabled,
+.dmn-decision-table-container .simple-mode-button.disabled:hover {
+  color: #CCC;
+}
+
+/* end simple mode  */
+
+/**
+ * badges
+ */
+.dms-badge {
+  border-radius: 2px;
+  padding: 3px 6px;
+  font-size: .8em;
+  height: 19px;
+}
+
+.dms-badge-icon + .dms-badge-label {
+  margin-left: 3px;
+}
+
+.dms-badge.dmn-variable-name {
+  background: #9e9e9e;
+  color: white;
+}
+
+.dms-badge.dmn-expression-language {
+  background: rgba(84, 146, 250, 0.3);
+  color: white;
+}
+
+.dms-badge + .dms-badge {
+  margin-left: 3px;
+}
+
+.dmn-decision-table-container .dmn-expression-language .dms-badge-label {
+  display: none;
+}
+
+.dmn-decision-table-container .input-cell:hover .dmn-expression-language .dms-badge-label,
+.dmn-decision-table-container .output-cell:hover .dmn-expression-language .dms-badge-label {
+  display: inline-block;
+}
+
+.dmn-decision-table-container .input-editor .dmn-variable-name,
+.dmn-decision-table-container .input-editor .dmn-expression-language {
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.dmn-decision-table-container .cell:hover .dms-badge.dmn-expression-language {
+  background: #92b9fc;
+  z-index: 1;
+}
+
+.dmn-decision-table-container .cell .dms-badge.dmn-expression-language {
+  z-index: -1;
+}
+
+/* cell expression language */
+
+.dmn-decision-table-container .cell .dmn-expression-language {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  pointer-events: none;
+}
+
+/* end cell expression language */
+
+/* drag and drop */
+.dmn-decision-table-container .dragover:before {
+  content: '';
+  display: block;
+  position: absolute;
+  background-color: #666;
+  border-radius: 5px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.dmn-decision-table-container .dragover.top:before {
+  left: -6px;
+  right: -6px;
+  height: 5px;
+
+  top: -3px;
+}
+
+.dmn-decision-table-container .dragover.right:before {
+  top: -6px;
+  bottom: -6px;
+  width: 5px;
+
+  right: -3px;
+}
+
+.dmn-decision-table-container .dragover.bottom:before {
+  left: -6px;
+  right: -6px;
+  height: 5px;
+
+  bottom: -3px;
+}
+
+.dmn-decision-table-container .dragover.left:before {
+  top: -6px;
+  bottom: -6px;
+  width: 5px;
+
+  left: -3px;
+}
+
+.dmn-decision-table-container .dragged {
+  color: #999;
+}
+
+/* cell description */
+
+.dmn-decision-table-container .description-indicator {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid black;
+  transform: rotate(45deg);
+  transform-origin: top;
+}
+
+/* end cell description */

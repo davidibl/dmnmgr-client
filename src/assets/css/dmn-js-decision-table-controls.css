@@ -1,0 +1,192 @@
+
+/* simple string edit */
+.dmn-decision-table-container .simple-string-edit,
+.dmn-decision-table-container .simple-date-edit {
+  width: 250px;
+}
+
+.dmn-decision-table-container .input-expression-edit {
+  width: 300px;
+}
+
+.dmn-decision-table-container .allowed-values-edit .values {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dmn-decision-table-container .allowed-values-edit .placeholder {
+  color: #ccc;
+}
+
+/** create inputs **/
+.dmn-decision-table-container .create-inputs {
+  white-space: normal;
+  border-color: #AAA;
+  color: #AAA;
+  min-width: 50px;
+  width: 50px;
+}
+
+.dmn-decision-table-container .create-inputs .add-input {
+  margin-left: 0;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.dmn-decision-table-container .create-inputs:hover {
+  border-color: #444;
+  color: #444;
+}
+
+.dmn-decision-table-container th.create-inputs {
+  vertical-align: top;
+}
+/** end create inputs **/
+
+
+/* TODO(nikku): namespace and refactor context menu styles */
+.dmn-decision-table-container .context-menu {
+  position: absolute;
+  background: #fff;
+  border: solid 1px #CCC;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #444;
+  z-index: 10;
+  box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.dmn-decision-table-container .context-menu .context-menu-container {
+  margin: 8px;
+}
+
+.dmn-decision-table-container .context-menu p {
+  margin: 10px 0;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-flex {
+  display: flex;
+}
+
+.dmn-decision-table-container .context-menu.vertical .context-menu-flex {
+  flex-direction: column;
+}
+
+.dmn-decision-table-container .context-menu.horizontal .context-menu-flex {
+  flex-direction: row;
+}
+
+.dmn-decision-table-container .context-menu.vertical .context-menu-group {
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: solid 1px #ccc;
+}
+
+.dmn-decision-table-container .context-menu.vertical .context-menu-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.dmn-decision-table-container .context-menu.horizontal .context-menu-group {
+  border-right: solid 1px #ccc;
+}
+
+.dmn-decision-table-container .context-menu.horizontal .context-menu-group:last-child {
+  border-right: none;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-title {
+  font-weight: bold;
+  color: #444;
+  margin: 6px 9px 6px 9px;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  white-space: nowrap;
+  padding: 4px 9px 4px 9px;
+  cursor: pointer;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-entry.disabled {
+  pointer-events: none;
+  color: #ccc;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-entry:hover {
+  color: #52b415;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-entry .context-menu-group-entry-icon {
+  display: inline-block;
+  text-align: center;
+  width: 14px;
+  margin-right: 6px;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-group-entry .context-menu-group-entry-icon:before {
+  margin: 0;
+}
+
+/* expression language */
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-entry-set-expression-language {
+  flex-direction: column;
+}
+
+.dmn-decision-table-container .context-menu .context-menu-group .context-menu-entry-set-expression-language .expression-language {
+  margin-top: 8px;
+}
+
+.dmn-decision-table-container p.dms-hint {
+  font-size: 0.85em;
+  margin-top: 5px;
+  color: #888;
+}
+
+/* drag and drop */
+.dmn-icon-drag {
+  color: transparent;
+}
+
+.dmn-decision-table-container th .dmn-icon-drag {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dmn-decision-table-container th:hover .dmn-icon-drag,
+.dmn-decision-table-container td:hover .dmn-icon-drag {
+  color: #999;
+}
+
+.dmn-icon-drag.horizontal,
+.dmn-icon-drag.vertical {
+
+  cursor: grab;
+  cursor: -moz-grab;
+  cursor: -webkit-grab;
+}
+
+.dmn-icon-drag:hover {
+  color: #444;
+}
+
+/* description editor */
+
+.dmn-decision-table-container .context-menu .description-editor {
+  margin: 0;
+  padding: 5px 0;
+  width: 192px;
+  border-left: solid 3px #444;
+}
+
+.dmn-decision-table-container .description-editor .dms-input {
+  border: none;
+  min-height: 0;
+}
+
+/* end description editor */

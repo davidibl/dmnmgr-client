@@ -1,0 +1,165 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "bpmgr-client": {
+      "root": "",
+      "sourceRoot": "src",
+      "projectType": "application",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist",
+            "index": "src/index.html",
+            "main": "src/main.ts",
+            "tsConfig": "src/tsconfig.app.json",
+            "preserveSymlinks": true,
+            "polyfills": "src/polyfills.ts",
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "src/scss",
+                "node_modules/breakpoint-sass/stylesheets"
+              ]
+            },
+            "assets": [
+              "src/assets",
+              "src/favicon.ico",
+              "src/manifest.json",
+              "src/content",
+              "src/translations"
+            ],
+            "styles": [
+              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn.css",
+              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn-embedded.css",
+              "src/assets/css/diagram-js.css",
+              "src/assets/css/dmn-js-decision-table.css",
+              "src/assets/css/dmn-js-decision-table-controls.css",
+              "src/assets/css/dmn-js-drd.css",
+              "src/assets/css/dmn-embedded.css",
+              "src/assets/css/dmn-js-literal-expression.css",
+              "src/assets/css/dmn-js-shared.css",
+              "node_modules/font-awesome/scss/font-awesome.scss",
+              "node_modules/breakpoint-sass/stylesheets/_breakpoint.scss",
+              "src/scss/site.scss"
+            ],
+            "scripts": [
+              "node_modules/openseadragon/build/openseadragon/openseadragon.min.js",
+              "src/assets/dmn-modeler.development.js"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "extractCss": true,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "browserTarget": "bpmgr-client:build"
+          },
+          "configurations": {
+            "production": {
+              "browserTarget": "bpmgr-client:build:production"
+            }
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "browserTarget": "bpmgr-client:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "src/test.ts",
+            "karmaConfig": "./karma.conf.js",
+            "polyfills": "src/polyfills.ts",
+            "tsConfig": "src/tsconfig.spec.json",
+            "scripts": [
+              "node_modules/openseadragon/build/openseadragon/openseadragon.min.js"
+            ],
+            "styles": [
+              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn.css",
+              "node_modules/bpmn-js/assets/bpmn-font/css/bpmn-embedded.css",
+              "node_modules/font-awesome/scss/font-awesome.scss",
+              "node_modules/breakpoint-sass/stylesheets/_breakpoint.scss",
+              "src/scss/site.scss"
+            ],
+            "assets": [
+              "src/assets",
+              "src/favicon.ico",
+              "src/manifest.json",
+              "src/content",
+              "src/translations"
+            ]
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "src/tsconfig.app.json",
+              "src/tsconfig.spec.json"
+            ],
+            "exclude": [
+              "**/node_modules/**"
+            ]
+          }
+        }
+      }
+    },
+    "bpmgr-client-e2e": {
+      "root": "e2e",
+      "sourceRoot": "e2e",
+      "projectType": "application",
+      "architect": {
+        "e2e": {
+          "builder": "@angular-devkit/build-angular:protractor",
+          "options": {
+            "protractorConfig": "./protractor.conf.js",
+            "devServerTarget": "bpmgr-client:serve"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "e2e/tsconfig.e2e.json"
+            ],
+            "exclude": [
+              "**/node_modules/**"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "defaultProject": "bpmgr-client",
+  "schematics": {
+    "@schematics/angular:component": {
+      "prefix": "xn",
+      "styleext": "scss"
+    },
+    "@schematics/angular:directive": {
+      "prefix": "xn"
+    }
+  }
+}

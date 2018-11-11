@@ -1,0 +1,8 @@
+{
+    "validation": {
+        "message": {
+            "required": "{label} muss angegeben sein.",
+            "minLength": "Bitte geben Sie mindestens {minLength} Zeichen ein."
+        }
+    }
+}

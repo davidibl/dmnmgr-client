@@ -1,0 +1,195 @@
+.dmn-literal-expression-container {
+  font-family: 'Arial', sans-serif;
+  position: relative;
+  color: #444;
+
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.dmn-literal-expression-container * {
+  box-sizing: border-box;
+}
+
+/* decision properties */
+.dmn-literal-expression-container .decision-properties {
+  color: #444;
+  background-color: #fff;
+  display: inline-block;
+  border: 1px solid #444;
+  border-bottom: none;
+  position: relative;
+  min-width: 192px;
+  max-width: 50%;
+}
+
+.dmn-literal-expression-container .decision-name:not(.editor),
+.dmn-literal-expression-container .decision-id:not(.editor) {
+  cursor: default;
+}
+
+.dmn-literal-expression-container .decision-name.editor,
+.dmn-literal-expression-container .decision-id.editor {
+  cursor: text;
+}
+
+.dmn-literal-expression-container .decision-name,
+.dmn-literal-expression-container .decision-id {
+  margin: 0;
+  padding: 3px 6px;
+  text-align: center;
+  white-space: pre;
+}
+
+.dmn-literal-expression-container .decision-name div,
+.dmn-literal-expression-container .decision-id div {
+  outline: none;
+}
+
+.dmn-literal-expression-container .decision-name.editor:not(.focussed):hover,
+.dmn-literal-expression-container .decision-id.editor:not(.focussed):hover {
+  cursor: text;
+}
+
+.dmn-literal-expression-container .decision-name {
+  font-size: 24px;
+  line-height: 30px;
+  padding: .3em;
+  font-weight: bold;
+}
+
+.dmn-literal-expression-container .decision-id {
+  border-top: 1px solid #444;
+  font-family: monospace;
+  font-size: 18px;
+}
+
+/* textarea */
+.dmn-literal-expression-container .textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: monospace;
+  border: 1px solid #444;
+  border-bottom-width: 1px;
+  white-space: pre;
+  font-size: 14px;
+  color: #444;
+  height: 250px;
+}
+
+.dmn-literal-expression-container .textarea .content,
+.dmn-literal-expression-container .textarea .content-editable {
+  padding: 12px;
+}
+
+.dmn-literal-expression-container .textarea .content-editable {
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.dmn-literal-expression-container .textarea div:focus {
+  outline: none;
+}
+
+.dmn-literal-expression-container .textarea.editor {
+  cursor: text;
+}
+
+.dmn-literal-expression-container .textarea:not(.editor) {
+  cursor: default;
+}
+
+/* literal expression properties */
+.dmn-literal-expression-container .literal-expression-properties {
+  box-sizing: border-box;
+  width: 100%;
+  padding:  0;
+  border: 1px solid #444;
+  border-top: none;
+  font-size: 14px;
+  color: #444;
+}
+
+.dmn-literal-expression-container .literal-expression-properties table {
+  border-spacing: 8px;
+}
+
+.dmn-literal-expression-container .literal-expression-properties table tr td:first-child {
+  font-weight: bold;
+}
+
+.dmn-literal-expression-container .literal-expression-properties table tr td:last-child {
+  min-width: 100px;
+}
+
+/* view drd */
+.dmn-literal-expression-container .view-drd {
+  float: right;
+  margin-right: 10px;
+}
+
+.dmn-literal-expression-container .view-drd .view-drd-button {
+  background: #fff;
+  padding: 8px;
+  border: solid 1px #CCC;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #444;
+  font-weight: bold;
+  cursor: pointer;
+  outline: none;
+}
+
+.dmn-literal-expression-container .view-drd .view-drd-button:hover {
+  background: #f6f6f6;
+}
+
+/* powered by */
+.dmn-literal-expression-container .powered-by-logo {
+  float: right;
+  width: 38px;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.dmn-literal-expression-container .powered-by-logo .logo {
+  width: 100%;
+}
+
+.dmn-literal-expression-container .powered-by-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.dmn-literal-expression-container .powered-by-overlay .powered-by-overlay-content {
+  background: #fff;
+  padding: 8px;
+  border: solid 1px #CCC;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  font-size: 14px;
+  color: #444;
+  display: flex;
+  flex-direction: row;
+  max-width: 260px;
+}
+
+.dmn-literal-expression-container .powered-by-overlay .powered-by-overlay-content div:first-child {
+  margin-right: 8px;
+}
+
+.dmn-decision-table-container p.dms-hint {
+  font-size: 0.85em;
+  margin-top: 5px;
+  color: #888;
+}
