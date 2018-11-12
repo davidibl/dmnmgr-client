@@ -1,4 +1,4 @@
-import { Component } from "@angular/core";
+import { Component, OnInit } from "@angular/core";
 import { DataEntity } from '../../model/dataEntity';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { KeyValuePair } from "@xnoname/web-components";
@@ -9,7 +9,7 @@ import { catchError } from "rxjs/operators";
     templateUrl: 'dataModel.html',
     styleUrls: ['dataModel.scss'],
 })
-export class DataModelComponent {
+export class DataModelComponent implements OnInit {
 
     public dataModel: DataEntity;
     public result: KeyValuePair[];
@@ -17,6 +17,16 @@ export class DataModelComponent {
     public evaluatingDecision = false;
 
     public constructor(private _testDecisionService: TestDecisionService) {}
+
+    public ngOnInit() {
+        this._testDecisionService
+            .getResult()
+            .subscribe(response => {
+                this.result = response.result;
+                this.errorMessage = response.message;
+                this.evaluatingDecision = false;
+            });
+    }
 
     public addDataModel() {
         const newDataEntity = new DataEntity('object', 'request');
@@ -27,11 +37,6 @@ export class DataModelComponent {
     public tryIt() {
         this.evaluatingDecision = true;
         this._testDecisionService
-            .testDecision(this.dataModel)
-            .subscribe(response => {
-                this.result = response.result;
-                this.errorMessage = response.message;
-                this.evaluatingDecision = false;
-            });
+            .testDecision(this.dataModel);
     }
 }

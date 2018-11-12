@@ -7,17 +7,20 @@ import { Observable } from "rxjs/Observable";
 import { KeyValuePair } from "@xnoname/web-components";
 import { IDecisionTestCaseResponse } from "../model/decisionTestCaseResponse";
 import { DecisionTestCaseResult } from '../model/decisionTestCaseResult';
+import { ReplaySubject } from "rxjs/ReplaySubject";
 
 @Injectable()
 export class TestDecisionService {
 
+    private _resultSubject = new ReplaySubject<DecisionTestCaseResult>(1);
+
     public constructor(private _http: HttpClient, private dmnXmlService: DmnXmlService) {}
 
-    public testDecision(data: DataEntity): Observable<DecisionTestCaseResult> {
+    public testDecision(data: DataEntity) {
         const result = Object.create(null);
         this.mapDataEntity(result, data);
 
-        return this.dmnXmlService
+        this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
                 map(xml => {
@@ -28,7 +31,15 @@ export class TestDecisionService {
                 }),
                 switchMap(request => this._http.post<IDecisionTestCaseResponse>('http://localhost:11204/api/decision/testcase', request)),
                 map(response => this.mapResponseToMap(response))
-            );
+            ).subscribe(response => this._resultSubject.next(response));
+    }
+
+    public getResult() {
+        return this._resultSubject.asObservable();
+    }
+
+    public resetTest() {
+        this._resultSubject.next(null);
     }
 
     private mapDataEntity(result: Object, entity: DataEntity) {
@@ -54,7 +65,7 @@ export class TestDecisionService {
                     result.push(new KeyValuePair(key, responseItem[key]));
                 });
             });
-            return new DecisionTestCaseResult(result);
+            return new DecisionTestCaseResult(result, null, response.resultRuleIds);
         }
         return new DecisionTestCaseResult(null, response.message);
     }
