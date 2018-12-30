@@ -1,0 +1,8 @@
+<div class="flyin-panel flex flex-column full-height" *ngIf="visible" [@slideInOut]>
+    <div class="full-width text-right button-bar">
+        <xn-button (click)="closeFlyout()" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button>
+    </div>
+    <xn-scroll-panel>
+        <ng-content></ng-content>
+    </xn-scroll-panel>
+</div>

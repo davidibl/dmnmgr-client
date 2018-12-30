@@ -1,0 +1,53 @@
+<span (click)="toggleNode()" class="inline-block pointer mr-05" *ngIf="datamodel.type === jsonDatatype.OBJECT">
+    <i *ngIf="open" class="fa fa-minus" aria-hidden="true"></i>
+    <i *ngIf="!open" class="fa fa-plus" aria-hidden="true"></i>
+</span>
+<xn-input-form *ngIf="!!name"
+               [title]="name"
+               [label]="'Property Name'"
+               [showLabel]="false"
+               [validatable]="false"
+               class="inline-block mb-0 noborder nomargin"
+               [name]="name"
+               [(ngModel)]="datamodel.name"></xn-input-form>
+<xn-dropdown [showLabel]="false"
+             [idPropertyPath]="null"
+             [displayPropertyPath]="null"
+             [validatable]="false"
+             class="inline-block mb-0 noborder nomargin w120"
+             [name]="'datamodel.type'"
+             [noborder]="true"
+             [nomargin]="true"
+             [items]="jsonDatatypeOptions"
+             (ngModelChange)="onDatamodelTypeChange($event)"
+             [ngModel]="datamodel.type"></xn-dropdown>
+<button class="small no-border no-background" (click)="removeProperty()">
+    <i class="fa fa-minus-circle" aria-hidden="true"></i>
+</button>
+<xn-tag-input *ngIf="datamodel.type === jsonDatatype.ENUMERATION"
+              [noborder]="true"
+              [nomargin]="true"
+              [showChips]="false"
+              class="small"
+              [placeholder]="'Neuer Wert'"
+              [(ngModel)]="datamodel.enum"></xn-tag-input>
+<ng-container *ngIf="datamodel.type === jsonDatatype.OBJECT && open">
+    <div class="pl-1">
+        <ng-container *ngIf="datamodel.properties">
+            <div *ngFor="let property of datamodel.properties">
+                <xn-json-model-editor [name]="property.name"
+                                      [datamodel]="property"
+                                      (removePropertyRequested)="onRemovePropertyRequested($event)"></xn-json-model-editor>
+            </div>
+        </ng-container>
+        <xn-button class="small mb-05 mt-05"
+                   (click)="addProperty()">
+            <i class="fa fa-plus-square-o mr-05" aria-hidden="true"></i>Eigenschaft
+        </xn-button>
+    </div>
+</ng-container>
+<ng-container *ngIf="datamodel.type === jsonDatatype.ARRAY">
+    <div class="pl-1">
+        <xn-json-model-editor [datamodel]="datamodel.items"></xn-json-model-editor>
+    </div>
+</ng-container>

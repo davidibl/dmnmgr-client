@@ -1,0 +1,140 @@
+<ng-container [ngSwitch]="datamodel?.type">
+    <span (click)="toggleNode()" class="inline-block pointer mr-05" *ngSwitchCase="jsonDatatype.OBJECT">
+        <i *ngIf="open" class="fa fa-minus" aria-hidden="true"></i>
+        <i *ngIf="!open" class="fa fa-plus" aria-hidden="true"></i>
+    </span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.DATE"><i class="fa fa-clock-o" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.INTEGER"><i class="fa fa-calculator" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.NUMBER"><i class="fa fa-calculator" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.ENUMERATION"><i class="fa fa-calculator" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.BOOLEAN"><i class="fa fa-question-circle-o" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchCase="jsonDatatype.ARRAY"><i class="fa fa-list" aria-hidden="true"></i></span>
+    <span class="mr-05" *ngSwitchDefault><i class="fa fa-font" aria-hidden="true"></i></span>
+    <span class="mr-05 datafield-name">{{datamodel?.name}}</span>
+</ng-container>
+<ng-container *ngIf="open">
+    <ng-container [ngSwitch]="datamodel?.type">
+        <ng-container *ngSwitchCase="jsonDatatype.NUMBER">
+            <xn-number-input-form [title]="datamodel?.name"
+                                [label]="'Abfragewert'"
+                                [showLabel]="false"
+                                [validatable]="false"
+                                [class.disabled]="viewOnly"
+                                [noborder]="true"
+                                [nomargin]="true"
+                                class="inline-block mb-0"
+                                [name]="datamodel?.name"
+                                [(ngModel)]="editValue"></xn-number-input-form>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.INTEGER">
+            <xn-number-input-form [title]="datamodel?.name"
+                                [label]="'Abfragewert'"
+                                [showLabel]="false"
+                                [validatable]="false"
+                                [class.disabled]="viewOnly"
+                                [noborder]="true"
+                                [nomargin]="true"
+                                class="inline-block mb-0"
+                                [name]="datamodel?.name"
+                                [(ngModel)]="editValue"></xn-number-input-form>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.BOOLEAN">
+            <xn-checkbox class="small"
+                        [attr.name]="datamodel?.name"
+                        [(ngModel)]="editValue"></xn-checkbox>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.ENUMERATION">
+            <xn-dropdown [showLabel]="false"
+                        [idPropertyPath]="null"
+                        [displayPropertyPath]="null"
+                        [validatable]="false"
+                        [class.disabled]="viewOnly"
+                        [label]="'Abfragewert'"
+                        class="inline-block mb-0 noborder nomargin"
+                        [name]="datamodel.name"
+                        [noborder]="true"
+                        [nomargin]="true"
+                        [items]="datamodel.enum"
+                        [(ngModel)]="editValue"></xn-dropdown>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.DATE">
+            <xn-datetime-picker [title]="datamodel?.name"
+                                [label]="'Abfragedatum'"
+                                [showLabel]="false"
+                                class="inline-block"
+                                [class.disabled]="viewOnly"
+                                [noborder]="true"
+                                [nomargin]="true"
+                                [validatable]="false"
+                                [name]="datamodel?.name"
+                                [(ngModel)]="editValue"></xn-datetime-picker>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.DATETIME">
+            <xn-datetime-picker [title]="datamodel?.name"
+                                [label]="'Abfragedatum'"
+                                class="inline-block"
+                                [class.disabled]="viewOnly"
+                                [noborder]="true"
+                                [nomargin]="true"
+                                [showLabel]="false"
+                                [validatable]="false"
+                                [name]="datamodel?.name"
+                                [(ngModel)]="editValue"></xn-datetime-picker>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.ARRAY">
+            <xn-button *ngIf="!viewOnly" class="small" (click)="addArrayElement()">
+                <i class="fa fa-plus-square-o mr-05" aria-hidden="true"></i>Eintrag
+            </xn-button>
+        </ng-container>
+        <ng-container *ngSwitchCase="jsonDatatype.OBJECT"></ng-container>
+        <ng-container *ngSwitchDefault>
+            <xn-input-form [title]="datamodel.name"
+                        [label]="'Abfragewert'"
+                        [showLabel]="false"
+                        [validatable]="false"
+                        class="inline-block mb-0 noborder nomargin"
+                        [name]="datamodel.name"
+                        [(ngModel)]="editValue"></xn-input-form>
+        </ng-container>
+        <ng-container *ngIf="arrayIndex >= 0 && !viewOnly">
+            <button class="small no-border no-background" (click)="removeArrayItem(arrayIndex)">
+                <i class="fa fa-minus-circle" aria-hidden="true"></i>
+            </button>
+        </ng-container>
+    </ng-container>
+    <ng-container *ngIf="datamodel?.type === jsonDatatype.ARRAY">
+        <div class="pl-1">
+            <ng-container *ngIf="datamodel?.items">
+                <div *ngFor="let item of getPropertyOrRoot(datamodel, value); let idx = index; trackBy: trackByFn">
+                    <xn-json-value-editor [datamodel]="datamodel.items"
+                                        [value]="getPropertyOrRoot(datamodel, value)"
+                                        [viewOnly]="viewOnly"
+                                        [arrayIndex]="idx"></xn-json-value-editor>
+                </div>
+            </ng-container>
+        </div>
+    </ng-container>
+    <ng-container *ngIf="datamodel?.type === jsonDatatype.OBJECT">
+        <div class="pl-1">
+            <ng-container *ngIf="datamodel.properties">
+                <div *ngFor="let property of datamodel.properties">
+                    <xn-json-value-editor [datamodel]="property"
+                                        *ngIf="property.type !== jsonDatatype.OBJECT"
+                                        [viewOnly]="viewOnly"
+                                        [value]="getPropertyParent()"></xn-json-value-editor>
+                    <xn-json-value-editor [datamodel]="property"
+                                        *ngIf="property.type === jsonDatatype.OBJECT"
+                                        [viewOnly]="viewOnly"
+                                        [value]="getObjectValue(property, value)"></xn-json-value-editor>
+                </div>
+            </ng-container>
+            <ng-container *ngIf="unknownProperties">
+                <div *ngFor="let property of unknownProperties">
+                    <xn-json-value-editor [datamodel]="{ name: property }"
+                                          [value]="value"
+                                          [viewOnly]="viewOnly"></xn-json-value-editor>
+                </div>
+            </ng-container>
+        </div>
+    </ng-container>
+</ng-container>

@@ -1,14 +1,18 @@
-<xn-tabs>
+<xn-tabs (selectedTabChange)="onSelectedTabChanged($event)">
+    <xn-tab [title]="'Datenmodell'"
+            [iconClass]="'fa-database'"
+            [id]="'datamodel-editor'">
+        <xn-data-model-editor></xn-data-model-editor>
+    </xn-tab>
     <xn-tab [title]="'Dein Modell'"
-            [iconClass]="'fa-table'">
+            [iconClass]="'fa-table'"
+            [id]="'dmn-editor'">
         <xn-dmn-modeller [type]="'editor'"></xn-dmn-modeller>
     </xn-tab>
     <xn-tab [title]="'Tests'"
-            [iconClass]="'fa-cog'">
-        <xn-dmn-modeller [type]="'tester'"></xn-dmn-modeller>
-    </xn-tab>
-    <xn-tab [title]="'Datenmodell'"
-            [iconClass]="'fa-database'">
-        <xn-data-model></xn-data-model>
+            [iconClass]="'fa-cog'"
+            [id]="'test-editor'">
+        <xn-test-suite></xn-test-suite>
     </xn-tab>
 </xn-tabs>
+<xn-dmn-simulator [isVisisble]="tabId === 'dmn-editor'"></xn-dmn-simulator>

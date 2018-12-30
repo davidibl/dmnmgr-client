@@ -1,0 +1,26 @@
+<xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble">
+    <div class="wrapper">
+        <xn-json-editor [type]="editorTypes.VALUE"
+                        [requestModel]="dataModel$ | async"
+                        class="ml-05"
+                        (valueChange)="onNewValueObjectCreated($event)"
+                        [value]="valueObject"></xn-json-editor>
+        <ng-container *ngIf="simulationResult$ | async as simulationResult">
+            <div class="mt-2" *ngIf="simulationResult">
+                <h4>Ergebnis</h4>
+                <xn-dmn-result-view [message]="simulationResult.message"
+                                    [result]="simulationResult.result"
+                                    [datamodelResult]="simulationResult.datamodel"></xn-dmn-result-view>
+            </div>
+        </ng-container>
+    </div>
+</xn-flyin>
+<xn-levitated-button class="simulator-button pointer"
+                     [default]="true"
+                     *ngIf="isVisisble"
+                     [showSpinner]="currentlyTesting"
+                     [forceKeepOpen]="simulatorVisisble"
+                     (click)="openSimulator()">
+    <i class="white fa fa-flask"></i>
+    <div class="button-content white"><i class="white fa fa-flask mr-05"></i>Simulation</div>
+</xn-levitated-button>

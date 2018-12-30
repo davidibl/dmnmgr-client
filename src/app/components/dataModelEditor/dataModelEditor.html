@@ -1,0 +1,11 @@
+<div class="flex flex-wrap">
+    <div class="col-12 col-6-m">
+        <h4>Abfrage-Modell</h4>
+        <xn-json-editor [type]="editorTypes.MODEL"
+                        (requestModelChange)="onRequestModelChanged($event)"></xn-json-editor>
+    </div>
+    <div class="col-12 col-6-m">
+        <h4>Antwort-Modell (optional)</h4>
+        <xn-json-editor [type]="editorTypes.MODEL"></xn-json-editor>
+    </div>
+</div>

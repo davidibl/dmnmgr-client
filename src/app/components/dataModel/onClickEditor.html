@@ -1,6 +1,0 @@
-<div *ngIf="!editMode" (click)="startEditing()">
-    <ng-content select=".view"></ng-content>
-</div>
-<div class="flex" *ngIf="editMode">
-    <ng-content select=".editor"></ng-content>
-</div>

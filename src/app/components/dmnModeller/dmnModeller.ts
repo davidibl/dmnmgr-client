@@ -2,10 +2,11 @@ import { Component, ViewChild, ElementRef, AfterViewInit, Input } from '@angular
 
 import { HttpClient } from '@angular/common/http';
 import { DmnXmlService } from '../../services/dmnXmlService';
-import { of, Observable, ReplaySubject } from 'rxjs';
+import { ReplaySubject } from 'rxjs';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
-import SimpleDmnModdle from 'dmn-moddle/lib/simple.js';
+import { DataModelService } from '../../services/dataModelService';
+import { take } from 'rxjs/operators/take';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -17,6 +18,31 @@ declare interface DMNJS {
     getViews(): any[];
     on(eventname: string, eventCallback: (event) => void);
     _updateViews(): void;
+    _viewers: any;
+    _activeView: any;
+}
+
+export interface DmnModdle {
+    create(type: string);
+}
+
+export interface DmnModdleElement {
+    $type: string;
+    id: string;
+    text: string;
+    inputValues?: DmnModdleElement;
+    $model: DmnModdle;
+}
+
+export interface DmnModdleEvent {
+    elements: DmnModdleElement[];
+    element: DmnModdleElement;
+}
+
+export class DmnType {
+    static LITERAL_EXPRESSION = 'dmn:LiteralExpression';
+    static INPUT_CLAUSE = 'dmn:InputClause';
+    static UNARY_TEST = 'dmn:UnaryTests';
 }
 
 @Component({
@@ -34,37 +60,23 @@ export class DmnModellerComponent implements AfterViewInit {
     @Input()
     public type: string;
 
-    public constructor(private _http: HttpClient, private _dmnXmlService: DmnXmlService) { }
+    public constructor(private _http: HttpClient,
+                       private _dmnXmlService: DmnXmlService,
+                       private _dataModelService: DataModelService) { }
 
     public ngAfterViewInit(): void {
-
-        var extensionModule = {
-            init: ['interactionLogger'],
-            interactionLogger: ['row.add', eventBus => {
-                eventBus.on('row.add', event => console.log(event));
-            }]
-        };
 
         this._http.get('../assets/val.xml', { responseType: 'text' }).subscribe(xml => {
             this._modeller = new DmnJS({
                 container: this._container.nativeElement,
-                decisionTable: {
-                    additionalModules: [extensionModule]
-                }
             });
+            console.log(this._modeller);
 
             this._modeller.importXML(xml, (err) => {
                 if (err) {
                     console.log('error rendering', err);
                 }
                 this.configureModeller();
-            });
-
-            console.log(SimpleDmnModdle);
-            var moddle = new SimpleDmnModdle();
-            moddle.fromXML(xml, 'dmn:Definitions', function (err, result) {
-
-                console.log(result);
             });
         });
 
@@ -82,6 +94,43 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
+            const newView = { type: event.activeView.type, id: event.activeView.element.id };
+        });
+        this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
+            if (this.isInputExpressionChanged(event)) {
+                const literalExpression = this.getElementByType(event, DmnType.LITERAL_EXPRESSION);
+                const inputClause = this.getElementByType(event, DmnType.INPUT_CLAUSE);
+                this._dataModelService
+                    .getEnumValuesByPath(literalExpression.text)
+                    .pipe(take(1))
+                    .subscribe(values => {
+                        this.setInputValueRestriction(inputClause, values);
+                    });
+            }
+        });
+        this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
+            console.log('change' + event);
         });
     }
+
+    private isInputExpressionChanged(event: DmnModdleEvent) {
+        return (event.elements && event.elements.length > 1 &&
+                !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
+    }
+
+    private getElementByType(event: DmnModdleEvent, type: string) {
+        return event.elements.find(element => element.$type === type);
+    }
+
+    private setInputValueRestriction(inputClause: DmnModdleElement, values: string[]) {
+        if (!inputClause) { return; }
+        if (!inputClause.inputValues) {
+            const newElem = inputClause
+                .$model
+                .create(DmnType.UNARY_TEST);
+            inputClause.inputValues = newElem;
+        }
+        inputClause.inputValues.text = `"${values.join('","')}"`;
+    }
+
 }

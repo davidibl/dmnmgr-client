@@ -1,0 +1,47 @@
+<xn-workflow (workflowStateChange)="onWorkflowStateChanged($event)">
+    <xn-accordion [preventStepWhenInvalid]="true">
+        <xn-accordion-element [additionalValidationParameter]="!!apiDefinition" [title]="'Quelle wählen'">
+            <form #chooseSourceForm="ngForm">
+                <xn-input-form [label]="'URL zu Open API Definition'"
+                               [iconAfterClass]="'fa-download'"
+                               [iconClass]="'fa-link'"
+                               [name]="'urlInput'"
+                               xnRequired
+                               xnNotEmpty
+                               [validateIf]="!apiText"
+                               (iconAfterClick)="loadDefinitionFromUrl()"
+                               (ngModelChange)="onUrlChange($event)"
+                               [ngModel]="apiUrl"></xn-input-form>
+                <xn-section-divider [label]="'API Url oder Schema JSON angeben'"></xn-section-divider>
+                <xn-input-form [label]="'API Definition als Text'"
+                               (ngModelChange)="onApiTextChange($event)"
+                               [ngModel]="apiText"
+                               [rows]="5"
+                               [name]="'apiTextInput'"
+                               xnRequired
+                               xnNotEmpty
+                               [validateIf]="!apiUrl"
+                               [iconClass]="'fa-file-text-o'"
+                               [iconAfterClass]="'fa-cogs'"
+                               (iconAfterClick)="loadDefinitionFromText()"
+                               [multiline]="true"></xn-input-form>
+            </form>
+        </xn-accordion-element>
+        <xn-accordion-element [title]="'Objektmodell wählen'">
+            <form #chooseObjectForm="ngForm">
+                <ul *ngIf="apiDefinition?.definitions">
+                    <xn-list-selector [items]="apiDefinition.definitions | properties"
+                                      [(ngModel)]="selectedObject"
+                                      class="w300 block"
+                                      [name]="'objectSelector'"
+                                      xnRequired
+                                      [requiredMessage]="'Bitte Objektmodell wählen'"
+                                      xnMinLength="1"
+                                      [minLengthMessage]="'Bitte Objektmodell wählen'"
+                                      [selectionMode]="'SINGLE'"
+                                      [displayPropertyPath]="'key'"></xn-list-selector>
+                </ul>
+            </form>
+        </xn-accordion-element>
+    </xn-accordion>
+</xn-workflow>

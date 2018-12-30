@@ -1,0 +1,14 @@
+<div class="full-width" *ngIf="result || message">
+    <p class="error-message" *ngIf="message">{{message}}</p>
+    <xn-json-editor *ngIf="result && result.length > 0"
+                    [type]="1"
+                    [requestModel]="datamodelResult"
+                    [viewOnly]="true"
+                    [value]="result">
+    </xn-json-editor>
+    <ul *ngIf="!message && result.length < 1" class="result-tree">
+        <li *ngIf="result.length < 1">
+            Die Abfrage hat kein Ergebnis erzielt.
+        </li>
+    </ul>
+</div>

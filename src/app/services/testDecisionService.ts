@@ -1,31 +1,29 @@
 import { Injectable } from "@angular/core";
 import { HttpClient } from '@angular/common/http';
-import { DataEntity } from "../model/dataEntity";
 import { DmnXmlService } from './dmnXmlService';
 import { map, switchMap } from 'rxjs/operators';
-import { Observable } from "rxjs/Observable";
-import { KeyValuePair } from "@xnoname/web-components";
 import { IDecisionTestCaseResponse } from "../model/decisionTestCaseResponse";
 import { DecisionTestCaseResult } from '../model/decisionTestCaseResult';
 import { ReplaySubject } from "rxjs/ReplaySubject";
+import { ObjectDefinition } from '../model/json/objectDefinition';
+import { JsonDatatype } from '../model/json/jsonDatatypes';
 
 @Injectable()
 export class TestDecisionService {
 
     private _resultSubject = new ReplaySubject<DecisionTestCaseResult>(1);
 
-    public constructor(private _http: HttpClient, private dmnXmlService: DmnXmlService) {}
+    public constructor(private _http: HttpClient, private dmnXmlService: DmnXmlService) { }
 
-    public testDecision(data: DataEntity) {
-        const result = Object.create(null);
-        this.mapDataEntity(result, data);
+    public testDecision(testData: Object) {
+        this._resultSubject.next(null);
 
         this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
                 map(xml => {
                     return {
-                        variables: result,
+                        variables: testData,
                         xml: xml
                     }
                 }),
@@ -42,31 +40,18 @@ export class TestDecisionService {
         this._resultSubject.next(null);
     }
 
-    private mapDataEntity(result: Object, entity: DataEntity) {
-        for (let property of entity.properties) {
-            if (property.type !== 'object') {
-                result[property.name] = (this.isNull(property.value)) ? null : property.value;
-            } else {
-                result[property.name] = Object.create(null);
-                this.mapDataEntity(result[property.name], property);
-            }
-        }
-    }
-
-    private isNull(value: any) {
-        return (value === null || value === undefined);
-    }
-
     private mapResponseToMap(response: IDecisionTestCaseResponse) {
         if (response.result) {
-            const result: KeyValuePair[] = [];
-            response.result.forEach(responseItem => {
-                Object.keys(responseItem).forEach(key => {
-                    result.push(new KeyValuePair(key, responseItem[key]));
-                });
+            if (response.result.length < 1) {
+                return new DecisionTestCaseResult(response.result, null, null);
+            }
+            const datamodel = <ObjectDefinition>{ type: JsonDatatype.ARRAY };
+            datamodel.items = <ObjectDefinition>{ type: JsonDatatype.OBJECT, properties: [] };
+            Object.keys(response.result[0]).forEach(key => {
+                datamodel.items.properties.push({ name: key, type: JsonDatatype.STRING });
             });
-            return new DecisionTestCaseResult(result, null, response.resultRuleIds);
+            return new DecisionTestCaseResult(response.result, datamodel, null, response.resultRuleIds);
         }
-        return new DecisionTestCaseResult(null, response.message);
+        return new DecisionTestCaseResult(null, null, response.message);
     }
 }

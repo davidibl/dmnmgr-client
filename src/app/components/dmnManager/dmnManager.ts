@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, Renderer2 } from '@angular/core';
+import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { DOCUMENT } from "@angular/platform-browser";
 import { TestDecisionService } from '../../services/testDecisionService';
 
@@ -10,6 +10,11 @@ import { TestDecisionService } from '../../services/testDecisionService';
 export class DmnManagerComponent implements OnInit {
 
     private stylesheet: any = null;
+    private _tabId: string;
+
+    public get tabId() {
+        return this._tabId;
+    }
 
     public constructor(@Inject(DOCUMENT) private document,
         private renderer: Renderer2,
@@ -35,9 +40,14 @@ export class DmnManagerComponent implements OnInit {
             });
     }
 
+    public onSelectedTabChanged(tabId: string) {
+        this._tabId = tabId;
+    }
+
     private clearStyleRules() {
-        for (let i = 0; i < this.stylesheet.rules.length; i++) {
-            this.stylesheet.removeRule(i);
+        const count = this.stylesheet.rules.length;
+        for (let i = 0; i < count; i++) {
+            this.stylesheet.deleteRule(0);
         }
     }
 }

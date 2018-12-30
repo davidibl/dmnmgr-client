@@ -1,0 +1,41 @@
+<div class="full-width">
+    <ng-container *ngIf="type === editorTypes.MODEL">
+        <div class="mt-1 mb-1">
+            <xn-button class="small mr-1"
+                       (click)="openImporter()">
+                <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>
+                Open API Schema importieren
+            </xn-button>
+            <xn-button class="small"
+                       (click)="createNewEmptyModel()">
+                <i class="fa fa-asterisk mr-05" aria-hidden="true"></i>
+                Neues Modell
+            </xn-button>
+        </div>
+    </ng-container>
+    <ng-container *ngIf="type === editorTypes.VALUE">
+        <div class="mt-1 mb-1" *ngIf="!viewOnly">
+            <xn-button class="small"
+                       (click)="createNewEmptyValue()">
+                <i class="fa fa-asterisk mr-05" aria-hidden="true"></i>
+                Neues Objekt
+            </xn-button>
+        </div>
+    </ng-container>
+    <xn-json-tree-node [datamodel]="requestModel"
+                       *ngIf="editorNodeVisible"
+                       [value]="value"
+                       [viewOnly]="viewOnly"
+                       [type]="type"></xn-json-tree-node>
+</div>
+<xn-dialog [closable]="true"
+           [(open)]="importerOpen"
+           [hideOkButton]="true"
+           [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Schema importieren
+    </div>
+    <div class="dialog-body pb-1">
+        <xn-import-api-definition (workflowCompleted)="onImportWorkflowCompleted($event)"></xn-import-api-definition>
+    </div>
+</xn-dialog>
