@@ -8,6 +8,8 @@ import { take } from 'rxjs/operators/take';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { DecisionTestCaseResult } from '../../model/decisionTestCaseResult';
 import { tap } from 'rxjs/operators/tap';
+import { EventService } from '../../services/eventService';
+import { BaseEvent } from '../../model/event';
 
 @Component({
     selector: 'xn-dmn-simulator',
@@ -31,7 +33,8 @@ export class DmnSimulatorComponent implements OnInit {
 
     public constructor(private _dataModelService: DataModelService,
                        private _sessionDataService: SessionDataService,
-                       private _testDecisionService: TestDecisionService) {}
+                       private _testDecisionService: TestDecisionService,
+                       private _eventService: EventService) {}
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
@@ -64,5 +67,14 @@ export class DmnSimulatorComponent implements OnInit {
     public onNewValueObjectCreated(value: Object) {
         this.valueObject = value;
         this._sessionDataService.setValue('tempObject', this.valueObject);
+    }
+
+    public takeAsTest(expectedResultData: Object[]) {
+        const newTestData = {
+            testdata: JSON.parse(JSON.stringify(this.valueObject)),
+            expectedResult: expectedResultData
+        };
+        const ev = new BaseEvent('newTest', newTestData);
+        this._eventService.publishEvent(ev);
     }
 }

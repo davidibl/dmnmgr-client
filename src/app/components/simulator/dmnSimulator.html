@@ -12,6 +12,9 @@
                                     [result]="simulationResult.result"
                                     [datamodelResult]="simulationResult.datamodel"></xn-dmn-result-view>
             </div>
+            <xn-button class="small mt-1"
+                       [class.disabled]="!simulationResult"
+                       (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
         </ng-container>
     </div>
 </xn-flyin>
