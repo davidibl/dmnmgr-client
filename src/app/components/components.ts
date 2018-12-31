@@ -23,5 +23,5 @@ export const ALL_COMPONENTS = [
     DataModelEditorComponent,
     DmnSimulatorComponent,
     FlyinComponent,
-    DmnResultViewComponent
+    DmnResultViewComponent,
 ];
