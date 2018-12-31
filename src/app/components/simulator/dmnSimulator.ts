@@ -40,7 +40,7 @@ export class DmnSimulatorComponent implements OnInit {
             .pipe(
                 take(1)
             )
-            .subscribe(value => this.valueObject = value);
+            .subscribe(value => this.valueObject = (value) ? value : {});
 
         this.simulationResult$ = this._testDecisionService
             .getResult()
@@ -50,7 +50,7 @@ export class DmnSimulatorComponent implements OnInit {
     public simulate() {
 
         this.currentlyTesting = true;
-        this._testDecisionService.testDecision(this.valueObject);
+        this._testDecisionService.simulateDecision(this.valueObject);
     }
 
     public openSimulator() {
