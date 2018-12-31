@@ -6,7 +6,7 @@ export class Testsuite {
 
     public constructor() {}
 
-    public addTestCase() {
-        this.tests.push(new Test());
+    public addTestCase(name?: string, testdata?: any, expectedResult?: any) {
+        this.tests.push(new Test(name, testdata, expectedResult));
     }
 }
