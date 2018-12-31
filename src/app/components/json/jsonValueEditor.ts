@@ -110,6 +110,14 @@ export class JsonValueEditor implements OnChanges {
     }
 
     public addArrayElement() {
+        if (Array.isArray(this.value)) {
+            if (this.datamodel.items.type === JsonDatatype.OBJECT) {
+                this.value.push({});
+                return;
+            }
+            this.value.push(null);
+            return;
+        }
         if (!this.value[this.datamodel.name] || !Array.isArray(this.value[this.datamodel.name])) {
             this.value[this.datamodel.name] = [];
         }
