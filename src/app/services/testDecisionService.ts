@@ -7,6 +7,8 @@ import { DecisionTestCaseResult } from '../model/decisionTestCaseResult';
 import { ReplaySubject } from "rxjs/ReplaySubject";
 import { ObjectDefinition } from '../model/json/objectDefinition';
 import { JsonDatatype } from '../model/json/jsonDatatypes';
+import { Test } from '../model/test';
+import { Observable } from 'rxjs';
 
 @Injectable()
 export class TestDecisionService {
@@ -15,7 +17,7 @@ export class TestDecisionService {
 
     public constructor(private _http: HttpClient, private dmnXmlService: DmnXmlService) { }
 
-    public testDecision(testData: Object) {
+    public simulateDecision(testData: Object) {
         this._resultSubject.next(null);
 
         this.dmnXmlService
@@ -27,9 +29,24 @@ export class TestDecisionService {
                         xml: xml
                     }
                 }),
-                switchMap(request => this._http.post<IDecisionTestCaseResponse>('http://localhost:11204/api/decision/testcase', request)),
+                switchMap(request => this._http.post<IDecisionTestCaseResponse>('http://localhost:11204/api/decision/simulation', request)),
                 map(response => this.mapResponseToMap(response))
             ).subscribe(response => this._resultSubject.next(response));
+    }
+
+    public testDecision(test: Test): Observable<Object> {
+        return this.dmnXmlService
+            .getXmlModels('editor')
+            .pipe(
+                map(xml => {
+                    return {
+                        variables: test.data,
+                        expectedData: test.expectedData,
+                        xml: xml
+                    }
+                }),
+                switchMap(request => this._http.post<Object>('http://localhost:11204/api/decision/test', request)),
+            );
     }
 
     public getResult() {

@@ -1,3 +1,6 @@
+@import 'variables';
+@import 'mixins';
+
 .button-column {
     width: 44px;
 }
@@ -12,4 +15,12 @@
 
 td {
     vertical-align: top;
+}
+
+td.success {
+    background-color: #def1c3;
+}
+
+td.error {
+    background-color: #ffe1e3;
 }

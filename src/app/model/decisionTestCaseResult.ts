@@ -1,4 +1,3 @@
-import { KeyValuePair } from "@xnoname/web-components";
 import { ObjectDefinition } from './json/objectDefinition';
 
 export class DecisionTestCaseResult {

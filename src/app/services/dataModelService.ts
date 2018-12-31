@@ -9,6 +9,7 @@ import { filter } from 'rxjs/operators/filter';
 export class DataModelService {
 
     private _datamodels = new ReplaySubject<ObjectDefinition>(1);
+    private _responseModel = new ReplaySubject<ObjectDefinition>(1);
 
     public newDataModel(datamodel: ObjectDefinition) {
         this._datamodels.next(datamodel);
@@ -16,6 +17,14 @@ export class DataModelService {
 
     public getDataModel(): Observable<ObjectDefinition> {
         return this._datamodels.asObservable();
+    }
+
+    public setResponseModel(responseModel: ObjectDefinition) {
+        this._responseModel.next(responseModel);
+    }
+
+    public getResponseModel() {
+        return this._responseModel.asObservable();
     }
 
     public getPropertyByPath(path: string): Observable<ObjectDefinition> {
