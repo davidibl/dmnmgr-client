@@ -4,6 +4,8 @@ import { Observable } from 'rxjs/Observable';
 import { Testsuite } from '../../model/testsuite';
 import { map } from 'rxjs/operators';
 import { Test } from '../../model/test';
+import { ObjectDefinition } from '../../model/json/objectDefinition';
+import { DataModelService } from '../../services/dataModelService';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -18,10 +20,13 @@ export class TestCaseContainer {
 export class TestSuiteComponent implements OnInit{
 
     public testCases$: Observable<TestCaseContainer[]>;
+    public dataModel$: Observable<ObjectDefinition>;
 
-    public constructor(private _testSuiteService: TestSuiteService) {}
+    public constructor(private _testSuiteService: TestSuiteService,
+                       private _dataModelService: DataModelService) {}
 
     public ngOnInit() {
+        this.dataModel$ = this._dataModelService.getDataModel();
         this.testCases$ = this._testSuiteService
             .getTestSuite()
             .pipe(

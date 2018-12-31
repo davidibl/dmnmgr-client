@@ -27,7 +27,10 @@
                        [(ngModel)]="item.testcase.name"></xn-input-form>
     </td>
     <td>
-        Anfragedaten
+        <xn-json-editor [requestModel]="dataModel$ | async"
+                        [value]="item.testcase.data"
+                        [hideButtons]="true"
+                        [type]="1"></xn-json-editor>
     </td>
     <td>
         Erwartetes Ergebnis
