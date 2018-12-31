@@ -17,6 +17,7 @@ import {
     TranslationService,
 } from '@xnoname/web-components';
 import { ALL_COMPONENTS } from './components/components';
+import { ALL_PIPES } from './pipes/pipes';
 
 export function startupServiceFactory(startupService: StartupService): Function {
     return () => startupService.load(environment.configuration);
@@ -26,6 +27,7 @@ export function startupServiceFactory(startupService: StartupService): Function 
     declarations: [
         AppComponent,
         ...ALL_COMPONENTS,
+        ...ALL_PIPES,
     ],
     imports: [
         BrowserModule,

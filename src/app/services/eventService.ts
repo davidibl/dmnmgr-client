@@ -6,7 +6,7 @@ import { filter } from 'rxjs/operators';
 @Injectable()
 export class EventService {
 
-    private _events: ReplaySubject<BaseEvent<any>>;
+    private _events = new ReplaySubject<BaseEvent<any>>(1);
 
     public publishEvent(event: BaseEvent<any>) {
         this._events.next(event);
