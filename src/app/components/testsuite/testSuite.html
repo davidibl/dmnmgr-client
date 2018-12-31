@@ -33,13 +33,16 @@
                         [type]="1"></xn-json-editor>
     </td>
     <td>
-        Erwartetes Ergebnis
+        <xn-json-editor [requestModel]="responseModel$ | async"
+                        [value]="item.testcase.expectedData"
+                        [hideButtons]="true"
+                        [type]="1"></xn-json-editor>
     </td>
     <td>
         <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
         <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
         <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
     </td>
-    <td><xn-button class="small"><i class="fa fa-play" aria-hidden="true"></i></xn-button></td>
+    <td><xn-button (click)="testCase(item)" class="small"><i class="fa fa-play" aria-hidden="true"></i></xn-button></td>
     <td><xn-button (click)="deleteCase(item)" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button></td>
 </ng-template>
