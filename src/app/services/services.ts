@@ -4,6 +4,7 @@ import { TestSuiteService } from "./testSuiteService";
 import { OpenApiDefinitionService } from './openApiDefinitionService';
 import { DataModelService } from './dataModelService';
 import { SessionDataService } from './sessionDataService';
+import { EventService } from './eventService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -12,4 +13,5 @@ export const ALL_SERVICES = [
     OpenApiDefinitionService,
     DataModelService,
     SessionDataService,
+    EventService,
 ];
