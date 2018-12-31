@@ -7,8 +7,10 @@ import { ReplaySubject } from 'rxjs';
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
 import { DataModelService } from '../../services/dataModelService';
 import { take } from 'rxjs/operators/take';
+import { filter } from 'rxjs/operators/filter';
+import { map } from 'rxjs/operators/map';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
-import { JsonDatatype } from '../../model/json/jsonDatatypes';
+import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -85,7 +87,7 @@ export class DmnModellerComponent implements AfterViewInit {
 
     public constructor(private _http: HttpClient,
                        private _dmnXmlService: DmnXmlService,
-                       private _dataModelService: DataModelService) { }
+                       private _dataModelService: DataModelService) {}
 
     public ngAfterViewInit(): void {
 
@@ -129,12 +131,21 @@ export class DmnModellerComponent implements AfterViewInit {
                     .subscribe(values => {
                         this.setInputValueRestriction(inputClause, values);
                     });
+                this._dataModelService
+                    .getDatatypeByPath(literalExpression.text)
+                    .pipe(
+                        take(1),
+                        map(type => this.getDmnByJsonType(type)),
+                        filter(type => !!type)
+                    )
+                    .subscribe(value => literalExpression.typeRef = value);
             }
             this.updateResponseModel();
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
             console.log('change' + event);
         });
+        this.updateResponseModel();
     }
 
     private updateResponseModel() {
@@ -170,6 +181,11 @@ export class DmnModellerComponent implements AfterViewInit {
             inputClause.inputValues = newElem;
         }
         inputClause.inputValues.text = `"${values.join('","')}"`;
+    }
+
+    private getDmnByJsonType(jsonType: JsonDatatypes) {
+        return Object.getOwnPropertyNames(DmnDatatypeMapping)
+            .find(name => DmnDatatypeMapping[name] === jsonType);
     }
 
 }

@@ -40,7 +40,15 @@ export class DataModelService {
                 filter(property => !!property),
                 map(property => property.enum),
                 filter(enumeration => !!enumeration)
-            )
+            );
+    }
+
+    public getDatatypeByPath(path: string) {
+        return this.getPropertyByPath(path)
+            .pipe(
+                filter(property => !!property),
+                map(property => property.type)
+            );
     }
 
     private getPropertyByPathSync(datamodel: ObjectDefinition, path: string) {
