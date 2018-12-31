@@ -7,6 +7,8 @@ import { ReplaySubject } from 'rxjs';
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
 import { DataModelService } from '../../services/dataModelService';
 import { take } from 'rxjs/operators/take';
+import { ObjectDefinition } from '../../model/json/objectDefinition';
+import { JsonDatatype } from '../../model/json/jsonDatatypes';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -19,19 +21,28 @@ declare interface DMNJS {
     on(eventname: string, eventCallback: (event) => void);
     _updateViews(): void;
     _viewers: any;
-    _activeView: any;
+    _activeView: DmnModelerView;
 }
 
 export interface DmnModdle {
     create(type: string);
 }
 
+export interface DmnModelerView {
+    element: DmnModdleElement;
+}
+
 export interface DmnModdleElement {
     $type: string;
     id: string;
+    name: string;
     text: string;
     inputValues?: DmnModdleElement;
+    input?: DmnModdleElement[];
+    output?: DmnModdleElement[];
+    decisionTable?: DmnModdleElement;
     $model: DmnModdle;
+    typeRef: string;
 }
 
 export interface DmnModdleEvent {
@@ -40,9 +51,21 @@ export interface DmnModdleEvent {
 }
 
 export class DmnType {
+    static DECISION_TABLE = 'dmn:Decision';
+
     static LITERAL_EXPRESSION = 'dmn:LiteralExpression';
     static INPUT_CLAUSE = 'dmn:InputClause';
     static UNARY_TEST = 'dmn:UnaryTests';
+    static OUTPUT_CLAUSE = 'dmn:OutputClause';
+}
+
+export class DmnDatatypeMapping {
+    static string = JsonDatatype.STRING;
+    static integer = JsonDatatype.INTEGER;
+    static long = JsonDatatype.INTEGER;
+    static double = JsonDatatype.NUMBER;
+    static boolean = JsonDatatype.BOOLEAN;
+    static date = JsonDatatype.DATETIME;
 }
 
 @Component({
@@ -107,10 +130,26 @@ export class DmnModellerComponent implements AfterViewInit {
                         this.setInputValueRestriction(inputClause, values);
                     });
             }
+            this.updateResponseModel();
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
             console.log('change' + event);
         });
+    }
+
+    private updateResponseModel() {
+        if (!this._modeller._activeView || this._modeller._activeView.element.$type !== DmnType.DECISION_TABLE) {
+            return;
+        }
+        const responseModel: ObjectDefinition = {
+            type: JsonDatatype.ARRAY,
+            items: { type: JsonDatatype.OBJECT, properties: [] }
+        };
+        this._modeller._activeView.element.decisionTable.output.forEach(outputClause => {
+            responseModel.items.properties.push(
+                { name: outputClause.name, type: DmnDatatypeMapping[outputClause.typeRef] })
+        });
+        this._dataModelService.setResponseModel(responseModel);
     }
 
     private isInputExpressionChanged(event: DmnModdleEvent) {
