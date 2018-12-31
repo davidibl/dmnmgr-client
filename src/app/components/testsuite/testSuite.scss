@@ -24,3 +24,7 @@ td.success {
 td.error {
     background-color: #ffe1e3;
 }
+
+td {
+    @include font-size($base-font-size);
+}
