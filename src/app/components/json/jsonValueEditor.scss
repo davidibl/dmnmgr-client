@@ -4,3 +4,16 @@
     display: inline-block;
     overflow-wrap: break-word;
 }
+
+.node-summary {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 200px;
+    width: 200px;
+    display: inline-block;
+}
+
+.summary-container {
+    display: inline-flex;
+}

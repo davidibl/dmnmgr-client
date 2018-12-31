@@ -11,6 +11,8 @@ import { isNull } from '@xnoname/web-components';
 export class JsonValueEditor implements OnChanges {
 
     private _datamodel: ObjectDefinition;
+    private _value: any;
+    private _arrayIndex: number;
 
     public jsonDatatype = JsonDatatype;
 
@@ -41,10 +43,22 @@ export class JsonValueEditor implements OnChanges {
     }
 
     @Input()
-    public arrayIndex: number;
+    public set arrayIndex(arrayIndex: number) {
+        this._arrayIndex = arrayIndex;
+    }
+
+    public get arrayIndex() {
+        return this._arrayIndex;
+    }
 
     @Input()
-    public value: any;
+    public set value(value: any) {
+        this._value = value;
+    }
+
+    public get value() {
+        return this._value;
+    }
 
     @Input()
     public viewOnly = false;

@@ -8,9 +8,23 @@
     <span class="mr-05" *ngSwitchCase="jsonDatatype.NUMBER"><i class="fa fa-calculator" aria-hidden="true"></i></span>
     <span class="mr-05" *ngSwitchCase="jsonDatatype.ENUMERATION"><i class="fa fa-calculator" aria-hidden="true"></i></span>
     <span class="mr-05" *ngSwitchCase="jsonDatatype.BOOLEAN"><i class="fa fa-question-circle-o" aria-hidden="true"></i></span>
-    <span class="mr-05" *ngSwitchCase="jsonDatatype.ARRAY"><i class="fa fa-list" aria-hidden="true"></i></span>
+    <span class="mr-05 pointer" *ngSwitchCase="jsonDatatype.ARRAY" (click)="toggleNode()">
+        <i class="fa fa-list" aria-hidden="true"></i>
+    </span>
     <span class="mr-05" *ngSwitchDefault><i class="fa fa-font" aria-hidden="true"></i></span>
-    <span class="mr-05 datafield-name">{{datamodel?.name}}</span>
+    <span *ngIf="datamodel.name" class="mr-05 datafield-name">{{datamodel?.name}}</span>
+    <ng-container *ngIf="!datamodel.name">
+        <span class="summary-container">
+            <span *ngIf="datamodel?.type === jsonDatatype.OBJECT"
+                class="light-gray node-summary">
+                &lt;objekt&gt;
+            </span>
+            <span *ngIf="datamodel?.type === jsonDatatype.ARRAY"
+                class="light-gray node-summary">
+                &lt;array&gt;
+            </span>
+        </span>
+    </ng-container>
 </ng-container>
 <ng-container *ngIf="open">
     <ng-container [ngSwitch]="datamodel?.type">
