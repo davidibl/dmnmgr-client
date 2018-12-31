@@ -26,6 +26,9 @@ export class JsonEditorComponent implements OnInit {
     @Input()
     public viewOnly = false;
 
+    @Input()
+    public hideButtons = false;
+
     public get value() {
         return this._value;
     }
@@ -51,8 +54,9 @@ export class JsonEditorComponent implements OnInit {
     public valueChange = new EventEmitter<Object>();
 
     public get editorNodeVisible() {
-        return (this.type === EditorType.MODEL && !!this.requestModel) ||
-               (this.type === EditorType.VALUE && !!this._value);
+        return (!!this.requestModel) ||
+               (this.type === EditorType.VALUE &&
+                !!this._value && !!this.requestModel);
     }
 
     public constructor() {}

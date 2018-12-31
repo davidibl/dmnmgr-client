@@ -1,6 +1,6 @@
 <div class="full-width">
     <ng-container *ngIf="type === editorTypes.MODEL">
-        <div class="mt-1 mb-1">
+        <div class="mt-1 mb-1" *ngIf="!hideButtons">
             <xn-button class="small mr-1"
                        (click)="openImporter()">
                 <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>
@@ -14,7 +14,7 @@
         </div>
     </ng-container>
     <ng-container *ngIf="type === editorTypes.VALUE">
-        <div class="mt-1 mb-1" *ngIf="!viewOnly">
+        <div class="mt-1 mb-1" *ngIf="!viewOnly && !hideButtons">
             <xn-button class="small"
                        (click)="createNewEmptyValue()">
                 <i class="fa fa-asterisk mr-05" aria-hidden="true"></i>
