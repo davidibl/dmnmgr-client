@@ -51,10 +51,10 @@
                         [class.disabled]="viewOnly"
                         [label]="'Abfragewert'"
                         class="inline-block mb-0 noborder nomargin"
-                        [name]="datamodel.name"
+                        [name]="datamodel?.name"
                         [noborder]="true"
                         [nomargin]="true"
-                        [items]="datamodel.enum"
+                        [items]="datamodel?.enum"
                         [(ngModel)]="editValue"></xn-dropdown>
         </ng-container>
         <ng-container *ngSwitchCase="jsonDatatype.DATE">
@@ -88,12 +88,12 @@
         </ng-container>
         <ng-container *ngSwitchCase="jsonDatatype.OBJECT"></ng-container>
         <ng-container *ngSwitchDefault>
-            <xn-input-form [title]="datamodel.name"
+            <xn-input-form [title]="datamodel?.name"
                         [label]="'Abfragewert'"
                         [showLabel]="false"
                         [validatable]="false"
                         class="inline-block mb-0 noborder nomargin"
-                        [name]="datamodel.name"
+                        [name]="datamodel?.name"
                         [(ngModel)]="editValue"></xn-input-form>
         </ng-container>
         <ng-container *ngIf="arrayIndex >= 0 && !viewOnly">

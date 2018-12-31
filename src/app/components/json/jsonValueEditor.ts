@@ -24,6 +24,7 @@ export class JsonValueEditor implements OnChanges {
 
     @Input()
     public set datamodel(datamodel: ObjectDefinition) {
+        if (!datamodel) { return; }
         this._datamodel = datamodel;
         switch (this._datamodel.type) {
             case JsonDatatype.OBJECT:
