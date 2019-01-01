@@ -14,10 +14,12 @@ export class DataModelEditorComponent implements OnInit {
     public editorTypes = EditorType;
 
     public responseModel$: Observable<ObjectDefinition>;
+    public requestModel$: Observable<ObjectDefinition>;
 
     public constructor(private _dataModelService: DataModelService) {}
 
     public ngOnInit() {
+        this.requestModel$ = this._dataModelService.getDataModel();
         this.responseModel$ = this._dataModelService.getResponseModel();
     }
 
