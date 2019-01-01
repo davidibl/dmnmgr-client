@@ -1,6 +1,6 @@
-export class Test {
+export interface Test {
 
-    public constructor(public name = 'Test',
-                       public data: Object = {},
-                       public expectedData: Object = []) {}
+    name: string;
+    data: Object;
+    expectedData: Object;
 }
