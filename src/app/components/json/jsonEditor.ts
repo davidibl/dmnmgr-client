@@ -71,6 +71,7 @@ export class JsonEditorComponent implements OnInit {
     public onImportWorkflowCompleted(objectDefinition: ObjectDefinition) {
         this._requestModel = objectDefinition;
         this.importerOpen = false;
+        this.requestModelChange.emit(this._requestModel);
         this._importer.reset();
     }
 
