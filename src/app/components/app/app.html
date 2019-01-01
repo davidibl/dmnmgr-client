@@ -1,4 +1,43 @@
-<xn-menu-header [brandName]="'bpmgrs'" [brandLogoSource]="'assets/logo.png'"></xn-menu-header>
+<xn-menu-header [brandName]="'bpmgrs'" [brandLogoSource]="'assets/logo.png'">
+    <li class="menu">
+        <xn-button (click)="fileMenuVisible = !fileMenuVisible"
+                   (mouseleave)="fileMenuVisible = false"
+                   class="small transparent">Datei
+            <ul *ngIf="fileMenuVisible" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li>Neues Projekt</li>
+                    <li>Projekt öffnen</li>
+                    <li>Alles speichern</li>
+                    <li>Beenden</li>
+                </div>
+            </ul>
+            </xn-button>
+        </li>
+    <li class="menu">
+        <xn-button (click)="editMenuVisible = !editMenuVisible"
+                   (mouseleave)="editMenuVisible = false"
+                   class="small transparent">Bearbeiten
+            <ul *ngIf="editMenuVisible" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li>Kopieren</li>
+                    <li>Einfügen</li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="aboutMenuVisisble = !aboutMenuVisisble"
+                    (mouseleave)="aboutMenuVisisble = false"
+                    class="small transparent">Hilfe
+            <ul *ngIf="aboutMenuVisisble" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li>Dokumentation</li>
+                    <li>Info</li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+</xn-menu-header>
 <div class="main-content full-height">
     <router-outlet></router-outlet>
 </div>

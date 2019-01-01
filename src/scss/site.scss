@@ -13,10 +13,10 @@ body {
 }
 
 .main-content {
-    padding-top:                                $header-height + 19px;
+    padding-top:                                30px;
 
     @media (max-width: $breakpoint-m - 1) {
-        padding-top:                            $responsive-header-height + 19px;
+        padding-top:                            30px;
     }
 }
 

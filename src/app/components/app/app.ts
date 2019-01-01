@@ -7,4 +7,7 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
 
+    public fileMenuVisible = false;
+    public editMenuVisible = false;
+    public aboutMenuVisisble = false;
 }
