@@ -6,7 +6,7 @@ import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { SessionDataService } from '../../services/sessionDataService';
 import { take } from 'rxjs/operators/take';
 import { TestDecisionService } from '../../services/testDecisionService';
-import { DecisionTestCaseResult } from '../../model/decisionTestCaseResult';
+import { DecisionSimulationResult } from '../../model/decisionSimulationResult';
 import { tap } from 'rxjs/operators/tap';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event';
@@ -29,7 +29,7 @@ export class DmnSimulatorComponent implements OnInit {
     public isVisisble = false;
     public simulatorVisisble = false;
 
-    public simulationResult$: Observable<DecisionTestCaseResult>;
+    public simulationResult$: Observable<DecisionSimulationResult>;
 
     public constructor(private _dataModelService: DataModelService,
                        private _sessionDataService: SessionDataService,
