@@ -60,7 +60,7 @@ export class TestSuiteService {
     }
 
     private createTest(name: string, testdata: Object, expectedResult: Object) {
-        return <Test>  { name: name, data: testdata || {}, expectedData: expectedResult || {}};
+        return <Test>  { name: name, data: testdata || {}, expectedData: expectedResult || []};
     }
 
     private changeView(artefactId: string) {
