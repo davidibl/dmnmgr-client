@@ -4,15 +4,33 @@ import { ReplaySubject } from 'rxjs/ReplaySubject';
 import { Observable } from 'rxjs/Observable';
 import { map } from 'rxjs/operators/map';
 import { filter } from 'rxjs/operators/filter';
+import { DataModelProject } from '../model/project/dataModelProject';
+import { EventService } from './eventService';
+import { EventType } from '../model/eventType';
+import { DataModelTable } from '../model/project/dataModelTable';
 
 @Injectable()
 export class DataModelService {
 
+    private _currentViewId: string;
+    private _dataModelProject = <DataModelProject>{};
+
     private _datamodels = new ReplaySubject<ObjectDefinition>(1);
     private _responseModel = new ReplaySubject<ObjectDefinition>(1);
 
+    public constructor(private _eventService: EventService) {
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.NEW_VIEW)
+            .subscribe(event => this.changeView(event.data.artefactId));
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.RENAME_ARTEFACT)
+            .subscribe(event => this.renameCurrentArtefact(event.data.newArtefactId));
+    }
+
     public newDataModel(datamodel: ObjectDefinition) {
-        this._datamodels.next(datamodel);
+        const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentViewId);
+        dataModelTable.requestModel = datamodel;
+        this.provideRequestModel(this._currentViewId);
     }
 
     public getDataModel(): Observable<ObjectDefinition> {
@@ -57,5 +75,42 @@ export class DataModelService {
             .reduce((accumulator, nextPathPart) =>
                 Object.assign(accumulator,
                     datamodel.properties.find(model => model.name === nextPathPart)), {});
+    }
+
+    private changeView(artefactId: string) {
+        this._currentViewId = artefactId;
+        this.provideRequestModel(artefactId);
+        this.provideResponseModel(artefactId);
+    }
+
+    private provideRequestModel(artefactId: string) {
+        if (!this._dataModelProject[artefactId]) {
+            this._datamodels.next(null);
+            return;
+        }
+        this._datamodels.next(this._dataModelProject[artefactId].requestModel);
+    }
+
+    private provideResponseModel(artefactId: string) {
+        if (!this._dataModelProject[artefactId]) {
+            this._responseModel.next(null);
+            return;
+        }
+        this._responseModel.next(this._dataModelProject[artefactId].responseModel);
+    }
+
+    private getOrCreateCurrentTableDataModel(artefactId: string): DataModelTable {
+        if (!this._dataModelProject[artefactId]) {
+            this._dataModelProject[artefactId] = {};
+        }
+        return this._dataModelProject[artefactId];
+    }
+
+    private renameCurrentArtefact(newArtefactId: string) {
+        if (this._dataModelProject[this._currentViewId]) {
+            this._dataModelProject[newArtefactId] = this._dataModelProject[this._currentViewId];
+            delete this._dataModelProject[this._currentViewId];
+        }
+        this._currentViewId = newArtefactId;
     }
 }

@@ -13,6 +13,7 @@ import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
 import { EventService } from '../../services/eventService';
 import { NewViewEvent } from '../../model/newViewEvent';
+import { RenameArtefactEvent } from '../../model/renameArtefactEvent';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -150,7 +151,9 @@ export class DmnModellerComponent implements AfterViewInit {
             this.updateResponseModel();
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
-            console.log('change' + event);
+            if (event.element && event.element.$type === DmnType.DECISION_TABLE) {
+                this._eventService.publishEvent(new RenameArtefactEvent(event.element.id, event.newId));
+            }
         });
         this.updateResponseModel();
     }

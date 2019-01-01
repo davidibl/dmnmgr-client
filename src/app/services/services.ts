@@ -8,10 +8,10 @@ import { EventService } from './eventService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
+    EventService,
     TestDecisionService,
     TestSuiteService,
     OpenApiDefinitionService,
     DataModelService,
     SessionDataService,
-    EventService,
 ];
