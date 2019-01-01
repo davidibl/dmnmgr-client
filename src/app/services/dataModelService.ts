@@ -72,7 +72,7 @@ export class DataModelService {
     }
 
     private getPropertyByPathSync(datamodel: ObjectDefinition, path: string) {
-        if (!datamodel) { return null; }
+        if (!datamodel || !datamodel.properties) { return null; }
         return path
             .split('.')
             .reduce((accumulator, nextPathPart) =>
@@ -95,6 +95,7 @@ export class DataModelService {
     }
 
     private provideResponseModel(artefactId: string) {
+        if (true) { return; }
         if (!this._dataModelProject[artefactId]) {
             this._responseModel.next(null);
             return;
