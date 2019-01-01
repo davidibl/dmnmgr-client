@@ -1,6 +1,8 @@
-import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
+import { Component, Inject, OnInit, Renderer2 } from '@angular/core';
 import { DOCUMENT } from "@angular/platform-browser";
 import { TestDecisionService } from '../../services/testDecisionService';
+import { EventService } from '../../services/eventService';
+import { map } from 'rxjs/operators/map';
 
 @Component({
     selector: 'xn-dmn-manager',
@@ -16,9 +18,12 @@ export class DmnManagerComponent implements OnInit {
         return this._tabId;
     }
 
+    public isDecicionTableMode: boolean;
+
     public constructor(@Inject(DOCUMENT) private document,
-        private renderer: Renderer2,
-        private _testDecisionService: TestDecisionService) {
+                       private renderer: Renderer2,
+                       private _testDecisionService: TestDecisionService,
+                       private _eventService: EventService) {
     }
 
     public ngOnInit() {
@@ -38,6 +43,11 @@ export class DmnManagerComponent implements OnInit {
                     });
                 }
             });
+
+        this._eventService
+            .getEvent((event) => event.type === 'newViewEvent')
+            .pipe( map(ev => ev.data.isDecisionTable ) )
+            .subscribe(isDmn => this.isDecicionTableMode = isDmn);
     }
 
     public onSelectedTabChanged(tabId: string) {

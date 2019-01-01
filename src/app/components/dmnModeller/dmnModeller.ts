@@ -11,6 +11,8 @@ import { filter } from 'rxjs/operators/filter';
 import { map } from 'rxjs/operators/map';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
+import { EventService } from '../../services/eventService';
+import { NewViewEvent } from '../../model/newViewEvent';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -87,6 +89,7 @@ export class DmnModellerComponent implements AfterViewInit {
 
     public constructor(private _http: HttpClient,
                        private _dmnXmlService: DmnXmlService,
+                       private _eventService: EventService,
                        private _dataModelService: DataModelService) {}
 
     public ngAfterViewInit(): void {
@@ -119,7 +122,11 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
-            const newView = { type: event.activeView.type, id: event.activeView.element.id };
+            const ev = new NewViewEvent(event.activeView.element.id);
+            if (event.activeView.type !== 'decisionTable') {
+                ev.data.isDecisionTable = false;
+            }
+            this._eventService.publishEvent(ev);
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             if (this.isInputExpressionChanged(event)) {
