@@ -14,7 +14,7 @@ import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 @Injectable()
 export class DataModelService {
 
-    private _currentViewId: string;
+    private _currentArtefactId: string;
     private _dataModelProject = <DataModelProject>{};
 
     private _datamodels = new ReplaySubject<ObjectDefinition>(1);
@@ -30,9 +30,9 @@ export class DataModelService {
     }
 
     public newDataModel(datamodel: ObjectDefinition) {
-        const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentViewId);
+        const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentArtefactId);
         dataModelTable.requestModel = datamodel;
-        this.provideRequestModel(this._currentViewId);
+        this.provideRequestModel(this._currentArtefactId);
     }
 
     public getDataModel(): Observable<ObjectDefinition> {
@@ -72,6 +72,7 @@ export class DataModelService {
     }
 
     private getPropertyByPathSync(datamodel: ObjectDefinition, path: string) {
+        if (!datamodel) { return null; }
         return path
             .split('.')
             .reduce((accumulator, nextPathPart) =>
@@ -80,7 +81,7 @@ export class DataModelService {
     }
 
     private changeView(artefactId: string) {
-        this._currentViewId = artefactId;
+        this._currentArtefactId = artefactId;
         this.provideRequestModel(artefactId);
         this.provideResponseModel(artefactId);
     }
@@ -109,10 +110,10 @@ export class DataModelService {
     }
 
     private renameCurrentArtefact(newArtefactId: string) {
-        if (this._dataModelProject[this._currentViewId]) {
-            this._dataModelProject[newArtefactId] = this._dataModelProject[this._currentViewId];
-            delete this._dataModelProject[this._currentViewId];
+        if (this._dataModelProject[this._currentArtefactId]) {
+            this._dataModelProject[newArtefactId] = this._dataModelProject[this._currentArtefactId];
+            delete this._dataModelProject[this._currentArtefactId];
         }
-        this._currentViewId = newArtefactId;
+        this._currentArtefactId = newArtefactId;
     }
 }
