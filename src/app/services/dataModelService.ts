@@ -8,6 +8,8 @@ import { DataModelProject } from '../model/project/dataModelProject';
 import { EventService } from './eventService';
 import { EventType } from '../model/eventType';
 import { DataModelTable } from '../model/project/dataModelTable';
+import { NewViewEvent } from '../model/newViewEvent';
+import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 
 @Injectable()
 export class DataModelService {
@@ -20,10 +22,10 @@ export class DataModelService {
 
     public constructor(private _eventService: EventService) {
         this._eventService
-            .getEvent((ev) => ev.type === EventType.NEW_VIEW)
+            .getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
             .subscribe(event => this.changeView(event.data.artefactId));
         this._eventService
-            .getEvent((ev) => ev.type === EventType.RENAME_ARTEFACT)
+            .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
             .subscribe(event => this.renameCurrentArtefact(event.data.newArtefactId));
     }
 

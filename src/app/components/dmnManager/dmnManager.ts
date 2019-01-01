@@ -4,6 +4,7 @@ import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
 import { map } from 'rxjs/operators/map';
 import { EventType } from '../../model/eventType';
+import { NewViewEvent } from '../../model/newViewEvent';
 
 @Component({
     selector: 'xn-dmn-manager',
@@ -46,7 +47,7 @@ export class DmnManagerComponent implements OnInit {
             });
 
         this._eventService
-            .getEvent((event) => event.type === EventType.NEW_VIEW)
+            .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
             .pipe( map(ev => ev.data.isDecisionTable ) )
             .subscribe(isDmn => this.isDecicionTableMode = isDmn);
     }

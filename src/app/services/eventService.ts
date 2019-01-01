@@ -12,7 +12,7 @@ export class EventService {
         this._events.next(event);
     }
 
-    public getEvent(filterCallback?: (event: BaseEvent<any>) => boolean): Observable<BaseEvent<any>> {
+    public getEvent<T extends BaseEvent<any>>(filterCallback?: (event: T) => boolean): Observable<T> {
         return this._events
             .pipe(
                 filter(filterCallback)
