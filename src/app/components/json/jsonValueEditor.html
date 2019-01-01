@@ -119,12 +119,16 @@
     <ng-container *ngIf="datamodel?.type === jsonDatatype.ARRAY">
         <div class="pl-1">
             <ng-container *ngIf="datamodel?.items">
-                <div *ngFor="let item of getPropertyOrRoot(datamodel, value); let idx = index; trackBy: trackByFn">
-                    <xn-json-value-editor [datamodel]="datamodel.items"
-                                        [value]="getPropertyOrRoot(datamodel, value)"
-                                        [viewOnly]="viewOnly"
-                                        [arrayIndex]="idx"></xn-json-value-editor>
-                </div>
+                <ng-container *ngIf="getPropertyOrRoot(datamodel, value) as effectiveItem">
+                    <ng-container *ngIf="effectiveItem">
+                        <div *ngFor="let item of effectiveItem; let idx = index; trackBy: trackByFn">
+                            <xn-json-value-editor [datamodel]="datamodel.items"
+                                                [value]="getPropertyOrRoot(datamodel, value)"
+                                                [viewOnly]="viewOnly"
+                                                [arrayIndex]="idx"></xn-json-value-editor>
+                        </div>
+                    </ng-container>
+                </ng-container>
             </ng-container>
         </div>
     </ng-container>
