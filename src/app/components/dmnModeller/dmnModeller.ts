@@ -128,6 +128,7 @@ export class DmnModellerComponent implements AfterViewInit {
                 ev.data.isDecisionTable = false;
             }
             this._eventService.publishEvent(ev);
+            this.updateResponseModel();
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             if (this.isInputExpressionChanged(event)) {
