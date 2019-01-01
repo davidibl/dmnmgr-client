@@ -113,8 +113,11 @@ export class JsonValueEditor implements OnChanges {
     }
 
     public getPropertyOrRoot(property: ObjectDefinition, value: any) {
-        if (isNull(value[property.name])) {
+        if (isNull(property.name)) {
             return value;
+        }
+        if (isNull(value[property.name])) {
+            value[property.name] = [];
         }
         return value[property.name];
     }
