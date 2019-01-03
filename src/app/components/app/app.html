@@ -22,3 +22,19 @@
 <div class="main-content full-height">
     <router-outlet></router-outlet>
 </div>
+
+<xn-dialog [closable]="true"
+           [(open)]="showErrorDialog"
+           (openChange)="onOpenChange($event)"
+           (confirm)="clearError()"
+           [hideCancelButton]="true"
+           [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Fehler
+    </div>
+    <div class="dialog-body pb-1">
+        <p>
+            {{filesystemError}}
+        </p>
+    </div>
+</xn-dialog>

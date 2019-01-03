@@ -13,6 +13,7 @@ import { EventService } from './eventService';
 import { NewViewEvent } from '../model/newViewEvent';
 import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 import { EventType } from '../model/eventType';
+import { ConfigurationService, RestTemplate } from '@xnoname/web-components';
 
 @Injectable()
 export class TestDecisionService {
@@ -23,13 +24,16 @@ export class TestDecisionService {
 
     public constructor(private _http: HttpClient,
                        private dmnXmlService: DmnXmlService,
+                       private _configuration: ConfigurationService,
                        private _eventService: EventService) {
+
         this._eventService
             .getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
             .subscribe(event => {
                 this._currentArtefactId = event.data.artefactId;
                 this._resultSubject.next(null);
             });
+
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
             .subscribe(event => this._currentArtefactId = event.data.artefactId);
@@ -48,7 +52,8 @@ export class TestDecisionService {
                         xml: xml
                     }
                 }),
-                switchMap(request => this._http.post<IDecisionSimulationResponse>('http://localhost:11204/api/decision/simulation', request)),
+                switchMap(request => this._http
+                    .post<IDecisionSimulationResponse>(this.getUrl('decision/simulation'), request)),
                 map(response => this.mapResponseToMap(response))
             ).subscribe(response => this._resultSubject.next(response));
     }
@@ -65,7 +70,7 @@ export class TestDecisionService {
                         xml: xml
                     }
                 }),
-                switchMap(request => this._http.post<Object>('http://localhost:11204/api/decision/test', request)),
+                switchMap(request => this._http.post<Object>(this.getUrl('decision/test'), request)),
             );
     }
 
@@ -90,5 +95,13 @@ export class TestDecisionService {
             return new DecisionSimulationResult(response.result, datamodel, null, response.resultRuleIds);
         }
         return new DecisionSimulationResult(null, null, response.message);
+    }
+
+    private getUrl(path: string) {
+        const baseUrl = this._configuration.getConfigValue<string>('endpoints.dmnbackend');
+        return RestTemplate.create(baseUrl)
+            .withPathParameter('api')
+            .withPathParameter(path)
+            .build();
     }
 }

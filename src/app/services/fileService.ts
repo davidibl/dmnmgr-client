@@ -6,10 +6,19 @@ import { DmnProject } from '../model/project/dmnProject';
 import { isNull } from '@xnoname/web-components';
 import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs';
+import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 
 
 @Injectable()
 export class FileService {
+
+    private _errorMessageImporting = 'Beim öffnen der Datei ist ein Fehler aufgreten.' +
+                                     ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.'
+    private _errorSavingProject = 'Die Projektdatei konnte nicht gespeichert werden. Wählen Sie ' +
+                                  'ein Verzeichnisc auf das Sie Schreibberechtigung haben.';
+    private _errorSavingDmn = 'Die DMN XML Datei konnte nicht gespeichert werden.';
+    private _errorOpeningProject = 'Die Projektdatei konnte nicht gelesen werden.';
+    private _errorOpeningDmn = 'Die im Projekt referenzierte DMN konnte nicht geladen werden.';
 
     private _ipc: IpcRenderer | undefined;
     private _filesystem;
@@ -22,7 +31,7 @@ export class FileService {
         this._filesystem = window['require']('fs');
     }
 
-    public openProject(): Observable<{xml?: string, project?: DmnProject, error?: boolean }> {
+    public openProject(): Observable<FileSystemAccessResult<{xml?: string, project?: DmnProject}>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -45,18 +54,18 @@ export class FileService {
                 const path = filename.substring(0, filename.lastIndexOf('\\') + 1);
                 this._filesystem.readFile(filename, "utf-8", (err, data) => {
                     if (err) {
-                        observer.next({ error: true });
+                        observer.next({ type: FsResultType.ERROR, message: this._errorOpeningProject });
                         observer.complete();
                         return;
                     }
                     const project = <DmnProject>JSON.parse(data);
                     this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => {
                         if (err) {
-                            observer.next({ error: true });
+                            observer.next({ type: FsResultType.ERROR, message: this._errorOpeningDmn });
                             observer.complete();
                             return;
                         }
-                        observer.next({ xml: data, project: project, error: false });
+                        observer.next({ type: FsResultType.OK, data: { xml: data, project: project }});
                         observer.complete();
                     });
                 });
@@ -65,7 +74,8 @@ export class FileService {
         });
     }
 
-    public saveProject(xml: string, project: DmnProject, chooseLocation = false): Observable<boolean> {
+    public saveProject(xml: string, project: DmnProject, chooseLocation = false):
+            Observable<FileSystemAccessResult<void>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -86,7 +96,7 @@ export class FileService {
         });
     }
 
-    public importExistingDmn(): Observable<string> {
+    public importExistingDmn(): Observable<FileSystemAccessResult<void>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -98,8 +108,8 @@ export class FileService {
 
         return Observable.create(observer => {
             dialog.showOpenDialog(window, openOptions, (fileNames) => {
-                if (fileNames === undefined) {
-                    observer.next({ error: false });
+                if (isNull(fileNames) || fileNames.length < 1) {
+                    observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                     observer.complete();
                     return;
                 }
@@ -107,11 +117,11 @@ export class FileService {
                 const filename = fileNames[0];
                 this._filesystem.readFile(filename, "utf-8", (err, data) => {
                     if (err) {
-                        observer.next({ error: true });
+                        observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                         observer.complete();
                         return;
                     }
-                    observer.next(data);
+                    observer.next({ type: FsResultType.OK, data: data });
                     observer.complete();
                 });
 
@@ -123,7 +133,10 @@ export class FileService {
         this._currentPath = null;
     }
 
-    private writeFiles(filename: string, xml: string, project: DmnProject, observable: Observer<boolean>) {
+    private writeFiles(filename: string,
+                       xml: string,
+                       project: DmnProject,
+                       observable: Observer<FileSystemAccessResult<void>>) {
         const filenameParts = filename.split('.');
         const withoutExtension = filenameParts.slice(0, filenameParts.length - 2).join('.');
         const dmnFilename = withoutExtension.substr(withoutExtension.lastIndexOf('\\') + 1) + '.dmn';
@@ -136,15 +149,15 @@ export class FileService {
                 this._filesystem.writeFile(targetPathDmn, xml, err => {
                     if (isNull(err)) {
                     } else {
-                        observable.next(false);
+                        observable.next({ type: FsResultType.ERROR, message: this._errorSavingDmn });
                         observable.complete();
                         return;
                     }
-                    observable.next(true);
+                    observable.next({ type: FsResultType.OK });
                     observable.complete();
                 });
             } else {
-                observable.next(false);
+                observable.next({ type: FsResultType.ERROR, message: this._errorSavingProject });
                 observable.complete();
                 return;
             }
