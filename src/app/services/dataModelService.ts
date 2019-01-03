@@ -35,8 +35,16 @@ export class DataModelService {
         this.provideRequestModel(this._currentArtefactId);
     }
 
+    public setDataModelProject(dataModelPoject: DataModelProject) {
+        this._dataModelProject = dataModelPoject;
+    }
+
     public getDataModel(): Observable<ObjectDefinition> {
         return this._datamodels.asObservable();
+    }
+
+    public getDataModelProject() {
+        return this._dataModelProject;
     }
 
     public setResponseModel(responseModel: ObjectDefinition) {

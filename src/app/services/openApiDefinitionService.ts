@@ -35,6 +35,10 @@ export class OpenApiDefinitionService {
         return Object.getOwnPropertyNames(apiDefinition.definitions);
     }
 
+    public getOpenApiFromInternalApi(objectDefinition: ObjectDefinition) {
+        return this.transformInternalToOpenApiDefinition(objectDefinition);
+    }
+
     private transformOpenApitoInternalApiDefinition(obj: JsonObjectDefinition,
                                                     rootObject: JsonObjectDefinitions,
                                                     name?: string) {

@@ -1,40 +1,31 @@
 import { Injectable } from "@angular/core";
 import { XmlProvider } from '../model/xmlProvider';
-import { Observable, ReplaySubject } from 'rxjs';
+import { ReplaySubject } from 'rxjs/ReplaySubject';
 import { HttpClient } from '@angular/common/http';
-import { Dmn } from "../model/dmn";
+import { Observable } from 'rxjs/Observable';
 
 @Injectable()
 export class DmnXmlService {
 
-    private _dmn: Dmn;
-    private _dmnSubject = new ReplaySubject<Dmn>(1);
     private modelProvider: XmlProvider[] = [];
+    private _dmnXmlSubject = new ReplaySubject<string>(1);
 
     public constructor(private _http: HttpClient) {}
 
-    public createNewDmn(filename: string): void {
-        this._dmn = new Dmn();
-        this._dmn.filename = filename;
+    public createNewDmn(): void {
         this._http
-            .get('./assets/val.xml', { responseType: 'text' })
+            .get('assets/val.xml', { responseType: 'text' })
             .subscribe(response => {
-                this._dmn.dmn = response;
-                this._dmnSubject.next(this._dmn);
+                this._dmnXmlSubject.next(response);
             });
     }
 
-    public addTestSuite() {
-        this._http
-            .get('./assets/val.xml', { responseType: 'text' })
-            .subscribe(response => {
-                this._dmn.testdmn = response;
-                this._dmnSubject.next(this._dmn);
-            });
+    public getDmnXml() {
+        return this._dmnXmlSubject.asObservable();
     }
 
-    public getDmn() {
-        return this._dmnSubject;
+    public setXml(xml: string) {
+        this._dmnXmlSubject.next(xml);
     }
 
     public registerModeller(provider: XmlProvider) {

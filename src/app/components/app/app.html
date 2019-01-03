@@ -5,34 +5,15 @@
                    class="small transparent">Datei
             <ul *ngIf="fileMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li>Neues Projekt</li>
-                    <li>Projekt öffnen</li>
-                    <li>Alles speichern</li>
-                    <li>Beenden</li>
-                </div>
-            </ul>
-            </xn-button>
-        </li>
-    <li class="menu">
-        <xn-button (click)="editMenuVisible = !editMenuVisible"
-                   (mouseleave)="editMenuVisible = false"
-                   class="small transparent">Bearbeiten
-            <ul *ngIf="editMenuVisible" class="sub-menu">
-                <div class="sub-menu-container">
-                    <li>Kopieren</li>
-                    <li>Einfügen</li>
-                </div>
-            </ul>
-        </xn-button>
-    </li>
-    <li class="menu">
-        <xn-button (click)="aboutMenuVisisble = !aboutMenuVisisble"
-                    (mouseleave)="aboutMenuVisisble = false"
-                    class="small transparent">Hilfe
-            <ul *ngIf="aboutMenuVisisble" class="sub-menu">
-                <div class="sub-menu-container">
-                    <li>Dokumentation</li>
-                    <li>Info</li>
+                    <li (click)="createNewProject()">Neues Projekt</li>
+                    <li (click)="openProject()">Projekt öffnen</li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="saveProject()">Projekt speichern</li>
+                    <li (click)="saveProjectAs()">Projekt speichern unter</li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="importExistingDmn()">Dmn Datei importieren</li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="exit()">Beenden</li>
                 </div>
             </ul>
         </xn-button>

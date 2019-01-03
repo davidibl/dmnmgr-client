@@ -5,6 +5,8 @@ import { OpenApiDefinitionService } from './openApiDefinitionService';
 import { DataModelService } from './dataModelService';
 import { SessionDataService } from './sessionDataService';
 import { EventService } from './eventService';
+import { FileService } from './fileService';
+import { DmnProjectService } from './dmnProjectService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -14,4 +16,6 @@ export const ALL_SERVICES = [
     OpenApiDefinitionService,
     DataModelService,
     SessionDataService,
+    FileService,
+    DmnProjectService,
 ];

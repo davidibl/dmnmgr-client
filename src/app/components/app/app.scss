@@ -45,11 +45,15 @@ xn-menu-header {
         list-style: none;
         margin: 0;
         background-color: #f9f9f9;
-        border-bottom: 1px solid #333;
     }
 
-    li:hover {
-        background-color: darken(#f9f9f9, 5);
+    li.section-divider {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    li:not(.section-divider):hover {
+        background-color: $brand-teritiary;
     }
 
     li:last-child {

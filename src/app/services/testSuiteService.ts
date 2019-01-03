@@ -42,6 +42,14 @@ export class TestSuiteService {
         return this._testSuiteSubject.asObservable();
     }
 
+    public getTestSuiteProject() {
+        return this._testsuiteProject;
+    }
+
+    public setTestSuiteProject(testSuiteProject: TestsuiteProject) {
+        this._testsuiteProject = testSuiteProject;
+    }
+
     public deleteTestCase(item: Test) {
         const currentTestsuite = this.getOrCreateCurrentTestsuite();
         currentTestsuite.tests.splice(currentTestsuite.tests.findIndex(x => x === item), 1);
