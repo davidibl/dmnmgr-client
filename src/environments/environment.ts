@@ -10,5 +10,8 @@ export const environment = {
             default: 'DE',
             supported: 'DE'
         },
+        endpoints: {
+            dmnbackend: 'http://localhost:11401'
+        },
     },
 };

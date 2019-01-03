@@ -5,5 +5,8 @@ export const environment = {
             default: 'DE',
             supported: 'DE'
         },
+        endpoints: {
+            dmnbackend: 'http://zeus:11401'
+        },
     },
 };
