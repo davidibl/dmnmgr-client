@@ -1,6 +1,5 @@
 import { Component, ViewChild, ElementRef, AfterViewInit, Input } from '@angular/core';
 
-import { HttpClient } from '@angular/common/http';
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { ReplaySubject } from 'rxjs';
 
@@ -14,6 +13,7 @@ import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
 import { EventService } from '../../services/eventService';
 import { NewViewEvent } from '../../model/newViewEvent';
 import { RenameArtefactEvent } from '../../model/renameArtefactEvent';
+import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -88,26 +88,29 @@ export class DmnModellerComponent implements AfterViewInit {
     @Input()
     public type: string;
 
-    public constructor(private _http: HttpClient,
-                       private _dmnXmlService: DmnXmlService,
+    public constructor(private _dmnXmlService: DmnXmlService,
                        private _eventService: EventService,
                        private _dataModelService: DataModelService) {}
 
     public ngAfterViewInit(): void {
 
-        this._http.get('../assets/val.xml', { responseType: 'text' }).subscribe(xml => {
-            this._modeller = new DmnJS({
-                container: this._container.nativeElement,
-            });
-            console.log(this._modeller);
-
-            this._modeller.importXML(xml, (err) => {
-                if (err) {
-                    console.log('error rendering', err);
-                }
-                this.configureModeller();
-            });
+        this._modeller = new DmnJS({
+            container: this._container.nativeElement,
         });
+
+        this._dmnXmlService
+            .getDmnXml()
+            .subscribe(xml => {
+                console.log(this._modeller);
+                this._modeller.importXML(xml, (err) => {
+                    if (err) {
+                        console.log('error rendering', err);
+                    }
+                    this.configureModeller();
+                });
+            });
+
+        this._dmnXmlService.createNewDmn();
 
         this._dmnXmlService.registerModeller({
             type: this.type,
@@ -116,7 +119,7 @@ export class DmnModellerComponent implements AfterViewInit {
                 this._modeller.saveXML(null, (error, result) => {
                     subject.next(result);
                 });
-                return subject.asObservable();
+                return subject.asObservable().pipe( distinctUntilChanged() );
             }
         })
     }

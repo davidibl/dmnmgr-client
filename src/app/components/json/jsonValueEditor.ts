@@ -81,12 +81,10 @@ export class JsonValueEditor implements OnChanges {
     public ngOnChanges() {
         if (this.datamodel && this.value && this.datamodel.properties) {
             const obj = (isNull(this.arrayIndex)) ? this.value : this.value[this.arrayIndex];
-            const unknownProperties = Object
+            Object
                 .getOwnPropertyNames(obj)
-                .filter(propertyName => !this.findDatamodel(propertyName));
-            if (unknownProperties && unknownProperties.length > 0) {
-                this.unknownProperties = unknownProperties;
-            }
+                .filter(propertyName => !this.findDatamodel(propertyName))
+                .forEach(property => delete obj[property]);
         }
         if (this.datamodel && this.value
             && this.datamodel.type !== JsonDatatype.OBJECT
