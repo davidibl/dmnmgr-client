@@ -19,8 +19,12 @@ xn-menu-header {
 
         .brand-bar {
             float: right;
-            padding-right: 3px;
+            padding-right: 6px;
             padding-top: 3px;
+
+            img {
+                margin-top: 3px;
+            }
         }
     }
 }

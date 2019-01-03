@@ -42,11 +42,7 @@ export class AppComponent {
                 tap(result => this.processError(result)),
                 filter(result => result.type === FsResultType.OK)
             )
-            .subscribe(result => {
-                if (!result.error) {
-                    this._projectService.readProject(result.xml, result.project);
-                }
-            });
+            .subscribe(result => this._projectService.readProject(result.data.xml, result.data.project));
     }
 
     public saveProject() {
@@ -106,7 +102,7 @@ export class AppComponent {
         this.showErrorDialog = false;
     }
 
-    private processError(result: FileSystemAccessResult) {
+    private processError(result: FileSystemAccessResult<any>) {
         if (result.type === FsResultType.ERROR) {
             this.filesystemError = result.message;
         }

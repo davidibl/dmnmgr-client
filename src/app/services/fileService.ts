@@ -96,7 +96,7 @@ export class FileService {
         });
     }
 
-    public importExistingDmn(): Observable<FileSystemAccessResult<void>> {
+    public importExistingDmn(): Observable<FileSystemAccessResult<string>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -109,7 +109,7 @@ export class FileService {
         return Observable.create(observer => {
             dialog.showOpenDialog(window, openOptions, (fileNames) => {
                 if (isNull(fileNames) || fileNames.length < 1) {
-                    observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
+                    observer.next({ type: FsResultType.NOTHING_SELECTED, message: this._errorMessageImporting });
                     observer.complete();
                     return;
                 }
