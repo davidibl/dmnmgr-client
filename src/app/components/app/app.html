@@ -2,14 +2,14 @@
     <li class="menu">
         <xn-button (click)="fileMenuVisible = !fileMenuVisible"
                    (mouseleave)="fileMenuVisible = false"
-                   class="small transparent">Datei
+                   class="small transparent">Projekt
             <ul *ngIf="fileMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="createNewProject()">Neues Projekt</li>
-                    <li (click)="openProject()">Projekt öffnen</li>
+                    <li (click)="createNewProject()">Neu</li>
+                    <li (click)="openProject()">Öffnen</li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
-                    <li (click)="saveProject()">Projekt speichern</li>
-                    <li (click)="saveProjectAs()">Projekt speichern unter</li>
+                    <li (click)="saveProject()">Speichern</li>
+                    <li (click)="saveProjectAs()">Speichern unter</li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="importExistingDmn()">Dmn Datei importieren</li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
