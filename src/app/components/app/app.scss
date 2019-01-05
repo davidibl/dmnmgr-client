@@ -6,6 +6,9 @@ xn-menu-header {
 }
 
 :host::ng-deep {
+    xn-menu-header {
+        border-top: 1px solid #d6d6d6;
+    }
     xn-menu-header .nav {
         padding: 0;
 
