@@ -10,7 +10,7 @@
                 <h4>Ergebnis</h4>
                 <xn-dmn-result-view [message]="simulationResult.message"
                                     [result]="simulationResult.result"
-                                    [datamodelResult]="simulationResult.datamodel"></xn-dmn-result-view>
+                                    [datamodelResult]="responseModel$ | async"></xn-dmn-result-view>
             </div>
             <xn-button class="small mt-1"
                        [class.disabled]="!simulationResult"

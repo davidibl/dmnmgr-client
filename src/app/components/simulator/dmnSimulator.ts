@@ -30,6 +30,7 @@ export class DmnSimulatorComponent implements OnInit {
     public simulatorVisisble = false;
 
     public simulationResult$: Observable<DecisionSimulationResult>;
+    public responseModel$: Observable<ObjectDefinition>;
 
     public constructor(private _dataModelService: DataModelService,
                        private _sessionDataService: SessionDataService,
@@ -44,6 +45,8 @@ export class DmnSimulatorComponent implements OnInit {
                 take(1)
             )
             .subscribe(value => this.valueObject = (value) ? value : {});
+
+        this.responseModel$ = this._dataModelService.getResponseModel();
 
         this.simulationResult$ = this._testDecisionService
             .getResult()
