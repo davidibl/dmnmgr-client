@@ -54,7 +54,7 @@ export class TestDecisionService {
                 }),
                 switchMap(request => this._http
                     .post<IDecisionSimulationResponse>(this.getUrl('decision/simulation'), request)),
-                map(response => this.mapResponseToMap(response))
+                map(response => new DecisionSimulationResult(response.result, response.message, response.resultRuleIds))
             ).subscribe(response => this._resultSubject.next(response));
     }
 
@@ -80,21 +80,6 @@ export class TestDecisionService {
 
     public resetTest() {
         this._resultSubject.next(null);
-    }
-
-    private mapResponseToMap(response: IDecisionSimulationResponse) {
-        if (response.result) {
-            if (response.result.length < 1) {
-                return new DecisionSimulationResult(response.result, null, null);
-            }
-            const datamodel = <ObjectDefinition>{ type: JsonDatatype.ARRAY };
-            datamodel.items = <ObjectDefinition>{ type: JsonDatatype.OBJECT, properties: [] };
-            Object.keys(response.result[0]).forEach(key => {
-                datamodel.items.properties.push({ name: key, type: JsonDatatype.STRING });
-            });
-            return new DecisionSimulationResult(response.result, datamodel, null, response.resultRuleIds);
-        }
-        return new DecisionSimulationResult(null, null, response.message);
     }
 
     private getUrl(path: string) {
