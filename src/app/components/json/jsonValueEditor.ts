@@ -89,7 +89,7 @@ export class JsonValueEditor implements OnChanges {
         if (this.datamodel && this.value
             && this.datamodel.type !== JsonDatatype.OBJECT
             && this.datamodel.type !== JsonDatatype.ARRAY) {
-            if (!this.value[this.datamodel.name]) {
+            if (isNull(this.value[this.datamodel.name])) {
                 this.value[this.datamodel.name] = null;
             }
         }
