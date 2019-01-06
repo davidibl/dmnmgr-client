@@ -28,3 +28,8 @@ td.error {
 td {
     @include font-size($base-font-size);
 }
+
+.scrollable {
+    overflow-y: auto;
+    padding-bottom: 50px;
+}

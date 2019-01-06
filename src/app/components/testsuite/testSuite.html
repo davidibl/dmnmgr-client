@@ -1,21 +1,27 @@
-<xn-button class="small ml-1"
-           (click)="addTestCase()">
-    <i class="fa fa-plus mr-05" aria-hidden="true"></i>Testcase anlegen
-</xn-button>
-<xn-button class="small ml-1"
-           (click)="runAllTests()">
-    <i class="fa fa-forward mr-05" aria-hidden="true"></i>Alle ausführen
-</xn-button>
-<xn-data-table [condensed]="true"
-               [data]="testCases$ | async"
-               [templateRef]="testCaseTemplate">
-    <th class="name-column" xnHeaderColumn [propertyPath]="'testCase.testcase.name'">Testname</th>
-    <th xnHeaderColumn>Eingabedaten</th>
-    <th xnHeaderColumn>Erwartetes Ergebnis</th>
-    <th class="button-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
-    <th class="button-column" xnHeaderColumn></th>
-    <th class="button-column" xnHeaderColumn></th>
-</xn-data-table>
+<div class="flex flex-column full-height">
+    <div class="button-bar">
+        <xn-button class="small ml-1"
+                (click)="addTestCase()">
+            <i class="fa fa-plus mr-05" aria-hidden="true"></i>Testcase anlegen
+        </xn-button>
+        <xn-button class="small ml-1"
+                (click)="runAllTests()">
+            <i class="fa fa-forward mr-05" aria-hidden="true"></i>Alle ausführen
+        </xn-button>
+    </div>
+    <div class="scrollable">
+        <xn-data-table [condensed]="true"
+                    [data]="testCases$ | async"
+                    [templateRef]="testCaseTemplate">
+            <th class="name-column" xnHeaderColumn [propertyPath]="'testCase.testcase.name'">Testname</th>
+            <th xnHeaderColumn>Eingabedaten</th>
+            <th xnHeaderColumn>Erwartetes Ergebnis</th>
+            <th class="button-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
+            <th class="button-column" xnHeaderColumn></th>
+            <th class="button-column" xnHeaderColumn></th>
+        </xn-data-table>
+    </div>
+</div>
 
 <ng-template #testCaseTemplate let-item="item">
     <td [ngClass]="item.clazz">
