@@ -167,7 +167,7 @@ export class DmnModellerComponent implements AfterViewInit {
                     this._eventService.publishEvent(ev);
                     this.updateResponseModel();
                 }
-            })
+            });
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             if (this.isInputExpressionChanged(event)) {
@@ -201,6 +201,19 @@ export class DmnModellerComponent implements AfterViewInit {
             }
         });
         this.updateResponseModel();
+
+        const ev = new NewViewEvent(this._modeller._activeView.element.id);
+        if (this._modeller._activeView.element.$type !== DmnType.DECISION_TABLE) {
+            ev.data.isDecisionTable = false;
+        }
+        this._internalEventService.next({
+            identity: this._modeller._activeView.element.id,
+            type: 'views.changed',
+            func: () => {
+                this._eventService.publishEvent(ev);
+                this.updateResponseModel();
+            }
+        });
     }
 
     private importData(data: string[][]) {
