@@ -10,6 +10,7 @@ import { EventType } from '../model/eventType';
 import { DataModelTable } from '../model/project/dataModelTable';
 import { NewViewEvent } from '../model/newViewEvent';
 import { RenameArtefactEvent } from '../model/renameArtefactEvent';
+import { take } from 'rxjs/operators/take';
 
 @Injectable()
 export class DataModelService {
@@ -26,7 +27,7 @@ export class DataModelService {
             .subscribe(event => this.changeView(event.data.artefactId));
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
-            .subscribe(event => this.renameCurrentArtefact(event.data.newArtefactId));
+            .subscribe(event => this.renameCurrentArtefact(event.data.artefactId, event.data.newArtefactId));
     }
 
     public newDataModel(datamodel: ObjectDefinition) {
@@ -58,6 +59,7 @@ export class DataModelService {
     public getPropertyByPath(path: string): Observable<ObjectDefinition> {
         return this._datamodels
             .pipe(
+                take(1),
                 map(datamodel => this.getPropertyByPathSync(datamodel, path))
             );
     }
@@ -65,6 +67,7 @@ export class DataModelService {
     public getEnumValuesByPath(path: string) {
         return this.getPropertyByPath(path)
             .pipe(
+                take(1),
                 filter(property => !!property),
                 map(property => property.enum),
                 filter(enumeration => !!enumeration)
@@ -74,6 +77,7 @@ export class DataModelService {
     public getDatatypeByPath(path: string) {
         return this.getPropertyByPath(path)
             .pipe(
+                take(1),
                 filter(property => !!property),
                 map(property => property.type)
             );
@@ -118,7 +122,8 @@ export class DataModelService {
         return this._dataModelProject[artefactId];
     }
 
-    private renameCurrentArtefact(newArtefactId: string) {
+    private renameCurrentArtefact(artefactId: string, newArtefactId: string) {
+        if (this._currentArtefactId !== artefactId) { return; }
         if (this._dataModelProject[this._currentArtefactId]) {
             this._dataModelProject[newArtefactId] = this._dataModelProject[this._currentArtefactId];
             delete this._dataModelProject[this._currentArtefactId];

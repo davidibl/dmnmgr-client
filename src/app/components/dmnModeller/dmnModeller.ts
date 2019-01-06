@@ -94,6 +94,8 @@ export class DmnDatatypeMapping {
 })
 export class DmnModellerComponent implements AfterViewInit {
 
+    private initialized = false;
+
     @ViewChild('canvas')
     private _container: ElementRef;
 
@@ -190,7 +192,12 @@ export class DmnModellerComponent implements AfterViewInit {
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
             if (event.element && event.element.$type === DmnType.DECISION_TABLE) {
-                this._eventService.publishEvent(new RenameArtefactEvent(event.element.id, event.newId));
+                if (event.element.id === event.newId) { return; }
+                this._internalEventService.next({
+                    type: 'element.updateId',
+                    identity: event.newId,
+                    func: () => this._eventService.publishEvent(new RenameArtefactEvent(event.element.id, event.newId))
+                });
             }
         });
         this.updateResponseModel();
@@ -263,10 +270,7 @@ export class DmnModellerComponent implements AfterViewInit {
     }
 
     private updateInputColumns(datamodel: ObjectDefinition) {
-        if (!this._modeller ||
-            !this._modeller._activeView ||
-            !this._modeller._activeView.element ||
-            !this._modeller._activeView.element.decisionTable) { return; }
+        if (!this.inputColumnsPresent(this._modeller)) { return; }
 
         this._modeller._activeView.element.decisionTable.input.forEach(column => {
             this._dataModelService
@@ -310,6 +314,14 @@ export class DmnModellerComponent implements AfterViewInit {
     private getDmnByJsonType(jsonType: JsonDatatypes) {
         return Object.getOwnPropertyNames(DmnDatatypeMapping)
             .find(name => DmnDatatypeMapping[name] === jsonType);
+    }
+
+    private inputColumnsPresent(modeller: DMNJS) {
+        return (!!this._modeller &&
+                !!this._modeller._activeView &&
+                !!this._modeller._activeView.element &&
+                !!this._modeller._activeView.element.decisionTable &&
+                !!this._modeller._activeView.element.decisionTable.input);
     }
 
 }

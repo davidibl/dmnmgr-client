@@ -28,7 +28,7 @@ export class TestSuiteService {
             .subscribe(event => this.changeView(event.data.artefactId));
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
-            .subscribe(event => this.renameCurrentArtefact(event.data.newArtefactId));
+            .subscribe(event => this.renameCurrentArtefact(event.data.artefactId, event.data.newArtefactId));
     }
 
     public addTestCase(testdata?: any, expectedResult?: any) {
@@ -76,7 +76,8 @@ export class TestSuiteService {
         this._testSuiteSubject.next(this.getOrCreateCurrentTestsuite());
     }
 
-    private renameCurrentArtefact(newArtefactId: string) {
+    private renameCurrentArtefact(artefactId: string, newArtefactId: string) {
+        if (this._currentArtefactId !== artefactId) { return; }
         if (this._testsuiteProject[this._currentArtefactId]) {
             this._testsuiteProject[newArtefactId] = this._testsuiteProject[this._currentArtefactId];
             delete this._testsuiteProject[this._currentArtefactId];
