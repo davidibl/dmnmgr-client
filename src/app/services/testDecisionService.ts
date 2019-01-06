@@ -5,8 +5,6 @@ import { map, switchMap } from 'rxjs/operators';
 import { IDecisionSimulationResponse } from "../model/decisionSimulationResponse";
 import { DecisionSimulationResult } from '../model/decisionSimulationResult';
 import { ReplaySubject } from "rxjs/ReplaySubject";
-import { ObjectDefinition } from '../model/json/objectDefinition';
-import { JsonDatatype } from '../model/json/jsonDatatypes';
 import { Test } from '../model/test';
 import { Observable } from 'rxjs';
 import { EventService } from './eventService';
