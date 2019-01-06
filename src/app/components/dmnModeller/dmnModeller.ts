@@ -45,6 +45,7 @@ export interface DmnModdleElement {
     name: string;
     text: string;
     inputValues?: DmnModdleElement;
+    inputExpression?: DmnModdleElement;
     input?: DmnModdleElement[];
     output?: DmnModdleElement[];
     decisionTable?: DmnModdleTable;
@@ -98,6 +99,8 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private _modeller: DMNJS;
 
+    private _internalEventService = new ReplaySubject<{ type: string, identity: any, func: () => void }>();
+
     @Input()
     public type: string;
 
@@ -106,6 +109,10 @@ export class DmnModellerComponent implements AfterViewInit {
                        private _dataModelService: DataModelService) {}
 
     public ngAfterViewInit(): void {
+
+        this._internalEventService
+            .pipe(distinctUntilChanged((e1, e2) => e1.identity === e2.identity && e1.type === e2.type))
+            .subscribe(e => e.func());
 
         this._modeller = new DmnJS({
             container: this._container.nativeElement,
@@ -136,6 +143,10 @@ export class DmnModellerComponent implements AfterViewInit {
             }
         });
 
+        this._dataModelService
+            .getDataModel()
+            .subscribe(datamodel => this.updateInputColumns(datamodel));
+
         this._eventService
             .getEvent((event) => event.type === 'import')
             .subscribe(importEvent => this.importData(importEvent.data));
@@ -147,8 +158,14 @@ export class DmnModellerComponent implements AfterViewInit {
             if (event.activeView.type !== 'decisionTable') {
                 ev.data.isDecisionTable = false;
             }
-            this._eventService.publishEvent(ev);
-            this.updateResponseModel();
+            this._internalEventService.next({
+                identity: event.activeView.element.id,
+                type: 'views.changed',
+                func: () => {
+                    this._eventService.publishEvent(ev);
+                    this.updateResponseModel();
+                }
+            })
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             if (this.isInputExpressionChanged(event)) {
@@ -243,6 +260,31 @@ export class DmnModellerComponent implements AfterViewInit {
                 { name: outputClause.name, type: DmnDatatypeMapping[outputClause.typeRef] })
         });
         this._dataModelService.setResponseModel(responseModel);
+    }
+
+    private updateInputColumns(datamodel: ObjectDefinition) {
+        if (!this._modeller ||
+            !this._modeller._activeView ||
+            !this._modeller._activeView.element ||
+            !this._modeller._activeView.element.decisionTable) { return; }
+
+        this._modeller._activeView.element.decisionTable.input.forEach(column => {
+            this._dataModelService
+                .getEnumValuesByPath(column.inputExpression.text)
+                .pipe(take(1))
+                .subscribe(values => {
+                    this.setInputValueRestriction(column, values);
+                });
+            this._dataModelService
+                .getDatatypeByPath(column.inputExpression.text)
+                .pipe(
+                    take(1),
+                    map(type => this.getDmnByJsonType(type)),
+                    filter(type => !!type)
+                )
+                .subscribe(value => column.inputExpression.typeRef = value);
+        });
+        this._modeller._updateViews();
     }
 
     private isInputExpressionChanged(event: DmnModdleEvent) {
