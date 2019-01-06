@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild, Output, EventEmitter } from '@angular/core';
+import { Component, Input, OnInit, ViewChild, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { EditorType } from '../../model/json/editorType';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype } from '../../model/json/jsonDatatypes';
@@ -8,6 +8,7 @@ import { ImportApiDefinitionComponent } from './importWorkflow/importApiDefiniti
     selector: 'xn-json-editor',
     templateUrl: 'jsonEditor.html',
     styleUrls: ['jsonEditor.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class JsonEditorComponent implements OnInit {
 
@@ -83,6 +84,11 @@ export class JsonEditorComponent implements OnInit {
     public createNewEmptyValue() {
         this._value = this.createEmptyValue();
         this.valueChange.emit(this._value);
+    }
+
+    public onDatamodelChange() {
+        this.requestModel = Object.assign({}, this.requestModel);
+        this.requestModelChange.emit(this.requestModel);
     }
 
     private createEmptyObject(): ObjectDefinition {

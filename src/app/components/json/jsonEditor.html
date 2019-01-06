@@ -23,6 +23,7 @@
         </div>
     </ng-container>
     <xn-json-tree-node [datamodel]="requestModel"
+                       (datamodelChange)="onDatamodelChange()"
                        *ngIf="editorNodeVisible"
                        [value]="value"
                        [viewOnly]="viewOnly"

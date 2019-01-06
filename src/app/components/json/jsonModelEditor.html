@@ -9,7 +9,8 @@
                [validatable]="false"
                class="inline-block mb-0 noborder nomargin"
                [name]="name"
-               [(ngModel)]="datamodel.name"></xn-input-form>
+               (ngModelChange)="onDatamodelNameChange($event)"
+               [ngModel]="datamodel.name"></xn-input-form>
 <xn-dropdown [showLabel]="false"
              [idPropertyPath]="null"
              [displayPropertyPath]="null"
@@ -30,6 +31,7 @@
               [showChips]="false"
               class="small"
               [placeholder]="'Neuer Wert'"
+              (ngModelChange)="onDatamodelEnumValueChange($event)"
               [(ngModel)]="datamodel.enum"></xn-tag-input>
 <ng-container *ngIf="datamodel.type === jsonDatatype.OBJECT && open">
     <div class="pl-1">
@@ -37,6 +39,7 @@
             <div *ngFor="let property of datamodel.properties">
                 <xn-json-model-editor [name]="property.name"
                                       [datamodel]="property"
+                                      (datamodelChange)="datamodelChange.emit()"
                                       (removePropertyRequested)="onRemovePropertyRequested($event)"></xn-json-model-editor>
             </div>
         </ng-container>
@@ -48,6 +51,7 @@
 </ng-container>
 <ng-container *ngIf="datamodel.type === jsonDatatype.ARRAY">
     <div class="pl-1">
-        <xn-json-model-editor [datamodel]="datamodel.items"></xn-json-model-editor>
+        <xn-json-model-editor [datamodel]="datamodel.items"
+                              (datamodelChange)="datamodelChange.emit()"></xn-json-model-editor>
     </div>
 </ng-container>

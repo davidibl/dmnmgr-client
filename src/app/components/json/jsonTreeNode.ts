@@ -28,6 +28,9 @@ export class JsonTreeNodeComponent {
     @Output()
     public openChange = new EventEmitter<boolean>();
 
+    @Output()
+    public datamodelChange = new EventEmitter<void>();
+
     public get open() {
         return this._open;
     }

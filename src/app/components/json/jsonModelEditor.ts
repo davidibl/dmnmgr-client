@@ -1,5 +1,4 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { JsonObjectDefinition } from '../../model/json/jsonObjectDefinition';
 import { JsonDatatypeOptions, JsonDatatypes, JsonDatatype } from '../../model/json/jsonDatatypes';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 
@@ -31,6 +30,9 @@ export class JsonModelEditorComponent {
     @Output()
     public removePropertyRequested = new EventEmitter<ObjectDefinition>();
 
+    @Output()
+    public datamodelChange = new EventEmitter<void>();
+
     public get datamodel() {
         return this._datamodel;
     }
@@ -50,6 +52,7 @@ export class JsonModelEditorComponent {
             this.datamodel.items = Object.assign({}, JsonModelEditorComponent.DEFAULT_NEW);
         }
         this.datamodel.type = datatype;
+        this.datamodelChange.emit()
     }
 
     public removeProperty() {
@@ -58,6 +61,7 @@ export class JsonModelEditorComponent {
 
     public onRemovePropertyRequested(property: ObjectDefinition) {
         this._datamodel.properties.splice(this._datamodel.properties.indexOf(property), 1);
+        this.datamodelChange.emit()
     }
 
     public addProperty() {
@@ -70,6 +74,17 @@ export class JsonModelEditorComponent {
         const newElement = Object.assign({}, JsonModelEditorComponent.DEFAULT_NEW);
         newElement.name = 'Eigenschaft' + suffix;
         this.datamodel.properties.push(newElement);
+        this.datamodelChange.emit()
+    }
+
+    public onDatamodelNameChange(newName: string) {
+        this.datamodel.name = newName;
+        this.datamodelChange.emit()
+    }
+
+    public onDatamodelEnumValueChange(newEnumValues: string[]) {
+        this.datamodel.enum = newEnumValues;
+        this.datamodelChange.emit()
     }
 
     private findFreePropertyIndex(): string {
