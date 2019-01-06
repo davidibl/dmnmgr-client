@@ -7,7 +7,8 @@ xn-menu-header {
 
 :host::ng-deep {
     xn-menu-header {
-        border-top: 1px solid #d6d6d6;
+        border-top: 1px solid #E3E5E6;
+        border-bottom: 1px solid #E3E5E6;
     }
     xn-menu-header .nav {
         padding: 0;
@@ -23,7 +24,7 @@ xn-menu-header {
         .brand-bar {
             float: right;
             padding-right: 6px;
-            padding-top: 3px;
+            padding-top: 0px;
 
             img {
                 margin-top: 3px;
