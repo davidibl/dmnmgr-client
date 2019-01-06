@@ -1,0 +1,14 @@
+<div>
+    <xn-button class="small ml-1"
+               (click)="import()">
+        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>Importieren
+    </xn-button>
+</div>
+<div class="pt-1 pl-1 pr-1">
+    <xn-input-form [(ngModel)]="separatedData"
+                   [name]="'separatedData'"
+                   [label]="'Eingabedaten'"
+                   [multiline]="true"
+                   [rows]="10">
+    </xn-input-form>
+</div>

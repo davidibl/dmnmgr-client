@@ -16,5 +16,11 @@
             [id]="'test-editor'">
         <xn-test-suite></xn-test-suite>
     </xn-tab>
+    <xn-tab [title]="'Import'"
+            *ngIf="isDecicionTableMode"
+            [iconClass]="'fa-cloud-upload'"
+            [id]="'import'">
+        <xn-importer></xn-importer>
+    </xn-tab>
 </xn-tabs>
 <xn-dmn-simulator *ngIf="isDecicionTableMode" [isVisisble]="tabId === 'dmn-editor'"></xn-dmn-simulator>

@@ -10,6 +10,7 @@ import { DataModelEditorComponent } from './dataModelEditor/dataModelEditor';
 import { DmnSimulatorComponent } from './simulator/dmnSimulator';
 import { FlyinComponent } from './simulator/flyin';
 import { DmnResultViewComponent } from './dmnResultView/dmnResultView';
+import { ImporterComponent } from './importer/importer';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -24,4 +25,5 @@ export const ALL_COMPONENTS = [
     DmnSimulatorComponent,
     FlyinComponent,
     DmnResultViewComponent,
+    ImporterComponent,
 ];

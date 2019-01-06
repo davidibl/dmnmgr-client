@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input, Output } from '@angular/core';
 
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { ReplaySubject } from 'rxjs';
@@ -14,6 +14,7 @@ import { EventService } from '../../services/eventService';
 import { NewViewEvent } from '../../model/newViewEvent';
 import { RenameArtefactEvent } from '../../model/renameArtefactEvent';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
+import { UUID } from '../../functions/UUID';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -27,10 +28,11 @@ declare interface DMNJS {
     _updateViews(): void;
     _viewers: any;
     _activeView: DmnModelerView;
+    _moddle: DmnModdle;
 }
 
 export interface DmnModdle {
-    create(type: string);
+    create(type: string): DmnModdleElement;
 }
 
 export interface DmnModelerView {
@@ -45,9 +47,19 @@ export interface DmnModdleElement {
     inputValues?: DmnModdleElement;
     input?: DmnModdleElement[];
     output?: DmnModdleElement[];
-    decisionTable?: DmnModdleElement;
+    decisionTable?: DmnModdleTable;
     $model: DmnModdle;
     typeRef: string;
+    $parent: DmnModdleElement;
+}
+
+export interface DmnModdleTable extends DmnModdleElement {
+    rule: DmnModdleRule[];
+}
+
+export interface DmnModdleRule extends DmnModdleElement {
+    inputEntry: DmnModdleElement[];
+    outputEntry: DmnModdleElement[];
 }
 
 export interface DmnModdleEvent {
@@ -62,6 +74,7 @@ export class DmnType {
     static INPUT_CLAUSE = 'dmn:InputClause';
     static UNARY_TEST = 'dmn:UnaryTests';
     static OUTPUT_CLAUSE = 'dmn:OutputClause';
+    static RULE = 'dmn:DecisionRule';
 }
 
 export class DmnDatatypeMapping {
@@ -121,7 +134,11 @@ export class DmnModellerComponent implements AfterViewInit {
                 });
                 return subject.asObservable().pipe( distinctUntilChanged() );
             }
-        })
+        });
+
+        this._eventService
+            .getEvent((event) => event.type === 'import')
+            .subscribe(importEvent => this.importData(importEvent.data));
     }
 
     private configureModeller() {
@@ -160,6 +177,57 @@ export class DmnModellerComponent implements AfterViewInit {
             }
         });
         this.updateResponseModel();
+    }
+
+    private importData(data: string[][]) {
+
+        const columns = [];
+        this._modeller._activeView.element.decisionTable.input.forEach(col => columns.push(col));
+        this._modeller._activeView.element.decisionTable.output.forEach(col => columns.push(col));
+
+        const newRules = <DmnModdleRule[]>[];
+        data.forEach(row => {
+            const newRule = this._modeller._moddle.create(DmnType.RULE, {
+                id: this.generateId(DmnType.RULE)
+            });
+            newRule.inputEntry = [];
+            newRule.outputEntry = [];
+            let counter = 0;
+            this._modeller._activeView.element.decisionTable.input.forEach(_ => {
+                const input = newRule
+                    .$model
+                    .create(DmnType.UNARY_TEST);
+                input.text = (counter < row.length) ? `${row[counter]}` : null;
+                input.id = this.generateId(DmnType.UNARY_TEST);
+                newRule.inputEntry.push(input);
+                counter++;
+            });
+
+            this._modeller._activeView.element.decisionTable.input.forEach(_ => {
+                const input = newRule
+                    .$model
+                    .create(DmnType.LITERAL_EXPRESSION);
+                input.text = (counter < row.length) ? `${row[counter]}` : null;
+                input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
+                newRule.outputEntry.push(input);
+                counter++;
+            });
+
+            newRules.push(newRule);
+        });
+
+        const currentTable = this._modeller._activeView.element.decisionTable;
+        if (!currentTable.rule) { currentTable.rule = []; }
+        newRules.forEach(rule => currentTable.rule.push(rule));
+
+        this._modeller.saveXML(null, (error, xml) => {
+            if (error) { return; }
+            this._modeller.importXML(xml, (err => {}));
+        });
+    }
+
+    private generateId(type: string) {
+        return type.substr(type.indexOf(':') + 1) + UUID.new();
     }
 
     private updateResponseModel() {
