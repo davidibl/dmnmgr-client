@@ -6,3 +6,10 @@
     height: 100%;
     position: relative;
 }
+
+:host::ng-deep {
+    .dmn-decision-table-container td, .dmn-decision-table-container th {
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+}
