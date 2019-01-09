@@ -13,6 +13,10 @@ import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 import { EventType } from '../model/eventType';
 import { ConfigurationService, RestTemplate } from '@xnoname/web-components';
 
+export interface DeploymentResponse {
+    decisionRequirementsId: string;
+}
+
 @Injectable()
 export class TestDecisionService {
 
@@ -56,19 +60,30 @@ export class TestDecisionService {
             ).subscribe(response => this._resultSubject.next(response));
     }
 
-    public testDecision(test: Test): Observable<Object> {
+    public deployDecision(): Observable<DeploymentResponse> {
         return this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
-                map(xml => {
-                    return {
-                        dmnTableId: this._currentArtefactId,
-                        variables: test.data,
-                        expectedData: test.expectedData,
-                        xml: xml
-                    }
-                }),
-                switchMap(request => this._http.post<Object>(this.getUrl('decision/test'), request)),
+                switchMap(xml => this._http.post<DeploymentResponse>(this.getUrl('decision'), { xml: xml }))
+            );
+    }
+
+    public testDecision(test: Test, requirementsId?: string, tableId?: string) {
+        const request = {
+            dmnTableId: (tableId) ? tableId : this._currentArtefactId,
+            variables: test.data,
+            expectedData: test.expectedData,
+            decisionRequirementsId: requirementsId
+        };
+        return this._http.post<Object>(this.getUrl('decision/test'), request);
+    }
+
+    public deployAndTestDecision(test: Test): Observable<Object> {
+        return this.dmnXmlService
+            .getXmlModels('editor')
+            .pipe(
+                switchMap(xml => this._http.post<DeploymentResponse>(this.getUrl('decision'), { xml: xml })),
+                switchMap(deployment => this.testDecision(test, deployment.decisionRequirementsId, this._currentArtefactId))
             );
     }
 

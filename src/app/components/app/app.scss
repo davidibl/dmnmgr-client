@@ -33,6 +33,29 @@ xn-menu-header {
     }
 }
 
+.testsuite-item {
+    list-style-type: none;
+    padding-left: 0px;
+}
+
+li.test-tableid {
+    padding: 5px 5px;
+    border-top: 1px solid #E3E5E6;
+    border-bottom: 1px solid #E3E5E6;
+}
+
+li.test-item {
+    padding: 5px 5px;
+}
+
+li.test-item.success {
+    background-color: $brand-teritiary-color-60;
+}
+
+li.test-item:last-child {
+    margin-bottom: 5px;
+}
+
 .sub-menu {
     position: absolute;
     top: 29px;

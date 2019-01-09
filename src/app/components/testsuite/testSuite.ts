@@ -6,12 +6,13 @@ import { take } from 'rxjs/operators/take';
 import { Test } from '../../model/test';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
-import { TestDecisionService } from '../../services/testDecisionService';
+import { TestDecisionService, DeploymentResponse } from '../../services/testDecisionService';
 import { merge } from 'rxjs/operators/merge';
 import { ReplaySubject } from 'rxjs/ReplaySubject';
 import { mergeMap } from 'rxjs/operators/mergeMap';
 import { tap } from 'rxjs/operators/tap';
 import { from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -57,17 +58,24 @@ export class TestSuiteComponent implements OnInit {
     }
 
     public testCase(item: TestCaseContainer) {
-        this.runTestInternal(item)
+        this._testDecisionService
+            .deployAndTestDecision(item.testcase)
+            .pipe(
+                tap(result => this.assignTestResult(item, result))
+            )
             .subscribe();
     }
 
     public runAllTests() {
         this.testCases$
-            .pipe( take(1) )
-            .subscribe(tests => {
+            .pipe(
+                take(1),
+                switchMap(tests => this._testDecisionService.deployDecision(), (o, i) => { return { deployment: i, tests: o }; })
+            )
+            .subscribe(({deployment, tests}) => {
                 from(tests)
                     .pipe(
-                        mergeMap(test => this.runTestInternal(test), (o, i) => { return { test: o, result: i}; })
+                        mergeMap(test => this.runTestInternal(test, deployment), (o, i) => { return { test: o, result: i}; })
                     )
                     .subscribe(result => {
                         tests.splice(tests.findIndex(item => item === result.test), 1, result.test);
@@ -76,13 +84,11 @@ export class TestSuiteComponent implements OnInit {
             });
     }
 
-    private runTestInternal(item: TestCaseContainer) {
+    private runTestInternal(item: TestCaseContainer, deployment: DeploymentResponse) {
         return this._testDecisionService
-            .testDecision(item.testcase)
+            .testDecision(item.testcase, deployment.decisionRequirementsId)
             .pipe(
-                tap(result => {
-                    this.assignTestResult(item, result);
-                })
+                tap(result => this.assignTestResult(item, result))
             );
     }
 
