@@ -79,5 +79,8 @@
                 </ul>
             </ng-container>
         </ng-container>
+        <div *ngIf="isTestSuiteEmpty">
+            <i class="fa fa-fire mr-1" aria-hidden="true"></i>Kein Test? Dein ernst?
+        </div>
     </div>
 </xn-dialog>

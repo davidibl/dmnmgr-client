@@ -40,6 +40,7 @@ export class AppComponent {
     public fileMenuVisible = false;
     public testMenuVisible = false;
     public testSuite: TestSuiteItem[];
+    public isTestSuiteEmpty = false;
 
     public showErrorDialog = false;
     public showAllTestsDialog = false;
@@ -128,6 +129,11 @@ export class AppComponent {
 
     public openAllTestsDialog() {
         this.testSuite = this.mapTestSuite(this._testsuiteService.getTestSuiteProject());
+        if (!this.testSuite || this.testSuite.length < 1 ||
+            this.testSuite.map(item => item.tests).reduce((acc, next) => acc += next.length, 0) < 1) {
+            this.isTestSuiteEmpty = true;
+        } else { this.isTestSuiteEmpty = false; }
+
         this.showAllTestsDialog = true;
     }
 

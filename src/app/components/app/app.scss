@@ -42,14 +42,19 @@ li.test-tableid {
     padding: 5px 5px;
     border-top: 1px solid #E3E5E6;
     border-bottom: 1px solid #E3E5E6;
+    font-weight: bold;
 }
 
 li.test-item {
-    padding: 5px 5px;
+    padding-top: 5px;
+    padding-bottom: 3px;
+    padding-left: 4px;
+    padding-right: 5px;
+    border-left: 8px solid transparent;
 }
 
 li.test-item.success {
-    background-color: $brand-teritiary-color-60;
+    border-left: 8px solid $brand-teritiary-color-60;
 }
 
 li.test-item:last-child {
