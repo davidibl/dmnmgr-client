@@ -87,6 +87,10 @@ export class TestDecisionService {
             );
     }
 
+    public clearProcessEngine() {
+        this._http.delete<void>(this.getUrl('decision')).subscribe();
+    }
+
     public getResult() {
         return this._resultSubject.asObservable();
     }

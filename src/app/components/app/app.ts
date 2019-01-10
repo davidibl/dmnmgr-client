@@ -39,6 +39,7 @@ export class AppComponent {
 
     public fileMenuVisible = false;
     public testMenuVisible = false;
+    public engineMenu = false;
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
 
@@ -111,6 +112,10 @@ export class AppComponent {
                 filter(result => result.type === FsResultType.OK)
             )
             .subscribe(result => this._projectService.importDmn(result.data));
+    }
+
+    public clearDeployments() {
+        this._testDecisionService.clearProcessEngine();
     }
 
     public exit() {

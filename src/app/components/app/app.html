@@ -29,6 +29,17 @@
             </ul>
         </xn-button>
     </li>
+    <li class="menu">
+        <xn-button (click)="engineMenu = !engineMenu"
+                   (mouseleave)="engineMenu = false"
+                   class="small transparent">Engine
+            <ul *ngIf="engineMenu" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="clearDeployments()">Deployments löschen</li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
 </xn-menu-header>
 <div class="main-content full-height">
     <router-outlet></router-outlet>
