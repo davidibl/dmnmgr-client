@@ -118,6 +118,10 @@ export class AppComponent {
         this._testDecisionService.clearProcessEngine();
     }
 
+    public deploy() {
+        this._testDecisionService.deployDecision().subscribe();
+    }
+
     public exit() {
         this._electronService.process.exit();
     }
