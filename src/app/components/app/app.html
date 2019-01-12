@@ -5,15 +5,25 @@
                    class="small transparent">Projekt
             <ul *ngIf="fileMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="createNewProject()">Neu</li>
-                    <li (click)="openProject()">Öffnen</li>
+                    <li (click)="createNewProject()">
+                        <i class="fa fa-file-o mr-05" aria-hidden="true"></i>Neu
+                    </li>
+                    <li (click)="openProject()">
+                        <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Öffnen
+                    </li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
-                    <li (click)="saveProject()">Speichern</li>
+                    <li (click)="saveProject()">
+                        <i class="fa fa-floppy-o mr-05" aria-hidden="true"></i>Speichern
+                    </li>
                     <li (click)="saveProjectAs()">Speichern unter</li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
-                    <li (click)="importExistingDmn()">Dmn Datei importieren</li>
+                    <li (click)="importExistingDmn()">
+                        <i class="fa fa-upload mr-05" aria-hidden="true"></i>Dmn Datei importieren
+                    </li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
-                    <li (click)="exit()">Beenden</li>
+                    <li (click)="exit()">
+                        <i class="fa fa-sign-out mr-05" aria-hidden="true"></i>Beenden
+                    </li>
                 </div>
             </ul>
         </xn-button>
@@ -24,7 +34,9 @@
                    class="small transparent">Tests
             <ul *ngIf="testMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="openAllTestsDialog()">Alle ausführen</li>
+                    <li (click)="openAllTestsDialog()">
+                        <i class="fa fa-cogs mr-05" aria-hidden="true"></i>Alle ausführen
+                    </li>
                 </div>
             </ul>
         </xn-button>
@@ -35,8 +47,12 @@
                    class="small transparent">Engine
             <ul *ngIf="engineMenu" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="clearDeployments()">Deployments löschen</li>
-                    <li (click)="deploy()">DRD bereitstellen</li>
+                    <li (click)="clearDeployments()">
+                        <i class="fa fa-trash-o mr-05" aria-hidden="true"></i>Deployments löschen
+                    </li>
+                    <li (click)="deploy()">
+                        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>DRD bereitstellen
+                    </li>
                 </div>
             </ul>
         </xn-button>
