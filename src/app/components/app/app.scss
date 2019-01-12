@@ -57,6 +57,10 @@ li.test-item.success {
     border-left: 8px solid $brand-teritiary-color-60;
 }
 
+li.test-item.error {
+    border-left: 8px solid $danger;
+}
+
 li.test-item:last-child {
     margin-bottom: 5px;
 }
