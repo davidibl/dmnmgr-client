@@ -5,13 +5,16 @@ import { DataModelService } from './dataModelService';
 import { DmnProject } from '../model/project/dmnProject';
 import { Observable } from 'rxjs/Observable';
 import { map } from 'rxjs/operators/map';
+import { EventService } from './eventService';
+import { EventType } from '../model/eventType';
 
 @Injectable()
 export class DmnProjectService {
 
     public constructor(private _dmnXmlService: DmnXmlService,
                        private _testSuiteService: TestSuiteService,
-                       private _dataModelService: DataModelService) {}
+                       private _dataModelService: DataModelService,
+                       private _eventService: EventService) {}
 
     public getProject(): Observable<{ xml: string, project: DmnProject }> {
 
@@ -39,6 +42,7 @@ export class DmnProjectService {
         this._dataModelService.setDataModelProject(project.definitions);
         this._testSuiteService.setTestSuiteProject(project.testsuite);
         this._dmnXmlService.setXml(dmnXml);
+        this._eventService.publishEvent({ type: EventType.PROJECT_LOADED, data: true });
     }
 
     public createNewProject() {

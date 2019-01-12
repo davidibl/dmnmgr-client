@@ -1,10 +1,11 @@
-import { Component, Inject, OnInit, Renderer2 } from '@angular/core';
+import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { DOCUMENT } from "@angular/platform-browser";
 import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
 import { map } from 'rxjs/operators/map';
 import { EventType } from '../../model/eventType';
 import { NewViewEvent } from '../../model/newViewEvent';
+import { TabsComponent } from '@xnoname/web-components';
 
 @Component({
     selector: 'xn-dmn-manager',
@@ -12,6 +13,9 @@ import { NewViewEvent } from '../../model/newViewEvent';
     styleUrls: ['dmnManager.scss'],
 })
 export class DmnManagerComponent implements OnInit {
+
+    @ViewChild(TabsComponent)
+    private tabs: TabsComponent;
 
     private stylesheet: any = null;
     private _tabId: string;
@@ -50,6 +54,10 @@ export class DmnManagerComponent implements OnInit {
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
             .pipe( map(ev => ev.data.isDecisionTable ) )
             .subscribe(isDmn => this.isDecicionTableMode = isDmn);
+
+        this._eventService
+            .getEvent((event) => event.type === EventType.PROJECT_LOADED)
+            .subscribe(_ => this.tabs.selectTabById('dmn-editor'));
     }
 
     public onSelectedTabChanged(tabId: string) {
