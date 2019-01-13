@@ -210,7 +210,7 @@ export class DmnModellerComponent implements AfterViewInit {
             ev.data.isDecisionTable = false;
         }
         this._internalEventService.next({
-            identity: this._modeller._activeView.element.id,
+            identity: new Date().getTime(),
             type: 'views.changed',
             func: () => {
                 this._eventService.publishEvent(ev);
