@@ -24,36 +24,54 @@
 </div>
 
 <ng-template #testCaseTemplate let-item="item">
-    <td>
-        <xn-input-form [title]="item.testcase.name"
-                       [label]="'Name'"
-                       [showLabel]="false"
-                       [validatable]="false"
-                       class="inline-block mb-0 noborder nomargin"
-                       [name]="'Name'"
-                       [(ngModel)]="item.testcase.name"></xn-input-form>
-    </td>
-    <td>
-        <xn-json-editor [requestModel]="dataModel$ | async"
-                        [value]="item.testcase.data"
-                        [hideButtons]="true"
-                        [type]="1"></xn-json-editor>
-    </td>
-    <td>
-        <xn-json-editor [requestModel]="responseModel$ | async"
-                        [value]="item.testcase.expectedData"
-                        [hideButtons]="true"
-                        [type]="1"></xn-json-editor>
-    </td>
-    <td class="text-center" [ngClass]="item.clazz">
-        <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
-        <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
-        <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
-    </td>
-    <td>
-        <xn-button (click)="testCase(item)" class="small"><i class="fa fa-play" aria-hidden="true"></i></xn-button>
-    </td>
-    <td>
-        <xn-button (click)="deleteCase(item)" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button>
-    </td>
+    <tr>
+        <td>
+            <xn-input-form [title]="item.testcase.name"
+                        [label]="'Name'"
+                        [showLabel]="false"
+                        [validatable]="false"
+                        class="inline-block mb-0 noborder nomargin"
+                        [name]="'Name'"
+                        [(ngModel)]="item.testcase.name"></xn-input-form>
+        </td>
+        <td>
+            <xn-json-editor [requestModel]="dataModel$ | async"
+                            [value]="item.testcase.data"
+                            [hideButtons]="true"
+                            [type]="1"></xn-json-editor>
+        </td>
+        <td>
+            <xn-json-editor [requestModel]="responseModel$ | async"
+                            [value]="item.testcase.expectedData"
+                            [hideButtons]="true"
+                            [type]="1"></xn-json-editor>
+        </td>
+        <td class="text-center" [ngClass]="item.clazz" (click)="item.showError = true">
+            <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
+            <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+            <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
+        </td>
+        <td>
+            <xn-button (click)="testCase(item)" class="small"><i class="fa fa-play" aria-hidden="true"></i></xn-button>
+        </td>
+        <td>
+            <xn-button (click)="deleteCase(item)" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button>
+        </td>
+    </tr>
+    <tr *ngIf="!item.result && item.showError">
+        <td *ngIf="item.message" colspan="2">Fehler</td>
+        <td *ngIf="!item.message" colspan="2">Tatsächliches Ergebnis</td>
+        <td *ngIf="item.message" colspan="4">
+            <span *ngIf="item.message">{{item.message}}</span>
+        </td>
+        <td *ngIf="!item.message" colspan="3">
+            <xn-json-editor [requestModel]="responseModel$ | async"
+                            [value]="item.finalResult"
+                            [hideButtons]="true"
+                            [type]="1"></xn-json-editor>
+        </td>
+        <td *ngIf="!item.message">
+            <xn-button (click)="takeOverFinalResult(item)" class="small"><i class="fa fa-clone" aria-hidden="true"></i></xn-button>
+        </td>
+    </tr>
 </ng-template>

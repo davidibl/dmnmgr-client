@@ -17,6 +17,9 @@ import { switchMap } from 'rxjs/operators';
 export class TestCaseContainer {
     public result: boolean;
     public clazz?: string;
+    public finalResult?: Object[];
+    public message?: string;
+    public showError?: boolean;
     public constructor(public testcase: Test) { }
 }
 
@@ -84,6 +87,11 @@ export class TestSuiteComponent implements OnInit {
             });
     }
 
+    public takeOverFinalResult(item: TestCaseContainer) {
+        const newExpectedData = item.finalResult.map(o => Object.assign({}, o));
+        item.testcase.expectedData = newExpectedData;
+    }
+
     private runTestInternal(item: TestCaseContainer, deployment: DeploymentResponse) {
         return this._testDecisionService
             .testDecision(item.testcase, deployment.decisionRequirementsId)
@@ -95,5 +103,8 @@ export class TestSuiteComponent implements OnInit {
     private assignTestResult(item: TestCaseContainer, result: Object) {
         item.result = result['testSucceded']
         item.clazz = (item.result) ? 'success' : 'error';
+        item.finalResult = result['result'];
+        item.message = result['message'];
+        item.showError = false;
     }
 }
