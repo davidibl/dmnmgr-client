@@ -3,7 +3,7 @@ import { JsonObjectDefinitions } from '../model/json/jsonObjectDefinitions';
 import { JsonDatatype } from '../model/json/jsonDatatypes';
 import { JsonObjectDefinition } from '../model/json/jsonObjectDefinition';
 import { ObjectDefinition } from '../model/json/objectDefinition';
-import { getObjectProperty } from '@xnoname/web-components';
+import { getObjectProperty, ConfigurationService, RestTemplate } from '@xnoname/web-components';
 import { OpenApiSchema } from '../model/json/openApiSchema';
 import { Observable } from 'rxjs/Observable';
 import { of } from 'rxjs/Observable/of';
@@ -13,7 +13,8 @@ import { HttpClient } from '@angular/common/http';
 @Injectable()
 export class OpenApiDefinitionService {
 
-    public constructor(private _http: HttpClient) {}
+    public constructor(private _http: HttpClient,
+                       private _configuration: ConfigurationService) {}
 
     public loadOpenApiFromText(text: string): Observable<OpenApiSchema> {
         return of(text)
@@ -23,8 +24,13 @@ export class OpenApiDefinitionService {
     }
 
     public loadOpenApiDefinitionFromUrl(url: string): Observable<OpenApiSchema> {
+
         return this._http
-            .get<OpenApiSchema>(url);
+            .get<{apiUrl: string, swaggerDefinition: string}>(this.getOpenApiDefinitionUrl(url))
+            .pipe(
+                map(response => response.swaggerDefinition),
+                map(responseString => JSON.parse(responseString))
+            );
     }
 
     public getApiDefinition(rootObjectName: string, apiDefinition: JsonObjectDefinitions) {
@@ -111,5 +117,14 @@ export class OpenApiDefinitionService {
     private findReferencedObjectType(path: string, rootObject: JsonObjectDefinitions) {
         const finalPath = path.substring(path.lastIndexOf('/') + 1);
         return getObjectProperty(finalPath, rootObject);
+    }
+
+    private getOpenApiDefinitionUrl(url: string) {
+        const baseUrl = this._configuration.getConfigValue<string>('endpoints.dmnbackend');
+        return RestTemplate.create(baseUrl)
+            .withPathParameter('api')
+            .withPathParameter('open-api-definition')
+            .withQueryParameter('api-url', url)
+            .build();
     }
 }
