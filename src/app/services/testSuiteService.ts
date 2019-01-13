@@ -48,6 +48,7 @@ export class TestSuiteService {
 
     public setTestSuiteProject(testSuiteProject: TestsuiteProject) {
         this._testsuiteProject = testSuiteProject;
+        this._testSuiteSubject.next(this.getOrCreateCurrentTestsuite());
     }
 
     public deleteTestCase(item: Test) {
@@ -60,6 +61,11 @@ export class TestSuiteService {
         if (!this._testsuiteProject[this._currentArtefactId]) {
             this._testsuiteProject[this._currentArtefactId] = { tests: [] };
         }
+        return this._testsuiteProject[this._currentArtefactId];
+    }
+
+    private getCurrentTestsuite() {
+        if (!this._testsuiteProject) { return null; }
         return this._testsuiteProject[this._currentArtefactId];
     }
 
