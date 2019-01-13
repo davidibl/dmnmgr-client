@@ -1,16 +1,23 @@
-import { Component, Output, EventEmitter, QueryList, ViewChildren, ViewChild } from '@angular/core';
+import { Component, Output, EventEmitter, QueryList, ViewChildren, ViewChild, OnInit, Pipe } from '@angular/core';
 import { KeyValuePair, WorkflowState, WorkflowStateTypes, AccordionComponent } from '@xnoname/web-components';
 import { OpenApiSchema } from '../../../model/json/openApiSchema';
 import { OpenApiDefinitionService } from '../../../services/openApiDefinitionService';
 import { ObjectDefinition } from '../../../model/json/objectDefinition';
 import { NgForm } from '@angular/forms';
+import { ReplaySubject } from 'rxjs/ReplaySubject';
+import { debounceTime } from 'rxjs/operators/debounceTime';
+
+export class UserInputType {
+    static URL = 'url';
+    static TEXT = 'text';
+}
 
 @Component({
     selector: 'xn-import-api-definition',
     templateUrl: 'importApiDefinition.html',
     styleUrls: ['importApiDefinition.scss'],
 })
-export class ImportApiDefinitionComponent {
+export class ImportApiDefinitionComponent implements OnInit {
 
     @ViewChildren(NgForm)
     private _forms: QueryList<NgForm>;
@@ -21,6 +28,8 @@ export class ImportApiDefinitionComponent {
     private _apiDefinition: OpenApiSchema;
     private _apiText: string;
     private _apiUrl: string;
+
+    private _userInputDebounceSubject = new ReplaySubject<string>(1);
 
     public selectedObject: KeyValuePair<string, any>;
 
@@ -45,14 +54,26 @@ export class ImportApiDefinitionComponent {
 
     public constructor(private _openApiDefinitionService: OpenApiDefinitionService) {}
 
+    public ngOnInit() {
+        this._userInputDebounceSubject
+            .pipe( debounceTime(500) )
+            .subscribe(type => {
+                if (type === UserInputType.URL) { this.loadDefinitionFromUrl(); }
+                else if (type === UserInputType.TEXT) { this.loadDefinitionFromText() }
+            });
+
+    }
+
     public onApiTextChange(apiText: string) {
         this.apiDefinition = null;
         this._apiText = apiText;
+        this._userInputDebounceSubject.next(UserInputType.TEXT);
     }
 
     public onUrlChange(url: string) {
         this.apiDefinition = null;
         this._apiUrl = url;
+        this._userInputDebounceSubject.next(UserInputType.URL);
     }
 
     public loadDefinitionFromUrl() {
