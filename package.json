@@ -1,9 +1,9 @@
 {
-  "name": "dmngr-client",
+  "name": "dmnmgr-client",
   "version": "1.0.0",
   "license": "MIT",
   "author": "David Ibl@xnoname",
-  "description": "dmngr - A toolkit to work with dmn",
+  "description": "dmnmgr - A toolkit to work with dmn",
   "main": "main.js",
   "repository": {
     "type": "git",
