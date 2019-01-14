@@ -55,6 +55,9 @@ export class JsonValueEditor implements OnChanges {
 
     @Input()
     public set value(value: any) {
+        if (!isNull(value)) {
+            this.objectSetToNull = false;
+        }
         this._value = value;
     }
 
@@ -112,7 +115,7 @@ export class JsonValueEditor implements OnChanges {
             value[property.name] !== Object(value[property.name])) {
 
                 if (!this.objectSetToNull) {
-                    value[property.name] = {};
+                    // value[property.name] = {};
                 }
         }
         return value[property.name];
@@ -160,13 +163,13 @@ export class JsonValueEditor implements OnChanges {
     }
 
     public deleteObjectValue() {
-        this.childObjectValueChange.emit({ newValue: null, propertyName: this.datamodel.name});
         this.objectSetToNull = true;
+        this.childObjectValueChange.emit({ newValue: null, propertyName: this.datamodel.name});
     }
 
     public addObjectValue() {
-        this.childObjectValueChange.emit({ newValue: {}, propertyName: this.datamodel.name});
         this.objectSetToNull = false;
+        this.childObjectValueChange.emit({ newValue: {}, propertyName: this.datamodel.name});
     }
 
     public onChildObjectValueChanged(newValue: {newValue: any, propertyName: string}) {
