@@ -43,7 +43,7 @@ export class FileService {
 
         return Observable.create(observer => {
             dialog.showOpenDialog(window, openOptions, (fileNames) => {
-                if (fileNames === undefined) {
+                if (fileNames === undefined || fileNames.length < 1) {
                     observer.next({ error: false });
                     observer.complete();
                     return;
@@ -88,6 +88,10 @@ export class FileService {
         return Observable.create(observer => {
             if (!this._currentPath || chooseLocation) {
                 dialog.showSaveDialog(window, saveOptions, (filename, bookmark) => {
+                    if (isNull(filename)) {
+                        observer.next({ type: FsResultType.NOTHING_SELECTED });
+                        return;
+                    }
                     this.writeFiles(filename, xml, project, observer);
                 });
                 return;
@@ -142,6 +146,7 @@ export class FileService {
         const dmnFilename = withoutExtension.substr(withoutExtension.lastIndexOf('\\') + 1) + '.dmn';
         const targetPathDmn = withoutExtension + '.dmn';
         project.dmnPath = dmnFilename;
+        this._currentPath = filename;
 
         this._filesystem.writeFile(filename, JSON.stringify(project), err => {
             if (isNull(err)) {
