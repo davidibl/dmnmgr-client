@@ -115,6 +115,16 @@
                 <i class="fa fa-minus-circle" aria-hidden="true"></i>
             </button>
         </ng-container>
+        <ng-container *ngIf="!objectSetToNull && datamodel.type === jsonDatatype.OBJECT">
+            <button class="small no-border no-background" (click)="deleteObjectValue()">
+                <i class="fa fa-minus-circle" aria-hidden="true"></i>
+            </button>
+        </ng-container>
+        <ng-container *ngIf="objectSetToNull && datamodel.type === jsonDatatype.OBJECT">
+            <button class="small no-border no-background" (click)="addObjectValue()">
+                <i class="fa fa-plus-circle" aria-hidden="true"></i>
+            </button>
+        </ng-container>
     </ng-container>
     <ng-container *ngIf="datamodel?.type === jsonDatatype.ARRAY">
         <div class="pl-1">
@@ -134,7 +144,7 @@
     </ng-container>
     <ng-container *ngIf="datamodel?.type === jsonDatatype.OBJECT">
         <div class="pl-1">
-            <ng-container *ngIf="datamodel.properties">
+            <ng-container *ngIf="datamodel.properties && value">
                 <div *ngFor="let property of datamodel.properties">
                     <xn-json-value-editor [datamodel]="property"
                                         *ngIf="property.type !== jsonDatatype.OBJECT"
@@ -142,8 +152,10 @@
                                         [value]="getPropertyParent()"></xn-json-value-editor>
                     <xn-json-value-editor [datamodel]="property"
                                         *ngIf="property.type === jsonDatatype.OBJECT"
+                                        #objectProperty
+                                        (childObjectValueChange)="onChildObjectValueChanged($event)"
                                         [viewOnly]="viewOnly"
-                                        [value]="getObjectValue(property, value)"></xn-json-value-editor>
+                                        [value]="getObjectValue(property, value, objectProperty.objectSetToNull)"></xn-json-value-editor>
                 </div>
             </ng-container>
             <ng-container *ngIf="unknownProperties">

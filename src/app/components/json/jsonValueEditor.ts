@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, HostBinding } from '@angular/core';
+import { Component, Input, OnChanges, HostBinding, Output, EventEmitter } from '@angular/core';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype } from '../../model/json/jsonDatatypes';
 import { isNull } from '@xnoname/web-components';
@@ -21,6 +21,8 @@ export class JsonValueEditor implements OnChanges {
 
     @HostBinding('class.flex')
     public isPrimitive = false;
+
+    public objectSetToNull = true;
 
     public unknownProperties: string[];
 
@@ -63,6 +65,9 @@ export class JsonValueEditor implements OnChanges {
     @Input()
     public viewOnly = false;
 
+    @Output()
+    public childObjectValueChange = new EventEmitter<{ newValue: any, propertyName: string}>();
+
     public get editValue() {
         return (isNull(this.arrayIndex)) ? this.value[this.datamodel.name] : this.value[this.arrayIndex];
     }
@@ -99,13 +104,16 @@ export class JsonValueEditor implements OnChanges {
         return this.datamodel.properties.find(property => property.name === propertyName);
     }
 
-    public getObjectValue(property: ObjectDefinition, value: any) {
+    public getObjectValue(property: ObjectDefinition, value: any, objectSetToNull: boolean) {
         if (!isNull(this.arrayIndex)) {
             return this.value[this.arrayIndex];
         }
         if (value[property.name] === null || value[property.name] === undefined ||
             value[property.name] !== Object(value[property.name])) {
-            value[property.name] = {};
+
+                if (!this.objectSetToNull) {
+                    value[property.name] = {};
+                }
         }
         return value[property.name];
     }
@@ -149,6 +157,20 @@ export class JsonValueEditor implements OnChanges {
 
     public removeArrayItem(arrayIndex: number) {
         this.value.splice(arrayIndex, 1);
+    }
+
+    public deleteObjectValue() {
+        this.childObjectValueChange.emit({ newValue: null, propertyName: this.datamodel.name});
+        this.objectSetToNull = true;
+    }
+
+    public addObjectValue() {
+        this.childObjectValueChange.emit({ newValue: {}, propertyName: this.datamodel.name});
+        this.objectSetToNull = false;
+    }
+
+    public onChildObjectValueChanged(newValue: {newValue: any, propertyName: string}) {
+        this.value[newValue.propertyName] = newValue.newValue;
     }
 
     public toggleNode() {
