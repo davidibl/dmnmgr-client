@@ -86,11 +86,12 @@ export class DataModelService {
 
     private getPropertyByPathSync(datamodel: ObjectDefinition, path: string) {
         if (!datamodel || !datamodel.properties) { return null; }
+        const searchObject = Object.assign({}, datamodel);
         return path
             .split('.')
             .reduce((accumulator, nextPathPart) =>
                 Object.assign(accumulator,
-                    datamodel.properties.find(model => model.name === nextPathPart)), {});
+                    accumulator.properties.find(model => model.name === nextPathPart)), searchObject);
     }
 
     private changeView(artefactId: string) {
