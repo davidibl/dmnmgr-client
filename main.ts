@@ -17,7 +17,7 @@ function createWindow() {
     y: 0,
     width: size.width,
     height: size.height,
-    title: 'bpmgr',
+    title: 'dmnmgr',
     icon: path.join(__dirname, 'favicon.64x64.png'),
     webPreferences: {
         devTools: false
