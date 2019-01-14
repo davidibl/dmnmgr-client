@@ -52,7 +52,7 @@ export class FileService {
                 const filename = fileNames[0];
                 this._currentPath = filename;
                 const path = filename.substring(0, filename.lastIndexOf('\\') + 1);
-                this._filesystem.readFile(filename, "utf-8", (err, data) => {
+                this._filesystem.readFile(filename, (err, data) => {
                     if (err) {
                         observer.next({ type: FsResultType.ERROR, message: this._errorOpeningProject });
                         observer.complete();
