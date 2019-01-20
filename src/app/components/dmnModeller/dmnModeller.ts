@@ -384,25 +384,35 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private searchRows(): void {
+        const searchValue = (!!this.searchValue) ? this.searchValue.toLowerCase() : null;
+
         this.clearSearchStyles();
         this._modeller
             ._activeView
             .element
             .decisionTable
             .rule
-            .filter(rule => this.filterRule(rule))
+            .filter(rule => this.filterRule(rule, searchValue))
             .forEach(filteredRule => {
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
             });
     }
 
-    private filterRule(rule: DmnModdleRule) {
+    private filterRule(rule: DmnModdleRule, searchValue: string) {
         if (!this.searchValue || !this.searchValue.trim()) { return false; }
+
         const inputEntriesFound = (!!rule.inputEntry) ?
-            rule.inputEntry.filter(input => input.text.indexOf(this.searchValue) > -1).length : 0;
+            rule.inputEntry.filter(input => this.contains(input.text, searchValue)).length : 0;
         const outputEnriesFound = (!!rule.outputEntry) ?
-            rule.outputEntry.filter(output => output.text.indexOf(this.searchValue) > -1).length : 0;
+            rule.outputEntry.filter(output => this.contains(output.text, searchValue)).length : 0;
+
         return (inputEntriesFound + outputEnriesFound) < 1;
+    }
+
+    private contains(text: string, searchString: string) {
+        if (!text && !searchString) { return true; }
+        if (!text) { return false; }
+        return text.toLowerCase().indexOf(searchString) > -1;
     }
 
     private clearSearch() {
