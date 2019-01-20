@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input, Output } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input, Output, HostListener, OnInit, Inject, Renderer2 } from '@angular/core';
 
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { ReplaySubject } from 'rxjs';
@@ -15,6 +15,8 @@ import { NewViewEvent } from '../../model/newViewEvent';
 import { RenameArtefactEvent } from '../../model/renameArtefactEvent';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
 import { UUID } from '../../functions/UUID';
+import { DOCUMENT } from '@angular/platform-browser';
+import { debounceTime } from 'rxjs/operators/debounceTime';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -92,7 +94,9 @@ export class DmnDatatypeMapping {
     templateUrl: 'dmnModeller.html',
     styleUrls: ['dmnModeller.scss'],
 })
-export class DmnModellerComponent implements AfterViewInit {
+export class DmnModellerComponent implements AfterViewInit, OnInit {
+
+    private static NO_COLUMN_SELECTED = 'alle Spalten';
 
     private initialized = false;
 
@@ -100,15 +104,53 @@ export class DmnModellerComponent implements AfterViewInit {
     private _container: ElementRef;
 
     private _modeller: DMNJS;
+    private _searchStylesheet: any;
 
     private _internalEventService = new ReplaySubject<{ type: string, identity: any, func: () => void }>();
+    private _debounceSubject = new ReplaySubject<() => void>(1);
 
     @Input()
     public type: string;
 
+    public searchOpen = false;
+    public searchValue: string;
+    public searchColumn = DmnModellerComponent.NO_COLUMN_SELECTED;
+    public currentColumns = [DmnModellerComponent.NO_COLUMN_SELECTED];
+
     public constructor(private _dmnXmlService: DmnXmlService,
-                       private _eventService: EventService,
-                       private _dataModelService: DataModelService) {}
+        private _eventService: EventService,
+        @Inject(DOCUMENT) private document,
+        private renderer: Renderer2,
+        private _dataModelService: DataModelService) { }
+
+    @HostListener('window:keyup', ['$event'])
+    public handleKeyboardEvent(event: KeyboardEvent) {
+        if (event.ctrlKey && event.code === 'KeyF') {
+            this.searchOpen = !this.searchOpen;
+            if (!this.searchOpen) {
+                this.clearSearch();
+            }
+        }
+    }
+
+    public onSearchValueChanged(newSearchValue: string) {
+        this.searchValue = newSearchValue;
+        this._debounceSubject.next(() => this.searchRows());
+    }
+
+    public onSearchColumnChanged(newSearchColumn: string) {
+        this.searchColumn = newSearchColumn;
+    }
+
+    public ngOnInit(): void {
+        const styleElement = this.renderer.createElement('style');
+        const text = this.renderer.createText('');
+        this.renderer.appendChild(styleElement, text);
+        this.renderer.appendChild(this.document.head, styleElement);
+        this._searchStylesheet = styleElement.sheet;
+
+        this._debounceSubject.pipe( debounceTime(500) ).subscribe(func => func());
+    }
 
     public ngAfterViewInit(): void {
 
@@ -144,7 +186,7 @@ export class DmnModellerComponent implements AfterViewInit {
                 this._modeller.saveXML(null, (error, result) => {
                     subject.next(result);
                 });
-                return subject.asObservable().pipe( distinctUntilChanged() );
+                return subject.asObservable().pipe(distinctUntilChanged());
             }
         });
 
@@ -159,6 +201,7 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
+            this.clearSearch();
             const ev = new NewViewEvent(event.activeView.element.id);
             if (event.activeView.type !== 'decisionTable') {
                 ev.data.isDecisionTable = false;
@@ -262,7 +305,7 @@ export class DmnModellerComponent implements AfterViewInit {
 
         this._modeller.saveXML(null, (error, xml) => {
             if (error) { return; }
-            this._modeller.importXML(xml, (err => {}));
+            this._modeller.importXML(xml, (err => { }));
         });
     }
 
@@ -309,7 +352,7 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private isInputExpressionChanged(event: DmnModdleEvent) {
         return (event.elements && event.elements.length > 1 &&
-                !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
+            !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
     }
 
     private getElementByType(event: DmnModdleEvent, type: string) {
@@ -334,10 +377,46 @@ export class DmnModellerComponent implements AfterViewInit {
 
     private inputColumnsPresent(modeller: DMNJS) {
         return (!!this._modeller &&
-                !!this._modeller._activeView &&
-                !!this._modeller._activeView.element &&
-                !!this._modeller._activeView.element.decisionTable &&
-                !!this._modeller._activeView.element.decisionTable.input);
+            !!this._modeller._activeView &&
+            !!this._modeller._activeView.element &&
+            !!this._modeller._activeView.element.decisionTable &&
+            !!this._modeller._activeView.element.decisionTable.input);
+    }
+
+    private searchRows(): void {
+        this.clearSearchStyles();
+        this._modeller
+            ._activeView
+            .element
+            .decisionTable
+            .rule
+            .filter(rule => this.filterRule(rule))
+            .forEach(filteredRule => {
+                this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
+            });
+    }
+
+    private filterRule(rule: DmnModdleRule) {
+        if (!this.searchValue || !this.searchValue.trim()) { return false; }
+        const inputEntriesFound = (!!rule.inputEntry) ?
+            rule.inputEntry.filter(input => input.text.indexOf(this.searchValue) > -1).length : 0;
+        const outputEnriesFound = (!!rule.outputEntry) ?
+            rule.outputEntry.filter(output => output.text.indexOf(this.searchValue) > -1).length : 0;
+        return (inputEntriesFound + outputEnriesFound) < 1;
+    }
+
+    private clearSearch() {
+        this.clearSearchStyles();
+        this.searchOpen = false;
+        this.searchColumn = null;
+        this.searchValue = null;
+    }
+
+    private clearSearchStyles() {
+        const count = this._searchStylesheet.rules.length;
+        for (let i = 0; i < count; i++) {
+            this._searchStylesheet.deleteRule(0);
+        }
     }
 
 }

@@ -5,6 +5,16 @@
     padding-bottom: 50px;
     height: 100%;
     position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.search {
+    max-height: 20px;
+}
+
+.modeler-container {
+    overflow-y: auto;
 }
 
 :host::ng-deep {

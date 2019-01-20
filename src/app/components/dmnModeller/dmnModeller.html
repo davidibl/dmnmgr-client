@@ -1,2 +1,27 @@
-<div #canvas class="canvas full-height"></div>
-
+<div *ngIf="searchOpen" class="search mb-1">
+    Suche:
+    <xn-input-form [title]="'suche'"
+                   [label]="'Suchwort'"
+                   [showLabel]="false"
+                   [validatable]="false"
+                   class="inline-block mb-0 nomargin"
+                   [name]="'suche'"
+                   (ngModelChange)="onSearchValueChanged($event)"
+                   [(ngModel)]="searchValue"></xn-input-form>
+    <!-- in Spalte:
+    <xn-dropdown [showLabel]="false"
+                 [idPropertyPath]="null"
+                 [displayPropertyPath]="null"
+                 [validatable]="false"
+                 class="inline-block mb-0 nomargin w120"
+                 [name]="'datamodel.type'"
+                 [noborder]="true"
+                 [nomargin]="true"
+                 [label]="'Spalte wählen'"
+                 [items]="currentColumns"
+                 (ngModelChange)="onSearchColumnChanged($event)"
+                 [ngModel]="searchColumn"></xn-dropdown> -->
+</div>
+<div class="modeler-container full-height">
+    <div #canvas class="canvas full-height"></div>
+</div>
