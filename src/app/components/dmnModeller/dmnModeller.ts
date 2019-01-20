@@ -395,6 +395,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .filter(rule => this.filterRule(rule, searchValue))
             .forEach(filteredRule => {
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
+                this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] + td { display: none; }`);
             });
     }
 
