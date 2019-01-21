@@ -46,6 +46,7 @@ export interface DmnModdleElement {
     id: string;
     name: string;
     text: string;
+    label: string;
     inputValues?: DmnModdleElement;
     inputExpression?: DmnModdleElement;
     input?: DmnModdleElement[];
@@ -89,14 +90,17 @@ export class DmnDatatypeMapping {
     static date = JsonDatatype.DATETIME;
 }
 
+export interface DmnColumn {
+    label: string;
+    id: string;
+}
+
 @Component({
     selector: 'xn-dmn-modeller',
     templateUrl: 'dmnModeller.html',
     styleUrls: ['dmnModeller.scss'],
 })
 export class DmnModellerComponent implements AfterViewInit, OnInit {
-
-    private static NO_COLUMN_SELECTED = 'alle Spalten';
 
     private initialized = false;
 
@@ -114,8 +118,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     public searchOpen = false;
     public searchValue: string;
-    public searchColumn = DmnModellerComponent.NO_COLUMN_SELECTED;
-    public currentColumns = [DmnModellerComponent.NO_COLUMN_SELECTED];
+    public searchColumn: string = null;
+    public currentColumns: DmnColumn[] = [];
 
     public constructor(private _dmnXmlService: DmnXmlService,
         private _eventService: EventService,
@@ -140,6 +144,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     public onSearchColumnChanged(newSearchColumn: string) {
         this.searchColumn = newSearchColumn;
+        this.searchRows();
     }
 
     public ngOnInit(): void {
@@ -199,6 +204,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .subscribe(importEvent => this.importData(importEvent.data));
     }
 
+    private refreshTableColumnsList() {
+        const columns = <DmnColumn[]>[];
+        columns.splice(0, 0, ...this.createOutputColumnArray());
+        columns.splice(0, 0, ...this.createInputColumnArray());
+        this.currentColumns = columns;
+    }
+
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
             this.clearSearch();
@@ -235,6 +247,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     .subscribe(value => literalExpression.typeRef = value);
             }
             this.updateResponseModel();
+            this.refreshTableColumnsList();
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
             if (event.element && event.element.$type === DmnType.DECISION_TABLE) {
@@ -247,6 +260,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             }
         });
         this.updateResponseModel();
+        this.refreshTableColumnsList();
 
         const ev = new NewViewEvent(this._modeller._activeView.element.id);
         if (this._modeller._activeView.element.$type !== DmnType.DECISION_TABLE) {
@@ -311,6 +325,22 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private generateId(type: string) {
         return type.substr(type.indexOf(':') + 1) + UUID.new();
+    }
+
+    private createOutputColumnArray() {
+        const columns = this._modeller._activeView.element.decisionTable.output;
+        if (!columns) { return []; }
+        return columns.map(column => {
+            return { label: (column.name) ? column.name : column.id, id: column.id };
+        });
+    }
+
+    private createInputColumnArray() {
+        const columns = this._modeller._activeView.element.decisionTable.input;
+        if (!columns) { return []; }
+        return columns.map(column => {
+            return { label: (column.label) ? column.label : column.inputExpression.text, id: column.id };
+        });
     }
 
     private updateResponseModel() {
@@ -384,28 +414,46 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private searchRows(): void {
-        const searchValue = (!!this.searchValue) ? this.searchValue.toLowerCase() : null;
-
         this.clearSearchStyles();
+
+        const searchValue = (!!this.searchValue) ? this.searchValue.toLowerCase().trim() : null;
+
+        if (!searchValue ||
+            !this._modeller._activeView.element.decisionTable ||
+            !this._modeller._activeView.element.decisionTable.rule) {
+                return;
+        }
+
+        let col = this._modeller._activeView.element.decisionTable.input.findIndex(col => col.id === this.searchColumn);
+        let searchColumnType = 'INPUT';
+        if (col < 0) {
+            col = this._modeller._activeView.element.decisionTable.output.findIndex(col => col.id === this.searchColumn);
+            searchColumnType = 'OUTPUT';
+        }
+        let columnFilter = (!this.searchColumn) ?
+            (index) => true : (index: number, type?: string) => index === col && type === searchColumnType;
+
         this._modeller
             ._activeView
             .element
             .decisionTable
             .rule
-            .filter(rule => this.filterRule(rule, searchValue))
+            .filter(rule => this.filterRule(rule, searchValue, columnFilter))
             .forEach(filteredRule => {
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] + td { display: none; }`);
             });
     }
 
-    private filterRule(rule: DmnModdleRule, searchValue: string) {
+    private filterRule(rule: DmnModdleRule, searchValue: string, columnFilter: (index, type?) => boolean) {
         if (!this.searchValue || !this.searchValue.trim()) { return false; }
 
         const inputEntriesFound = (!!rule.inputEntry) ?
-            rule.inputEntry.filter(input => this.contains(input.text, searchValue)).length : 0;
+            rule.inputEntry.filter((input, index) =>
+                columnFilter(index, 'INPUT') && this.contains(input.text, searchValue)).length : 0;
         const outputEnriesFound = (!!rule.outputEntry) ?
-            rule.outputEntry.filter(output => this.contains(output.text, searchValue)).length : 0;
+            rule.outputEntry.filter((output, index) =>
+                columnFilter(index, 'OUTPUT') && this.contains(output.text, searchValue)).length : 0;
 
         return (inputEntriesFound + outputEnriesFound) < 1;
     }

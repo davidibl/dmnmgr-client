@@ -3,15 +3,17 @@
     <xn-input-form [title]="'suche'"
                    [label]="'Suchwort'"
                    [showLabel]="false"
+                   #searchInput
+                   [autofocus]="true"
                    [validatable]="false"
                    class="inline-block mb-0 nomargin"
                    [name]="'suche'"
                    (ngModelChange)="onSearchValueChanged($event)"
                    [(ngModel)]="searchValue"></xn-input-form>
-    <!-- in Spalte:
+    in Spalte:
     <xn-dropdown [showLabel]="false"
-                 [idPropertyPath]="null"
-                 [displayPropertyPath]="null"
+                 [idPropertyPath]="'id'"
+                 [displayPropertyPath]="'label'"
                  [validatable]="false"
                  class="inline-block mb-0 nomargin w120"
                  [name]="'datamodel.type'"
@@ -20,7 +22,7 @@
                  [label]="'Spalte wählen'"
                  [items]="currentColumns"
                  (ngModelChange)="onSearchColumnChanged($event)"
-                 [ngModel]="searchColumn"></xn-dropdown> -->
+                 [ngModel]="searchColumn"></xn-dropdown>
 </div>
 <div class="modeler-container full-height">
     <div #canvas class="canvas full-height"></div>
