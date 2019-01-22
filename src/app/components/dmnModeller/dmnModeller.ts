@@ -17,6 +17,7 @@ import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChang
 import { UUID } from '../../functions/UUID';
 import { DOCUMENT } from '@angular/platform-browser';
 import { debounceTime } from 'rxjs/operators/debounceTime';
+import { DecisionDeleteEvent } from '../../model/decisionDeleteEvent';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -55,6 +56,18 @@ export interface DmnModdleElement {
     $model: DmnModdle;
     typeRef: string;
     $parent: DmnModdleElement;
+}
+
+export interface ShapeEvent {
+    context: ShapeEventContext;
+}
+
+export interface ShapeEventContext {
+    shape: Shape;
+}
+
+export interface Shape {
+    id: string;
 }
 
 export interface DmnModdleTable extends DmnModdleElement {
@@ -103,6 +116,7 @@ export interface DmnColumn {
 export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private initialized = false;
+    private drdListenerInited = false;
 
     @ViewChild('canvas')
     private _container: ElementRef;
@@ -129,6 +143,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     @HostListener('window:keyup', ['$event'])
     public handleKeyboardEvent(event: KeyboardEvent) {
+        if (!this._modeller._activeView.element.decisionTable) {
+            return;
+        }
+
         if (event.ctrlKey && event.code === 'KeyF') {
             this.searchOpen = !this.searchOpen;
             if (!this.searchOpen) {
@@ -205,6 +223,11 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private refreshTableColumnsList() {
+        if (!this._modeller._activeView.element.decisionTable) {
+            this.currentColumns = [];
+            return;
+        }
+
         const columns = <DmnColumn[]>[];
         columns.splice(0, 0, ...this.createOutputColumnArray());
         columns.splice(0, 0, ...this.createInputColumnArray());
@@ -226,6 +249,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     this.updateResponseModel();
                 }
             });
+            if (!this.drdListenerInited) {
+                this.initDrdListeners();
+            }
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             if (this.isInputExpressionChanged(event)) {
@@ -273,6 +299,15 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                 this._eventService.publishEvent(ev);
                 this.updateResponseModel();
             }
+        });
+        this.initDrdListeners();
+    }
+
+    private initDrdListeners() {
+        if (!this._modeller._viewers.drd) { return; }
+        this.drdListenerInited = true;
+        this._modeller._viewers.drd.on('commandStack.shape.delete.postExecuted', (event: ShapeEvent) => {
+            this._eventService.publishEvent(new DecisionDeleteEvent(event.context.shape.id));
         });
     }
 

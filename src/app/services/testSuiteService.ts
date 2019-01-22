@@ -8,6 +8,7 @@ import { NewViewEvent } from '../model/newViewEvent';
 import { EventType } from '../model/eventType';
 import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 import { TestsuiteProject } from '../model/project/testsuiteproject';
+import { DecisionDeleteEvent } from '../model/decisionDeleteEvent';
 
 @Injectable()
 export class TestSuiteService {
@@ -29,6 +30,9 @@ export class TestSuiteService {
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
             .subscribe(event => this.renameCurrentArtefact(event.data.artefactId, event.data.newArtefactId));
+        this._eventService
+            .getEvent<DecisionDeleteEvent>((ev) => ev.type === EventType.DECISON_DELETED)
+            .subscribe(event => this.deleteDecisonTable(event.data));
     }
 
     public addTestCase(testdata?: any, expectedResult?: any) {
@@ -89,5 +93,10 @@ export class TestSuiteService {
             delete this._testsuiteProject[this._currentArtefactId];
         }
         this._currentArtefactId = newArtefactId;
+    }
+
+    private deleteDecisonTable(id: string) {
+        if (!this._testsuiteProject) { return; }
+        delete this._testsuiteProject[id];
     }
 }

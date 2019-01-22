@@ -11,6 +11,7 @@ import { DataModelTable } from '../model/project/dataModelTable';
 import { NewViewEvent } from '../model/newViewEvent';
 import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 import { take } from 'rxjs/operators/take';
+import { DecisionDeleteEvent } from '../model/decisionDeleteEvent';
 
 @Injectable()
 export class DataModelService {
@@ -28,6 +29,9 @@ export class DataModelService {
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
             .subscribe(event => this.renameCurrentArtefact(event.data.artefactId, event.data.newArtefactId));
+        this._eventService
+            .getEvent<DecisionDeleteEvent>((ev) => ev.type === EventType.DECISON_DELETED)
+            .subscribe(event => this.deleteDecisonTable(event.data));
     }
 
     public newDataModel(datamodel: ObjectDefinition) {
@@ -131,5 +135,10 @@ export class DataModelService {
             delete this._dataModelProject[this._currentArtefactId];
         }
         this._currentArtefactId = newArtefactId;
+    }
+
+    private deleteDecisonTable(id: string) {
+        if (!this._dataModelProject) { return; }
+        delete this._dataModelProject[id];
     }
 }
