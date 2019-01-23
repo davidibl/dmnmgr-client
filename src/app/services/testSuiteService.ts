@@ -74,7 +74,7 @@ export class TestSuiteService {
     }
 
     private addTestCaseToTestSuite(testsuite: Testsuite, nextName: string, testdata: Object, expectedResult: Object) {
-        testsuite.tests.push(this.createTest(name, testdata, expectedResult));
+        testsuite.tests.push(this.createTest(nextName, testdata, expectedResult));
     }
 
     private createTest(name: string, testdata: Object, expectedResult: Object) {
