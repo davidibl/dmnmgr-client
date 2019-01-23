@@ -4,7 +4,35 @@
         <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>Importieren
     </xn-button>
 </div>
-<div class="pt-1 pl-1 pr-1">
+<div>
+    <div class="inline-block ml-1 mr-1">
+        <xn-input-form [title]="'recordSeparator'"
+                    [label]="'Zeilen Separator'"
+                    [placeholder]="'<newline>'"
+                    [showLabel]="true"
+                    #searchInput
+                    [autofocus]="true"
+                    [validatable]="false"
+                    class="inline-block mb-0 mr-1"
+                    [name]="'recordSeparator'"
+                    [(ngModel)]="recordSeparator"></xn-input-form>
+    </div>
+    <div class="inline-block mr-1">
+        <xn-input-form [title]="'separator'"
+                    [label]="'Feld Separator'"
+                    [placeholder]="'<semicolon>'"
+                    [showLabel]="true"
+                    #searchInput
+                    [autofocus]="true"
+                    [validatable]="false"
+                    class="inline-block mb-0"
+                    [name]="'separator'"
+                    [(ngModel)]="fieldSeparator"></xn-input-form>
+    </div>
+    <xn-checkbox [name]="'replaceAll'"
+                 [(ngModel)]="replaceAll">Zeilen ersetzen</xn-checkbox>
+</div>
+<div class="pt-1 pl-1 pr-1 full-height">
     <xn-input-form [(ngModel)]="separatedData"
                    [name]="'separatedData'"
                    [label]="'Eingabedaten als CSV'"
