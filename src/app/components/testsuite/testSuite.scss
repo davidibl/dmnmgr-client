@@ -1,6 +1,11 @@
 @import 'variables';
 @import 'mixins';
 
+:host {
+    display: block;
+    padding-top: 5px;
+}
+
 .button-column {
     width: 44px;
 }

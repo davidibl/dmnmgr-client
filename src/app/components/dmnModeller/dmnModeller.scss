@@ -1,7 +1,7 @@
 :host {
     display: block;
     padding-right: 5px;
-    padding-left: 5px;
+    padding-left: 0px;
     padding-bottom: 50px;
     height: 100%;
     position: relative;
@@ -10,10 +10,20 @@
 }
 
 .search {
-    max-height: 20px;
+    max-height: 50px;
+    padding-bottom: 7px;
+    padding-top: 6px;
+    padding-left: 10px;
+    position: absolute;
+    z-index: 1000;
+    background-color: #fff;
+    width: 100%;
+    box-shadow: 0px 5px 6px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
 .modeler-container {
+    margin-top: 0.5rem;
+    margin-left: 5px;
     overflow-y: auto;
 }
 
