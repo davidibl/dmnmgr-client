@@ -100,6 +100,12 @@
                         "scripts": [
                             "node_modules/openseadragon/build/openseadragon/openseadragon.min.js"
                         ],
+                        "stylePreprocessorOptions": {
+                            "includePaths": [
+                                "src/scss",
+                                "node_modules/breakpoint-sass/stylesheets"
+                            ]
+                        },
                         "styles": [
                             "src/assets/css/diagram-js.css",
                             "src/assets/css/dmn-js-decision-table.css",
