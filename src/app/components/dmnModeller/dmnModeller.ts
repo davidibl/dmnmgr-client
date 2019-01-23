@@ -313,10 +313,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private importData(data: string[][]) {
 
-        const columns = [];
-        this._modeller._activeView.element.decisionTable.input.forEach(col => columns.push(col));
-        this._modeller._activeView.element.decisionTable.output.forEach(col => columns.push(col));
-
         const newRules = <DmnModdleRule[]>[];
         data.forEach(row => {
             const newRule = this._modeller._moddle.create(DmnType.RULE, {
@@ -325,25 +321,29 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             newRule.inputEntry = [];
             newRule.outputEntry = [];
             let counter = 0;
-            this._modeller._activeView.element.decisionTable.input.forEach(_ => {
-                const input = newRule
-                    .$model
-                    .create(DmnType.UNARY_TEST);
-                input.text = (counter < row.length) ? `${row[counter]}` : null;
-                input.id = this.generateId(DmnType.UNARY_TEST);
-                newRule.inputEntry.push(input);
-                counter++;
-            });
+            if (this._modeller._activeView.element.decisionTable.input) {
+                this._modeller._activeView.element.decisionTable.input.forEach(_ => {
+                    const input = newRule
+                        .$model
+                        .create(DmnType.UNARY_TEST);
+                    input.text = (counter < row.length) ? `${row[counter]}` : null;
+                    input.id = this.generateId(DmnType.UNARY_TEST);
+                    newRule.inputEntry.push(input);
+                    counter++;
+                });
+            }
 
-            this._modeller._activeView.element.decisionTable.input.forEach(_ => {
-                const input = newRule
-                    .$model
-                    .create(DmnType.LITERAL_EXPRESSION);
-                input.text = (counter < row.length) ? `${row[counter]}` : null;
-                input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
-                newRule.outputEntry.push(input);
-                counter++;
-            });
+            if (this._modeller._activeView.element.decisionTable.output) {
+                this._modeller._activeView.element.decisionTable.output.forEach(_ => {
+                    const input = newRule
+                        .$model
+                        .create(DmnType.LITERAL_EXPRESSION);
+                    input.text = (counter < row.length) ? `${row[counter]}` : null;
+                    input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
+                    newRule.outputEntry.push(input);
+                    counter++;
+                });
+            }
 
             newRules.push(newRule);
         });
