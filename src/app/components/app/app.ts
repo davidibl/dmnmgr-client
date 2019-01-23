@@ -1,4 +1,4 @@
-import { Component, OnInit, Pipe } from '@angular/core';
+import { Component, OnInit, Pipe, HostListener } from '@angular/core';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
@@ -127,7 +127,7 @@ export class AppComponent {
         this._testDecisionService.deployDecision().subscribe();
     }
 
-    public exit() {
+    public quit() {
         this._electronService.process.exit();
     }
 
@@ -177,6 +177,23 @@ export class AppComponent {
                         ))
             )
             .subscribe(obs => concat(obs).subscribe());
+    }
+
+    @HostListener('window:keyup', ['$event'])
+    public handleKeyboardEvent(event: KeyboardEvent) {
+        if (!event.ctrlKey) { return; }
+
+        switch (event.code) {
+            case 'KeyO':
+                this.openProject();
+                break;
+            case 'KeyN':
+                this.createNewProject();
+                break;
+            case 'KeyS':
+                this.saveProject();
+                break;
+        }
     }
 
     private processError(result: FileSystemAccessResult<any>) {
