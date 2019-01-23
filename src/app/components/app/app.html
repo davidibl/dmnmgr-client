@@ -7,13 +7,16 @@
                 <div class="sub-menu-container">
                     <li (click)="createNewProject()">
                         <i class="fa fa-file-o mr-05" aria-hidden="true"></i>Neu
+                        <span class="right">(STRG + N)</span>
                     </li>
                     <li (click)="openProject()">
                         <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Öffnen
+                        <span class="right">(STRG + O)</span>
                     </li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="saveProject()">
                         <i class="fa fa-floppy-o mr-05" aria-hidden="true"></i>Speichern
+                        <span class="right">(STRG + S)</span>
                     </li>
                     <li (click)="saveProjectAs()">Speichern unter</li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
@@ -23,6 +26,20 @@
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="exit()">
                         <i class="fa fa-sign-out mr-05" aria-hidden="true"></i>Beenden
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="bearbeitenMenuVisible = !bearbeitenMenuVisible"
+                    (mouseleave)="bearbeitenMenuVisible = false"
+                    class="small transparent">Bearbeiten
+            <ul *ngIf="bearbeitenMenuVisible" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="openSearch()">
+                        <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
+                        <span class="right">(STRG + F)</span>
                     </li>
                 </div>
             </ul>

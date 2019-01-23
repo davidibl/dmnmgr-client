@@ -18,6 +18,7 @@ import { UUID } from '../../functions/UUID';
 import { DOCUMENT } from '@angular/platform-browser';
 import { debounceTime } from 'rxjs/operators/debounceTime';
 import { DecisionDeleteEvent } from '../../model/decisionDeleteEvent';
+import { EventType } from '../../model/eventType';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -178,6 +179,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._searchStylesheet = styleElement.sheet;
 
         this._debounceSubject.pipe( debounceTime(500) ).subscribe(func => func());
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.OPEN_SEARCH)
+            .subscribe(_ => this.searchOpen = true);
     }
 
     public ngAfterViewInit(): void {

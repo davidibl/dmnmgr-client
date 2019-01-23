@@ -14,6 +14,9 @@ import { TestDecisionService } from '../../services/testDecisionService';
 import { mergeMap } from 'rxjs/operators/mergeMap';
 import { concat } from 'rxjs';
 import { switchMap } from 'rxjs/operators/switchMap';
+import { EventService } from '../../services/eventService';
+import { BaseEvent } from '../../model/event';
+import { EventType } from '../../model/eventType';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -39,6 +42,7 @@ export class AppComponent {
 
     public fileMenuVisible = false;
     public testMenuVisible = false;
+    public bearbeitenMenuVisible = false;
     public engineMenu = false;
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
@@ -59,6 +63,7 @@ export class AppComponent {
                        private _projectService: DmnProjectService,
                        private _testsuiteService: TestSuiteService,
                        private _testDecisionService: TestDecisionService,
+                       private _eventService: EventService,
                        private _electronService: ElectronService) {}
 
     public openProject() {
@@ -130,6 +135,10 @@ export class AppComponent {
         if (!open) {
             this.clearError();
         }
+    }
+
+    public openSearch() {
+        this._eventService.publishEvent(new BaseEvent(EventType.OPEN_SEARCH))
     }
 
     public clearError() {
