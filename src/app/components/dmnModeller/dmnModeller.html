@@ -23,6 +23,9 @@
                  [items]="currentColumns"
                  (ngModelChange)="onSearchColumnChanged($event)"
                  [ngModel]="searchColumn"></xn-dropdown>
+    <button (click)="closeAndClearSearch()" style="padding-top: 4px;" class="small right mr-05 no-border no-background">
+        <i class="fa fa-times" aria-hidden="true"></i>
+    </button>
 </div>
 <div class="modeler-container full-height">
     <div #canvas class="canvas full-height"></div>

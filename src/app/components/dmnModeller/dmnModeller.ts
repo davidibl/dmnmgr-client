@@ -155,6 +155,11 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         }
     }
 
+    public closeAndClearSearch() {
+        this.searchOpen = false;
+        this.clearSearch();
+    }
+
     public onSearchValueChanged(newSearchValue: string) {
         this.searchValue = newSearchValue;
         this._debounceSubject.next(() => this.searchRows());
