@@ -45,6 +45,7 @@
 
 .dmn-decision-table-container .tjs-table {
   min-width: 100%;
+  width: auto;
 }
 
 /* end basic styles */
@@ -83,7 +84,8 @@
 }
 
 .dmn-decision-table-container th {
-  min-width: 192px;
+  min-width: 35px;
+  overflow: hidden;
 }
 
 .dmn-decision-table-container th,
