@@ -10,6 +10,7 @@ import { EventType } from '../model/eventType';
 import { PluginDescriptor } from '../model/plugin/pluginDescriptor';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { PluginMetaDescriptor } from '../model/plugin/pluginMetaDescriptor';
+import { mergeMap, filter } from 'rxjs/operators';
 
 @Injectable()
 export class DmnProjectService {
@@ -81,8 +82,13 @@ export class DmnProjectService {
     public getPlugin(id: string) {
         return this._pluginsConfiguredSubject
             .pipe(
-                map(plugins => plugins.find(plugin => plugin.id === id)),
+                map(plugins => plugins.find(plugin => plugin.id === id))
             );
+    }
+
+    public configurePlugin(pluginId: string, configuration: any) {
+        this._pluginsConfigured.find(pl => pl.id === pluginId).configuration = configuration;
+        this.pluginsConfigured = this._pluginsConfigured;
     }
 
     public togglePluginActivation(plugin: PluginMetaDescriptor) {

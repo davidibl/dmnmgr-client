@@ -3,6 +3,8 @@ import { DeploymentService } from '../../../services/deploymentService';
 import { DomSanitizer } from '@angular/platform-browser';
 import { SessionDataService } from '../../../services/sessionDataService';
 import { take } from 'rxjs/operators/take';
+import { DmnProjectService } from '../../../services/dmnProjectService';
+import { map } from 'rxjs/operators/map';
 
 @Component({
     selector: 'xn-iframe-tab',
@@ -22,7 +24,7 @@ export class IframeTabComponent implements OnInit {
     public set iframeUrl(iframeUrl: string) {
         if (this.iframeUrl === iframeUrl) { return; }
         this._iframeUrl = iframeUrl;
-        this._sessionService.setPermanentValue('example', { url: this.iframeUrl, deploymentUrl: this.deploymentUrl });
+        this.configurePlugin({ url: this.iframeUrl, deploymentUrl: this.deploymentUrl });
         if (!iframeUrl) { this.sanitizedUrl = null; return; }
         this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
     }
@@ -32,23 +34,21 @@ export class IframeTabComponent implements OnInit {
     }
 
     public set deploymentUrl(deploymentUrl: string) {
+        if (this._deploymentUrl === deploymentUrl) { return; }
         this._deploymentUrl = deploymentUrl;
-        this._sessionService.setPermanentValue('example', { url: this.iframeUrl, deploymentUrl: this.deploymentUrl });
+        this.configurePlugin({ url: this.iframeUrl, deploymentUrl: this.deploymentUrl });
     }
 
     public constructor(private _deploymentService: DeploymentService,
-                       private _sessionService: SessionDataService,
+                       private _projectService: DmnProjectService,
                        private sanitizer: DomSanitizer) {}
 
     public ngOnInit() {
-        this._sessionService
-            .getPermanentValue('example')
-            .pipe( take(1) )
-            .subscribe(value => {
-                if (value) {
-                    this.iframeUrl = value['url'];
-                    this.deploymentUrl = value['deploymentUrl'];
-                }
+        this.getPlugin()
+            .subscribe(pluginConfiguration => {
+                if (!pluginConfiguration || !pluginConfiguration.configuration) { this.reset(); return; }
+                this.iframeUrl = pluginConfiguration.configuration.url;
+                this.deploymentUrl = pluginConfiguration.configuration.deploymentUrl;
             });
     }
 
@@ -60,5 +60,23 @@ export class IframeTabComponent implements OnInit {
                     this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
                 }
             });
+    }
+
+    private configurePlugin(configuration: any) {
+        this.getPlugin()
+            .pipe(
+                take(1)
+            )
+            .subscribe(plugin => this._projectService.configurePlugin(plugin.id, configuration));
+    }
+
+    private getPlugin() {
+        return this._projectService
+            .getPlugin('example');
+    }
+
+    private reset() {
+        this._deploymentUrl = null;
+        this._iframeUrl = null;
     }
 }
