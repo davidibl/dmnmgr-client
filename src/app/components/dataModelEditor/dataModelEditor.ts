@@ -15,15 +15,27 @@ export class DataModelEditorComponent implements OnInit {
 
     public responseModel$: Observable<ObjectDefinition>;
     public requestModel$: Observable<ObjectDefinition>;
+    public requestModelsExceptCurrent$: Observable<string[]>;
+    public requestModelReferenced$: Observable<string>;
 
     public constructor(private _dataModelService: DataModelService) {}
 
     public ngOnInit() {
         this.requestModel$ = this._dataModelService.getDataModel();
         this.responseModel$ = this._dataModelService.getResponseModel();
+        this.requestModelsExceptCurrent$ = this._dataModelService.getDataModelsExceptCurrent();
+        this.requestModelReferenced$ = this._dataModelService.getCurrentDataModelReference();
+    }
+
+    public onNewModelCreated(requestModel: ObjectDefinition) {
+        this._dataModelService.newDataModel(requestModel);
     }
 
     public onRequestModelChanged(requestModel: ObjectDefinition) {
-        this._dataModelService.newDataModel(requestModel);
+        this._dataModelService.dataModelChanged(requestModel);
+    }
+
+    public onExistingModelSelected(existingModel: string) {
+        this._dataModelService.setCurrentDataModelReference(existingModel);
     }
 }

@@ -52,6 +52,9 @@ export class JsonEditorComponent implements OnInit {
     public requestModelChange = new EventEmitter<ObjectDefinition>();
 
     @Output()
+    public newModelCreate = new EventEmitter<ObjectDefinition>();
+
+    @Output()
     public valueChange = new EventEmitter<Object>();
 
     public get editorNodeVisible() {
@@ -72,13 +75,13 @@ export class JsonEditorComponent implements OnInit {
     public onImportWorkflowCompleted(objectDefinition: ObjectDefinition) {
         this._requestModel = objectDefinition;
         this.importerOpen = false;
-        this.requestModelChange.emit(this._requestModel);
+        this.newModelCreate.emit(this._requestModel);
         this._importer.reset();
     }
 
     public createNewEmptyModel() {
         this._requestModel = this.createEmptyObject();
-        this.requestModelChange.emit(this._requestModel);
+        this.newModelCreate.emit(this._requestModel);
     }
 
     public createNewEmptyValue() {

@@ -1,8 +1,22 @@
 <div class="flex flex-wrap">
     <div class="col-12 col-6-m">
         <h4>Abfrage-Modell</h4>
+        Bestehendes Modell verwenden:
+        <xn-dropdown [showLabel]="false"
+                    [idPropertyPath]="null"
+                    [displayPropertyPath]="null"
+                    [validatable]="false"
+                    class="inline-block mb-0 nomargin w120"
+                    [name]="'requestModel'"
+                    [noborder]="true"
+                    [nomargin]="true"
+                    [label]="'Datenmodelle'"
+                    [items]="requestModelsExceptCurrent$ | async"
+                    (ngModelChange)="onExistingModelSelected($event)"
+                    [ngModel]="requestModelReferenced$ | async"></xn-dropdown>
         <xn-json-editor [type]="editorTypes.MODEL"
                         (requestModelChange)="onRequestModelChanged($event)"
+                        (newModelCreate)="onNewModelCreated($event)"
                         [requestModel]="requestModel$ | async"></xn-json-editor>
     </div>
     <div class="col-12 col-6-m">

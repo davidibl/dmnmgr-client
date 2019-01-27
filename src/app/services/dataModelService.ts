@@ -40,13 +40,61 @@ export class DataModelService {
         this.provideRequestModel(this._currentArtefactId);
     }
 
+    public dataModelChanged(datamodel: ObjectDefinition) {
+        const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentArtefactId);
+        if (this.isReferenced(dataModelTable.requestModel)) {
+            this._dataModelProject[dataModelTable.requestModel.name.substr(5)].requestModel = datamodel;
+        } else {
+            dataModelTable.requestModel = datamodel;
+        }
+        this.provideRequestModel(this._currentArtefactId);
+    }
+
     public setDataModelProject(dataModelPoject: DataModelProject) {
         this._dataModelProject = dataModelPoject;
         this.provideRequestModel(this._currentArtefactId);
     }
 
     public getDataModel(): Observable<ObjectDefinition> {
-        return this._datamodels.asObservable();
+        return this._datamodels
+            .pipe(
+                map(datamodel => {
+                    if (this.isReferenced(datamodel)) {
+                        datamodel = this._dataModelProject[datamodel.name.substr(5)].requestModel;
+                    }
+                    return datamodel;
+                })
+            );
+    }
+
+    public setCurrentDataModelReference(name: string) {
+        const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentArtefactId);
+        if (!dataModelTable.requestModel) { dataModelTable.requestModel = {}; }
+        if (dataModelTable.requestModel.name === `#ref/${name}`) { return; }
+        dataModelTable.requestModel =  { name: `#ref/${name}` };
+        this.provideRequestModel(this._currentArtefactId);
+    }
+
+    public getCurrentDataModelReference(): Observable<string> {
+        return this._datamodels
+            .pipe(
+                map(datamodel => this.isReferenced(datamodel) ?
+                    datamodel.name.substr(5) : null)
+            );
+    }
+
+    public getDataModelsExceptCurrent(): Observable<string[]> {
+        return this.getDataModel()
+            .pipe(
+                map(_ => {
+                    return Object
+                        .getOwnPropertyNames(this._dataModelProject)
+                        .map(name => {
+                            return name;
+                        })
+                        .filter(result => result !== this._currentArtefactId);
+                })
+            );
     }
 
     public getDataModelProject() {
@@ -134,6 +182,12 @@ export class DataModelService {
             this._dataModelProject[newArtefactId] = this._dataModelProject[this._currentArtefactId];
             delete this._dataModelProject[this._currentArtefactId];
         }
+
+        Object.getOwnPropertyNames(this._dataModelProject)
+            .filter(name => this.isReferenced(this._dataModelProject[name].requestModel))
+            .filter(name => this._dataModelProject[name].requestModel.name.indexOf(artefactId) > -1)
+            .forEach(name => this._dataModelProject[name].requestModel.name = `#ref/${newArtefactId}`);
+
         this._currentArtefactId = newArtefactId;
     }
 
@@ -141,4 +195,9 @@ export class DataModelService {
         if (!this._dataModelProject) { return; }
         delete this._dataModelProject[id];
     }
+
+    private isReferenced(datamodel: ObjectDefinition) {
+        return (datamodel && datamodel.name && datamodel.name.indexOf('#ref') === 0);
+    }
+
 }
