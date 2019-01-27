@@ -301,10 +301,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         });
     }
 
-    private generateId(type: string) {
-        return type.substr(type.indexOf(':') + 1) + UUID.new();
-    }
-
     private createOutputColumnArray() {
         const columns = this._modeller._activeView.element.decisionTable.output;
         if (!columns) { return []; }
