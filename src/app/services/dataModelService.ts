@@ -12,6 +12,7 @@ import { NewViewEvent } from '../model/newViewEvent';
 import { RenameArtefactEvent } from '../model/renameArtefactEvent';
 import { take } from 'rxjs/operators/take';
 import { DecisionDeleteEvent } from '../model/decisionDeleteEvent';
+import { JsonDatatype } from '../model/json/jsonDatatypes';
 
 @Injectable()
 export class DataModelService {
@@ -69,6 +70,12 @@ export class DataModelService {
 
     public setCurrentDataModelReference(name: string) {
         const dataModelTable = this.getOrCreateCurrentTableDataModel(this._currentArtefactId);
+        if (!name) {
+            if (this.isReferenced(dataModelTable.requestModel)) {
+                this.newDataModel({ type: JsonDatatype.OBJECT });
+            }
+            return;
+        }
         if (!dataModelTable.requestModel) { dataModelTable.requestModel = {}; }
         if (dataModelTable.requestModel.name === `#ref/${name}`) { return; }
         dataModelTable.requestModel =  { name: `#ref/${name}` };
