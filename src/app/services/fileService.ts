@@ -74,6 +74,24 @@ export class FileService {
         });
     }
 
+    public openConfigFile(): Observable<{ mosterecent: string[] }> {
+        return Observable.create(observer => {
+            if (!this._filesystem.existsSync('config.json')) {
+                observer.next(null);
+            } else {
+                this._filesystem.readFile('config.json', "utf-8", (err, data) => {
+                    if (err) {
+                        observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
+                        observer.complete();
+                        return;
+                    }
+                    observer.next({ type: FsResultType.OK, data: JSON.parse(data) });
+                    observer.complete();
+                });
+            }
+        });
+    }
+
     public saveProject(xml: string, project: DmnProject, chooseLocation = false):
             Observable<FileSystemAccessResult<void>> {
         const dialog = this._electronService.remote.dialog;

@@ -82,6 +82,7 @@ export class AppComponent implements OnInit {
                        private _electronService: ElectronService) {}
 
     public ngOnInit() {
+        this.loadMostRecentFiles();
         this.plugins$ = this._pluginService.getPlugins();
         this.pluginsConfigured$ = this._projectService.getPlugins();
         this.pluginsMerged$ = combineLatest(this.plugins$, this.pluginsConfigured$)
@@ -254,5 +255,11 @@ export class AppComponent implements OnInit {
                     tableId: propertyName,
                 }
             });
+    }
+
+    private loadMostRecentFiles() {
+        this._fileService
+            .openConfigFile()
+            .subscribe(_ => console.log(''));
     }
 }
