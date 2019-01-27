@@ -238,7 +238,9 @@
 /* view drd */
 .dmn-decision-table-container .view-drd {
   float: right;
-
+  position: fixed;
+  top: 79px;
+  right: 60px;
   margin-right: 10px;
 }
 
@@ -267,6 +269,8 @@
   width: 38px;
   z-index: 10;
   cursor: pointer;
+  position: fixed;
+  right: 20px;
 }
 
 .dmn-decision-table-container .powered-by-logo .logo {
