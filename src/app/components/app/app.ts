@@ -1,4 +1,4 @@
-import { Component, OnInit, Pipe, HostListener } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
@@ -17,6 +17,7 @@ import { switchMap } from 'rxjs/operators/switchMap';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event';
 import { EventType } from '../../model/eventType';
+import { Plugins, PluginDescriptor } from '../plugin/pluginsRegister';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -43,7 +44,11 @@ export class AppComponent {
     public fileMenuVisible = false;
     public testMenuVisible = false;
     public bearbeitenMenuVisible = false;
-    public engineMenu = false;
+    public pluginMenuVisible = false;
+    public engineMenuVisible = false;
+
+    public plugins = Plugins;
+
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
 
@@ -194,6 +199,10 @@ export class AppComponent {
                 this.saveProject();
                 break;
         }
+    }
+
+    public enablePlugin(plugin: PluginDescriptor) {
+
     }
 
     private processError(result: FileSystemAccessResult<any>) {

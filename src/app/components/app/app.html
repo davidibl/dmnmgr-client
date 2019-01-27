@@ -59,16 +59,29 @@
         </xn-button>
     </li>
     <li class="menu">
-        <xn-button (click)="engineMenu = !engineMenu"
-                   (mouseleave)="engineMenu = false"
+        <xn-button (click)="engineMenuVisible = !engineMenuVisible"
+                   (mouseleave)="engineMenuVisible = false"
                    class="small transparent">Engine
-            <ul *ngIf="engineMenu" class="sub-menu">
+            <ul *ngIf="engineMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="clearDeployments()">
                         <i class="fa fa-trash-o mr-05" aria-hidden="true"></i>Deployments löschen
                     </li>
                     <li (click)="deploy()">
                         <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>DRD bereitstellen
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="pluginMenuVisible = !pluginMenuVisible"
+                    (mouseleave)="pluginMenuVisible = false"
+                    class="small transparent">Plugins
+            <ul *ngIf="pluginMenuVisible" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li *ngFor="let plugin of plugins" (click)="enablePlugin(plugin)">
+                        <i class="fa mr-05" [ngClass]="plugin.icon" aria-hidden="true"></i>{{plugin.label}}
                     </li>
                 </div>
             </ul>
