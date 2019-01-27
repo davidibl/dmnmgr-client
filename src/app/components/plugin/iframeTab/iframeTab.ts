@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { DeploymentService } from '../../../services/deploymentService';
 import { DomSanitizer } from '@angular/platform-browser';
-import { SessionDataService } from '../../../services/sessionDataService';
 import { take } from 'rxjs/operators/take';
 import { DmnProjectService } from '../../../services/dmnProjectService';
-import { map } from 'rxjs/operators/map';
 
 @Component({
     selector: 'xn-iframe-tab',

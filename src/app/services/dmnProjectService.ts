@@ -10,7 +10,6 @@ import { EventType } from '../model/eventType';
 import { PluginDescriptor } from '../model/plugin/pluginDescriptor';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { PluginMetaDescriptor } from '../model/plugin/pluginMetaDescriptor';
-import { mergeMap, filter } from 'rxjs/operators';
 
 @Injectable()
 export class DmnProjectService {
