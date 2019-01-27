@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
@@ -12,12 +12,15 @@ import { map } from 'rxjs/operators/map';
 import { TestsuiteProject } from '../../model/project/testsuiteproject';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { mergeMap } from 'rxjs/operators/mergeMap';
-import { concat } from 'rxjs';
+import { concat, Observable } from 'rxjs';
 import { switchMap } from 'rxjs/operators/switchMap';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event';
 import { EventType } from '../../model/eventType';
-import { Plugins, PluginDescriptor } from '../plugin/pluginsRegister';
+import { PluginRegistryService } from '../../services/pluginRegistryService';
+import { PluginDescriptor } from '../../model/plugin/pluginDescriptor';
+import { PluginMetaDescriptor } from '../../model/plugin/pluginMetaDescriptor';
+import { combineLatest } from 'rxjs';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -32,12 +35,16 @@ export interface TestItem {
     result: boolean;
 }
 
+export interface PluginItem extends PluginMetaDescriptor {
+    activated: boolean;
+}
+
 @Component({
     selector: 'xn-app-root',
     templateUrl: 'app.html',
     styleUrls: ['app.scss'],
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
 
     private _filesystemError: string;
 
@@ -47,7 +54,9 @@ export class AppComponent {
     public pluginMenuVisible = false;
     public engineMenuVisible = false;
 
-    public plugins = Plugins;
+    public plugins$: Observable<PluginMetaDescriptor[]>;
+    public pluginsConfigured$: Observable<PluginDescriptor[]>;
+    public pluginsMerged$: Observable<PluginItem[]>;
 
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
@@ -69,7 +78,28 @@ export class AppComponent {
                        private _testsuiteService: TestSuiteService,
                        private _testDecisionService: TestDecisionService,
                        private _eventService: EventService,
+                       private _pluginService: PluginRegistryService,
                        private _electronService: ElectronService) {}
+
+    public ngOnInit() {
+        this.plugins$ = this._pluginService.getPlugins();
+        this.pluginsConfigured$ = this._projectService.getPlugins();
+        this.pluginsMerged$ = combineLatest(this.plugins$, this.pluginsConfigured$)
+            .pipe (
+                map(([pluginsMeta, plugins]) => {
+                    return pluginsMeta.map(plugin => {
+                        const configuration = plugins.find(pl => pl.id === plugin.id);
+                        const active = (configuration) ? configuration.activated : false;
+                        return {
+                            id: plugin.id,
+                            label: plugin.label,
+                            icon: plugin.icon,
+                            activated: active,
+                        }
+                    })
+                })
+            );
+    }
 
     public openProject() {
         this._fileService
@@ -201,8 +231,8 @@ export class AppComponent {
         }
     }
 
-    public enablePlugin(plugin: PluginDescriptor) {
-
+    public enablePlugin(plugin: PluginItem) {
+        this._projectService.togglePluginActivation(plugin);
     }
 
     private processError(result: FileSystemAccessResult<any>) {

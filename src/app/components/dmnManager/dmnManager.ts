@@ -6,6 +6,8 @@ import { map } from 'rxjs/operators/map';
 import { EventType } from '../../model/eventType';
 import { NewViewEvent } from '../../model/newViewEvent';
 import { TabsComponent } from '@xnoname/web-components';
+import { Observable } from 'rxjs/Observable';
+import { DmnProjectService } from '../../services/dmnProjectService';
 
 @Component({
     selector: 'xn-dmn-manager',
@@ -24,11 +26,14 @@ export class DmnManagerComponent implements OnInit {
         return this._tabId;
     }
 
-    public isDecicionTableMode: boolean;
+    public isDecicionTableMode$: Observable<boolean>;
+
+    public pluginExampleActivated$: Observable<boolean>;
 
     public constructor(@Inject(DOCUMENT) private document,
                        private renderer: Renderer2,
                        private _testDecisionService: TestDecisionService,
+                       private _projectService: DmnProjectService,
                        private _eventService: EventService) {
     }
 
@@ -38,6 +43,10 @@ export class DmnManagerComponent implements OnInit {
         this.renderer.appendChild(styleElement, text);
         this.renderer.appendChild(this.document.head, styleElement);
         this.stylesheet = styleElement.sheet;
+
+        this.pluginExampleActivated$ = this._projectService
+            .getPlugin('example')
+            .pipe( map(plugin => (plugin) ? plugin.activated : false) );
 
         this._testDecisionService
             .getResult()
@@ -50,14 +59,9 @@ export class DmnManagerComponent implements OnInit {
                 }
             });
 
-        this._eventService
+        this.isDecicionTableMode$ = this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
-            .pipe( map(ev => ev.data.isDecisionTable ) )
-            .subscribe(isDmn => this.isDecicionTableMode = isDmn);
-
-        this._eventService
-            .getEvent((event) => event.type === EventType.PROJECT_LOADED)
-            .subscribe(_ => this.tabs.selectTabById('dmn-editor'));
+            .pipe( map(ev => ev.data.isDecisionTable ) );
     }
 
     public onSelectedTabChanged(tabId: string) {

@@ -174,7 +174,11 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     if (err) {
                         console.log('error rendering', err);
                     }
+                    if (this.initialized) {
+                        return;
+                    }
                     this.configureModeller();
+                    this.initialized = true;
                 });
             });
 
@@ -268,7 +272,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.refreshTableColumnsList();
 
         const ev = new NewViewEvent(this._modeller._activeView.element.id);
-        if (this._modeller._activeView.element.$type !== DmnType.DECISION_TABLE) {
+        if (this._modeller._activeView.element.$type !== 'decisionTable') {
             ev.data.isDecisionTable = false;
         }
         this._internalEventService.next({

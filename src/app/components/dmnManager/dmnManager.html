@@ -1,6 +1,6 @@
 <xn-tabs (selectedTabChange)="onSelectedTabChanged($event)">
     <xn-tab [title]="'Datenmodell'"
-            *ngIf="isDecicionTableMode"
+            *ngIf="isDecicionTableMode$ | async"
             [iconClass]="'fa-database'"
             [id]="'datamodel-editor'">
         <xn-data-model-editor></xn-data-model-editor>
@@ -11,21 +11,22 @@
         <xn-dmn-modeller [type]="'editor'"></xn-dmn-modeller>
     </xn-tab>
     <xn-tab [title]="'Tests'"
-            *ngIf="isDecicionTableMode"
+            *ngIf="isDecicionTableMode$ | async"
             [iconClass]="'fa-cog'"
             [id]="'test-editor'">
         <xn-test-suite></xn-test-suite>
     </xn-tab>
     <xn-tab [title]="'Import'"
-            *ngIf="isDecicionTableMode"
+            *ngIf="isDecicionTableMode$ | async"
             [iconClass]="'fa-cloud-upload'"
             [id]="'import'">
         <xn-importer></xn-importer>
     </xn-tab>
     <xn-tab [title]="'Example'"
+            *ngIf="pluginExampleActivated$ | async"
             [iconClass]="'fa-internet-explorer'"
             [id]="'example'">
         <xn-iframe-tab></xn-iframe-tab>
     </xn-tab>
 </xn-tabs>
-<xn-dmn-simulator *ngIf="isDecicionTableMode" [isVisisble]="tabId === 'dmn-editor'"></xn-dmn-simulator>
+<xn-dmn-simulator *ngIf="isDecicionTableMode$ | async" [isVisisble]="tabId === 'dmn-editor'"></xn-dmn-simulator>
