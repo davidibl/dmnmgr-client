@@ -78,6 +78,7 @@ export interface DmnModdleTable extends DmnModdleElement {
 export interface DmnModdleRule extends DmnModdleElement {
     inputEntry: DmnModdleElement[];
     outputEntry: DmnModdleElement[];
+    description: string;
 }
 
 export interface DmnModdleEvent {
@@ -107,6 +108,8 @@ export class DmnDatatypeMapping {
 export interface DmnColumn {
     label: string;
     id: string;
+    index: number,
+    type: string,
 }
 
 @Component({
@@ -241,6 +244,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const columns = <DmnColumn[]>[];
         columns.splice(0, 0, ...this.createOutputColumnArray());
         columns.splice(0, 0, ...this.createInputColumnArray());
+        columns.push({ label: 'Annotation', id: 'description', type: 'ANNOTATION', index: null })
         this.currentColumns = columns;
     }
 
@@ -375,16 +379,26 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private createOutputColumnArray() {
         const columns = this._modeller._activeView.element.decisionTable.output;
         if (!columns) { return []; }
-        return columns.map(column => {
-            return { label: (column.name) ? column.name : column.id, id: column.id };
+        return columns.map((column, index) => {
+            return {
+                label: (column.name) ? column.name : column.id,
+                id: column.id,
+                index: index,
+                type: 'OUTPUT'
+            };
         });
     }
 
     private createInputColumnArray() {
         const columns = this._modeller._activeView.element.decisionTable.input;
         if (!columns) { return []; }
-        return columns.map(column => {
-            return { label: (column.label) ? column.label : column.inputExpression.text, id: column.id };
+        return columns.map((column, index) => {
+            return {
+                label: (column.label) ? column.label : column.inputExpression.text,
+                id: column.id,
+                index: index,
+                type: 'INPUT'
+            };
         });
     }
 
@@ -469,14 +483,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                 return;
         }
 
-        let col = this._modeller._activeView.element.decisionTable.input.findIndex(col => col.id === this.searchColumn);
-        let searchColumnType = 'INPUT';
-        if (col < 0) {
-            col = this._modeller._activeView.element.decisionTable.output.findIndex(col => col.id === this.searchColumn);
-            searchColumnType = 'OUTPUT';
-        }
+        const column = this.currentColumns.find(col => col.id === this.searchColumn);
+
         let columnFilter = (!this.searchColumn) ?
-            (index) => true : (index: number, type?: string) => index === col && type === searchColumnType;
+            (_) => true : (index: number, type?: string) => index === column.index && type === column.type;
 
         this._modeller
             ._activeView
@@ -499,8 +509,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const outputEnriesFound = (!!rule.outputEntry) ?
             rule.outputEntry.filter((output, index) =>
                 columnFilter(index, 'OUTPUT') && this.contains(output.text, searchValue)).length : 0;
+        const annotationFound = columnFilter(null, 'ANNOTATION') ? this.contains(rule.description, searchValue) : false;
 
-        return (inputEntriesFound + outputEnriesFound) < 1;
+        return (inputEntriesFound + outputEnriesFound) < 1 && !annotationFound;
     }
 
     private contains(text: string, searchString: string) {
