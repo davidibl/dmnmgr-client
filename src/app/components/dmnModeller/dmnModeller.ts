@@ -19,6 +19,11 @@ import { DOCUMENT } from '@angular/platform-browser';
 import { debounceTime } from 'rxjs/operators/debounceTime';
 import { DecisionDeleteEvent } from '../../model/decisionDeleteEvent';
 import { EventType } from '../../model/eventType';
+import { DmnModelService } from '../../services/dmnModelService';
+import { DmnModdleElement } from '../../model/dmn/dmnModdleElement';
+import { DmnModdleRule } from '../../model/dmn/dmnModdleRule';
+import { DmnType } from '../../model/dmn/dmnType';
+import { MyDmnModdle } from '../../model/dmn/dmnModdle';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -32,31 +37,11 @@ declare interface DMNJS {
     _updateViews(): void;
     _viewers: any;
     _activeView: DmnModelerView;
-    _moddle: DmnModdle;
-}
-
-export interface DmnModdle {
-    create(type: string): DmnModdleElement;
+    _moddle: MyDmnModdle;
 }
 
 export interface DmnModelerView {
     element: DmnModdleElement;
-}
-
-export interface DmnModdleElement {
-    $type: string;
-    id: string;
-    name: string;
-    text: string;
-    label: string;
-    inputValues?: DmnModdleElement;
-    inputExpression?: DmnModdleElement;
-    input?: DmnModdleElement[];
-    output?: DmnModdleElement[];
-    decisionTable?: DmnModdleTable;
-    $model: DmnModdle;
-    typeRef: string;
-    $parent: DmnModdleElement;
 }
 
 export interface ShapeEvent {
@@ -71,29 +56,9 @@ export interface Shape {
     id: string;
 }
 
-export interface DmnModdleTable extends DmnModdleElement {
-    rule: DmnModdleRule[];
-}
-
-export interface DmnModdleRule extends DmnModdleElement {
-    inputEntry: DmnModdleElement[];
-    outputEntry: DmnModdleElement[];
-    description: string;
-}
-
 export interface DmnModdleEvent {
     elements: DmnModdleElement[];
     element: DmnModdleElement;
-}
-
-export class DmnType {
-    static DECISION_TABLE = 'dmn:Decision';
-
-    static LITERAL_EXPRESSION = 'dmn:LiteralExpression';
-    static INPUT_CLAUSE = 'dmn:InputClause';
-    static UNARY_TEST = 'dmn:UnaryTests';
-    static OUTPUT_CLAUSE = 'dmn:OutputClause';
-    static RULE = 'dmn:DecisionRule';
 }
 
 export class DmnDatatypeMapping {
@@ -142,6 +107,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     public constructor(private _dmnXmlService: DmnXmlService,
         private _eventService: EventService,
         @Inject(DOCUMENT) private document,
+        private _dmnModelService: DmnModelService,
         private renderer: Renderer2,
         private _dataModelService: DataModelService) { }
 
@@ -327,44 +293,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private importData(data: string[][]) {
 
-        const newRules = <DmnModdleRule[]>[];
-        data.forEach(row => {
-            const newRule = this._modeller._moddle.create(DmnType.RULE, {
-                id: this.generateId(DmnType.RULE)
-            });
-            newRule.inputEntry = [];
-            newRule.outputEntry = [];
-            let counter = 0;
-            if (this._modeller._activeView.element.decisionTable.input) {
-                this._modeller._activeView.element.decisionTable.input.forEach(_ => {
-                    const input = newRule
-                        .$model
-                        .create(DmnType.UNARY_TEST);
-                    input.text = (counter < row.length) ? `${row[counter]}` : null;
-                    input.id = this.generateId(DmnType.UNARY_TEST);
-                    newRule.inputEntry.push(input);
-                    counter++;
-                });
-            }
-
-            if (this._modeller._activeView.element.decisionTable.output) {
-                this._modeller._activeView.element.decisionTable.output.forEach(_ => {
-                    const input = newRule
-                        .$model
-                        .create(DmnType.LITERAL_EXPRESSION);
-                    input.text = (counter < row.length) ? `${row[counter]}` : null;
-                    input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
-                    newRule.outputEntry.push(input);
-                    counter++;
-                });
-            }
-
-            newRules.push(newRule);
-        });
-
-        const currentTable = this._modeller._activeView.element.decisionTable;
-        if (!currentTable.rule) { currentTable.rule = []; }
-        newRules.forEach(rule => currentTable.rule.push(rule));
+        this._dmnModelService.importData(data, this._modeller._moddle, this._modeller._activeView.element.decisionTable);
 
         this._modeller.saveXML(null, (error, xml) => {
             if (error) { return; }

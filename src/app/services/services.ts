@@ -8,6 +8,7 @@ import { EventService } from './eventService';
 import { FileService } from './fileService';
 import { DmnProjectService } from './dmnProjectService';
 import { DeploymentService } from './deploymentService';
+import { DmnModelService } from './dmnModelService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -20,4 +21,5 @@ export const ALL_SERVICES = [
     FileService,
     DmnProjectService,
     DeploymentService,
+    DmnModelService,
 ];
