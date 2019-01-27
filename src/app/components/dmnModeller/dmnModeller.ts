@@ -14,7 +14,6 @@ import { EventService } from '../../services/eventService';
 import { NewViewEvent } from '../../model/newViewEvent';
 import { RenameArtefactEvent } from '../../model/renameArtefactEvent';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
-import { UUID } from '../../functions/UUID';
 import { DOCUMENT } from '@angular/platform-browser';
 import { debounceTime } from 'rxjs/operators/debounceTime';
 import { DecisionDeleteEvent } from '../../model/decisionDeleteEvent';
