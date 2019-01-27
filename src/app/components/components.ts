@@ -11,6 +11,7 @@ import { DmnSimulatorComponent } from './simulator/dmnSimulator';
 import { FlyinComponent } from './simulator/flyin';
 import { DmnResultViewComponent } from './dmnResultView/dmnResultView';
 import { ImporterComponent } from './importer/importer';
+import { IframeTabComponent } from './plugin/iframeTab/iframeTab';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -26,4 +27,5 @@ export const ALL_COMPONENTS = [
     FlyinComponent,
     DmnResultViewComponent,
     ImporterComponent,
+    IframeTabComponent,
 ];

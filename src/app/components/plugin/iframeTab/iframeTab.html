@@ -1,0 +1,30 @@
+<div class="full-height flex flex-column">
+    <div class="menu-bar">
+        <div class="inline-block ml-1 mr-1">
+                <xn-input-form [title]="'deploymentUrl'"
+                            [label]="'Zeilen Separator'"
+                            [placeholder]="'Deployment URL'"
+                            [showLabel]="true"
+                            #searchInput
+                            [autofocus]="true"
+                            [validatable]="false"
+                            class="inline-block mb-0 mr-1"
+                            [name]="'deploymentUrl'"
+                            [(ngModel)]="deploymentUrl"></xn-input-form>
+            </div>
+            <xn-button (click)="deployDmn()" class="small mr-1">Bereitstellen</xn-button>
+            <div class="inline-block mr-1">
+                <xn-input-form [title]="'iframeUrl'"
+                            [label]="'Feld Separator'"
+                            [placeholder]="'Example URL'"
+                            [showLabel]="true"
+                            #searchInput
+                            [autofocus]="true"
+                            [validatable]="false"
+                            class="inline-block mb-0"
+                            [name]="'iframeUrl'"
+                            [(ngModel)]="iframeUrl"></xn-input-form>
+            </div>
+    </div>
+    <iframe *ngIf="sanitizedUrl" class="full-height full-width" [src]="sanitizedUrl"></iframe>
+</div>
