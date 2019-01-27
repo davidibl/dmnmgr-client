@@ -9,6 +9,7 @@ import { FileService } from './fileService';
 import { DmnProjectService } from './dmnProjectService';
 import { DeploymentService } from './deploymentService';
 import { DmnModelService } from './dmnModelService';
+import { PluginRegistryService } from './pluginRegistryService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -22,4 +23,5 @@ export const ALL_SERVICES = [
     DmnProjectService,
     DeploymentService,
     DmnModelService,
+    PluginRegistryService,
 ];

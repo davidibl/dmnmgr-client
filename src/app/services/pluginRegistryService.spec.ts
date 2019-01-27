@@ -19,13 +19,13 @@ describe('Pluginregistry Service', () => {
 
         it('should emit plugins after adding one', async(() => {
             const cut = new PluginRegistryService();
-            cut.registerPlugin('TestPlugin1');
+            cut.registerPlugin({ id: 'TestPlugin1' });
             cut.getPlugins().pipe(take(1)).subscribe(plugins => {
-                expect(plugins.size).toBe(1);
+                expect(plugins.length).toBe(2);
             });
-            cut.registerPlugin('TestPlugin2');
+            cut.registerPlugin({ id: 'TestPlugin2' });
             cut.getPlugins().pipe(take(1)).subscribe(plugins => {
-                expect(plugins.size).toBe(2);
+                expect(plugins.length).toBe(3);
             });
 
         }));
