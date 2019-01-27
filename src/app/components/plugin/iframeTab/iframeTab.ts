@@ -76,5 +76,6 @@ export class IframeTabComponent implements OnInit {
     private reset() {
         this._deploymentUrl = null;
         this._iframeUrl = null;
+        this.sanitizedUrl = null;
     }
 }
