@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { IpcRenderer } from 'electron';
 import { ElectronService } from 'ngx-electron';
 import { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import { DmnProject } from '../model/project/dmnProject';
@@ -8,6 +7,14 @@ import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 
+export interface ConfigFile {
+    mostRecent: MostRecentFile[];
+}
+
+export interface MostRecentFile {
+    name: string;
+    path: string;
+}
 
 @Injectable()
 export class FileService {
@@ -20,7 +27,6 @@ export class FileService {
     private _errorOpeningProject = 'Die Projektdatei konnte nicht gelesen werden.';
     private _errorOpeningDmn = 'Die im Projekt referenzierte DMN konnte nicht geladen werden.';
 
-    private _ipc: IpcRenderer | undefined;
     private _filesystem;
     private _currentPath: string;
 
@@ -74,20 +80,19 @@ export class FileService {
         });
     }
 
-    public openConfigFile(): Observable<{ mosterecent: string[] }> {
+    public openOrCreateConfigFile(): Observable<ConfigFile> {
+        const filename = 'dmnmgr.config.json';
         return Observable.create(observer => {
-            if (!this._filesystem.existsSync('config.json')) {
-                observer.next(null);
-            } else {
-                this._filesystem.readFile('config.json', "utf-8", (err, data) => {
-                    if (err) {
-                        observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
-                        observer.complete();
+            if (!this._filesystem.existsSync(filename)) {
+                this._filesystem.writeFile(filename, JSON.stringify({ mostRecent: []}), err => {
+                    if (isNull(err)) {
+                        this.readConfigFile(filename, observer);
+                    } else {
                         return;
                     }
-                    observer.next({ type: FsResultType.OK, data: JSON.parse(data) });
-                    observer.complete();
                 });
+            } else {
+                this.readConfigFile(filename, observer);
             }
         });
     }
@@ -184,6 +189,18 @@ export class FileService {
                 observable.complete();
                 return;
             }
+        });
+    }
+
+    private readConfigFile(filename, observable: Observer<FileSystemAccessResult<ConfigFile>>) {
+        this._filesystem.readFile(filename, "utf-8", (err, data) => {
+            if (err) {
+                observable.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
+                observable.complete();
+                return;
+            }
+            observable.next({ type: FsResultType.OK, data: JSON.parse(data) });
+            observable.complete();
         });
     }
 }
