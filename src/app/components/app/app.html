@@ -24,6 +24,22 @@
                         <i class="fa fa-upload mr-05" aria-hidden="true"></i>Dmn Datei importieren
                     </li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (mouseenter)="recentFilesMenuVisible = !recentFilesMenuVisible"
+                        (mouseleave)="recentFilesMenuVisible = false">
+                        <i class="fa fa-clock-o mr-05" aria-hidden="true"></i>Zuletzt geöffnet
+                        <span class="right"><i class="fa fa-arrow-right mr-05" aria-hidden="true"></i></span>
+                        <ul *ngIf="recentFilesMenuVisible" class="sub-sub-menu">
+                            <div class="sub-menu-container">
+                            <ng-container *ngIf="mostRecentFiles$ | async as mostRecentFiles">
+                                <li *ngFor="let mostRecentFile of mostRecentFiles"
+                                    (click)="openRecentFile(mostRecentFile.path)">
+                                    {{mostRecentFile.name}}
+                                </li>
+                            </ng-container>
+                            </div>
+                        </ul>
+                    </li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="quit()">
                         <i class="fa fa-sign-out mr-05" aria-hidden="true"></i>Beenden
                     </li>

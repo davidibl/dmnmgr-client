@@ -8,5 +8,6 @@ export class FsResultType {
 export interface FileSystemAccessResult<T> {
     type: FsResultTypes;
     message?: string;
+    filepath?: string;
     data?: T;
 }

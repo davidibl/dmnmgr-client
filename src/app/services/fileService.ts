@@ -7,15 +7,6 @@ import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 
-export interface ConfigFile {
-    mostRecent: MostRecentFile[];
-}
-
-export interface MostRecentFile {
-    name: string;
-    path: string;
-}
-
 @Injectable()
 export class FileService {
 
@@ -37,7 +28,7 @@ export class FileService {
         this._filesystem = window['require']('fs');
     }
 
-    public openProject(): Observable<FileSystemAccessResult<{xml?: string, project?: DmnProject}>> {
+    public openProject(filepath?: string): Observable<FileSystemAccessResult<{xml?: string, project?: DmnProject}>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -48,6 +39,10 @@ export class FileService {
         };
 
         return Observable.create(observer => {
+            if (filepath) {
+                this.openFile(filepath, observer);
+                return;
+            }
             dialog.showOpenDialog(window, openOptions, (fileNames) => {
                 if (fileNames === undefined || fileNames.length < 1) {
                     observer.next({ error: false });
@@ -56,44 +51,61 @@ export class FileService {
                 }
 
                 const filename = fileNames[0];
-                this._currentPath = filename;
-                const path = filename.substring(0, filename.lastIndexOf('\\') + 1);
-                this._filesystem.readFile(filename, (err, data) => {
-                    if (err) {
-                        observer.next({ type: FsResultType.ERROR, message: this._errorOpeningProject });
-                        observer.complete();
-                        return;
-                    }
-                    const project = <DmnProject>JSON.parse(data);
-                    this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => {
-                        if (err) {
-                            observer.next({ type: FsResultType.ERROR, message: this._errorOpeningDmn });
-                            observer.complete();
-                            return;
-                        }
-                        observer.next({ type: FsResultType.OK, data: { xml: data, project: project }});
-                        observer.complete();
-                    });
-                });
-
+                this.openFile(filename, observer);
             });
         });
     }
 
-    public openOrCreateConfigFile(): Observable<ConfigFile> {
-        const filename = 'dmnmgr.config.json';
+    public openFile(filepath: string, observer: Observer<FileSystemAccessResult<{xml?: string, project?: DmnProject}>>) {
+        this._currentPath = filepath;
+        const path = filepath.substring(0, filepath.lastIndexOf('\\') + 1);
+
+        this._filesystem.readFile(filepath, (err, data) => {
+            if (err) {
+                observer.next({ type: FsResultType.ERROR, message: this._errorOpeningProject });
+                observer.complete();
+                return;
+            }
+            const project = <DmnProject>JSON.parse(data);
+            this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => {
+                if (err) {
+                    observer.next({ type: FsResultType.ERROR, message: this._errorOpeningDmn });
+                    observer.complete();
+                    return;
+                }
+                observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data, project: project }});
+                observer.complete();
+            });
+        });
+    }
+
+    public openOrCreateFile<T>(filename: string, defaultValue: T): Observable<FileSystemAccessResult<T>> {
         return Observable.create(observer => {
             if (!this._filesystem.existsSync(filename)) {
-                this._filesystem.writeFile(filename, JSON.stringify({ mostRecent: []}), err => {
+                this._filesystem.writeFile(filename, JSON.stringify(defaultValue), err => {
                     if (isNull(err)) {
-                        this.readConfigFile(filename, observer);
+                        this.readFile<T>(filename, observer);
                     } else {
-                        return;
+                        observer.next({ type: FsResultType.ERROR });
                     }
                 });
             } else {
-                this.readConfigFile(filename, observer);
+                this.readFile<T>(filename, observer);
             }
+        });
+    }
+
+    public saveFile<T>(filename: string, content: T): Observable<FileSystemAccessResult<void>> {
+        return Observable.create(observer => {
+            this._filesystem.writeFile(filename, JSON.stringify(content), err => {
+                if (isNull(err)) {
+                    observer.next({ type: FsResultType.OK });
+                    observer.complete();
+                } else {
+                    observer.next({ type: FsResultType.ERROR });
+                    observer.complete();
+                }
+            });
         });
     }
 
@@ -192,7 +204,7 @@ export class FileService {
         });
     }
 
-    private readConfigFile(filename, observable: Observer<FileSystemAccessResult<ConfigFile>>) {
+    private readFile<T>(filename, observable: Observer<FileSystemAccessResult<T>>) {
         this._filesystem.readFile(filename, "utf-8", (err, data) => {
             if (err) {
                 observable.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });

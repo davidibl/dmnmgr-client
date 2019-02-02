@@ -21,6 +21,8 @@ import { PluginRegistryService } from '../../services/pluginRegistryService';
 import { PluginDescriptor } from '../../model/plugin/pluginDescriptor';
 import { PluginMetaDescriptor } from '../../model/plugin/pluginMetaDescriptor';
 import { combineLatest } from 'rxjs';
+import { MostRecentFile } from '../../model/appConfiguration/mostRecentFile';
+import { AppConfigurationService } from '../../services/appConfigurationService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -54,9 +56,12 @@ export class AppComponent implements OnInit {
     public pluginMenuVisible = false;
     public engineMenuVisible = false;
 
+    public recentFilesMenuVisible = false;
+
     public plugins$: Observable<PluginMetaDescriptor[]>;
     public pluginsConfigured$: Observable<PluginDescriptor[]>;
     public pluginsMerged$: Observable<PluginItem[]>;
+    public mostRecentFiles$: Observable<MostRecentFile[]>;
 
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
@@ -79,10 +84,11 @@ export class AppComponent implements OnInit {
                        private _testDecisionService: TestDecisionService,
                        private _eventService: EventService,
                        private _pluginService: PluginRegistryService,
-                       private _electronService: ElectronService) {}
+                       private _electronService: ElectronService,
+                       private _appConfiguration: AppConfigurationService) {}
 
     public ngOnInit() {
-        this.loadMostRecentFiles();
+        this.mostRecentFiles$ = this._appConfiguration.getMostRecentFiles();
         this.plugins$ = this._pluginService.getPlugins();
         this.pluginsConfigured$ = this._projectService.getPlugins();
         this.pluginsMerged$ = combineLatest(this.plugins$, this.pluginsConfigured$)
@@ -105,6 +111,20 @@ export class AppComponent implements OnInit {
     public openProject() {
         this._fileService
             .openProject()
+            .pipe(
+                tap(result => this.processError(result)),
+                filter(result => result.type === FsResultType.OK)
+            )
+            .subscribe(result => {
+                this._appConfiguration.addMostRecentFile(result.filepath);
+                this._projectService.readProject(result.data.xml, result.data.project);
+            });
+    }
+
+    public openRecentFile(recentProject: string) {
+        this.recentFilesMenuVisible = false;
+        this._fileService
+            .openProject(recentProject)
             .pipe(
                 tap(result => this.processError(result)),
                 filter(result => result.type === FsResultType.OK)
@@ -229,6 +249,10 @@ export class AppComponent implements OnInit {
             case 'KeyS':
                 this.saveProject();
                 break;
+            case 'KeyR':
+                this.fileMenuVisible = !this.fileMenuVisible;
+                this.recentFilesMenuVisible = !this.recentFilesMenuVisible;
+                break;
         }
     }
 
@@ -257,9 +281,4 @@ export class AppComponent implements OnInit {
             });
     }
 
-    private loadMostRecentFiles() {
-        this._fileService
-            .openConfigFile()
-            .subscribe(_ => console.log(''));
-    }
 }

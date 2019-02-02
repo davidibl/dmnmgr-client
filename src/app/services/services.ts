@@ -10,6 +10,7 @@ import { DmnProjectService } from './dmnProjectService';
 import { DeploymentService } from './deploymentService';
 import { DmnModelService } from './dmnModelService';
 import { PluginRegistryService } from './pluginRegistryService';
+import { AppConfigurationService } from './appConfigurationService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -24,4 +25,5 @@ export const ALL_SERVICES = [
     DeploymentService,
     DmnModelService,
     PluginRegistryService,
+    AppConfigurationService,
 ];
