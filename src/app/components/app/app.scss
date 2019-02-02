@@ -90,6 +90,8 @@ li.test-item:last-child {
     li.section-divider {
         padding-top: 0;
         padding-bottom: 0;
+        z-index: -1;
+        margin-top: -10px;
     }
 
     li:not(.section-divider):hover {
