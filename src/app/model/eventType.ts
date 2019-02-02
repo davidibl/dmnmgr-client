@@ -4,4 +4,5 @@ export class EventType {
     static PROJECT_LOADED = 'projectLoaded';
     static DECISON_DELETED = 'decisonDeleted';
     static OPEN_SEARCH = 'openSearch';
+    static DATA_CHANGED = 'dataChanged';
 }
