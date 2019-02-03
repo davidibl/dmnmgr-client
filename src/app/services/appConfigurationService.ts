@@ -39,6 +39,11 @@ export class AppConfigurationService {
     public addMostRecentFile(path: string) {
         const name = path.substring(path.lastIndexOf('\\') + 1);
 
+        const elementIndex = this._currentConfiguration.mostRecent.findIndex(element => element.path === path);
+        if (elementIndex > -1) {
+            this._currentConfiguration.mostRecent.splice(elementIndex, 1);
+        }
+
         this._currentConfiguration.mostRecent.splice(0, 0, { name: name, path: path });
 
         if (this._currentConfiguration.mostRecent.length > 10) {
