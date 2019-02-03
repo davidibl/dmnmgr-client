@@ -128,6 +128,26 @@
 </xn-dialog>
 
 <xn-dialog [closable]="true"
+           [open]="false"
+           #unsavedChangesDialog
+           [defaultOkButtonText]="'Speichern'"
+           [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Möchten Sie die Änderungen speichern?
+    </div>
+    <div class="dialog-body pb-1">
+        <p>
+            Einige Änderungen gehen verloren wenn sie nicht gespeichert werden.
+        </p>
+    </div>
+    <div class="button-bar">
+        <xn-button class="ml-05 mr-05" #dontSaveButton>
+            Nicht speichern
+        </xn-button>
+    </div>
+</xn-dialog>
+
+<xn-dialog [closable]="true"
            [(open)]="showAllTestsDialog"
            *ngIf="showAllTestsDialog"
            (confirm)="runAllTests()"

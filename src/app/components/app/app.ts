@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
@@ -24,6 +24,9 @@ import { combineLatest } from 'rxjs';
 import { MostRecentFile } from '../../model/appConfiguration/mostRecentFile';
 import { AppConfigurationService } from '../../services/appConfigurationService';
 import { SaveStateService } from '../../services/saveStateService';
+import { DialogComponent, ButtonComponent } from '@xnoname/web-components';
+import { take } from 'rxjs/operators/take';
+import { merge } from 'rxjs/operators';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -48,6 +51,12 @@ export interface PluginItem extends PluginMetaDescriptor {
     styleUrls: ['app.scss'],
 })
 export class AppComponent implements OnInit {
+
+    @ViewChild('unsavedChangesDialog')
+    private _unsavedChangesDialog: DialogComponent;
+
+    @ViewChild('dontSaveButton')
+    private _dontSaveButton: ButtonComponent;
 
     private _filesystemError: string;
 
@@ -111,41 +120,65 @@ export class AppComponent implements OnInit {
     }
 
     public openProject() {
-        this._fileService
-            .openProject()
-            .pipe(
-                tap(result => this.processError(result)),
-                filter(result => result.type === FsResultType.OK)
-            )
-            .subscribe(result => {
-                this._appConfiguration.addMostRecentFile(result.filepath);
-                this._projectService.readProject(result.data.xml, result.data.project);
-            });
+        this.confirmActionWhenChangesAreUnsaved(() => {
+            this._fileService
+                .openProject()
+                .pipe(
+                    tap(result => this.processError(result)),
+                    filter(result => result.type === FsResultType.OK)
+                )
+                .subscribe(result => {
+                    this._appConfiguration.addMostRecentFile(result.filepath);
+                    this._projectService.readProject(result.data.xml, result.data.project);
+                    this._saveStateService.resetChanges();
+                });
+        });
     }
 
     public openRecentFile(recentProject: string) {
         this.recentFilesMenuVisible = false;
-        this._fileService
-            .openProject(recentProject)
-            .pipe(
-                tap(result => this.processError(result)),
-                filter(result => result.type === FsResultType.OK)
-            )
-            .subscribe(result => this._projectService.readProject(result.data.xml, result.data.project));
+        this.confirmActionWhenChangesAreUnsaved(() => {
+            this._fileService
+                .openProject(recentProject)
+                .pipe(
+                    tap(result => this.processError(result)),
+                    filter(result => result.type === FsResultType.OK)
+                )
+                .subscribe(result => {
+                    this._projectService.readProject(result.data.xml, result.data.project);
+                    this._saveStateService.resetChanges();
+                });
+        });
+    }
+
+    public confirmActionWhenChangesAreUnsaved(action: () => void) {
+        if (this._saveStateService.hasChanges()) {
+            const onSave = this._unsavedChangesDialog
+                .confirm
+                .pipe(
+                    switchMap(_ => this.saveProjectSilent().pipe(take(1), map(_ => true)))
+                );
+
+            const onDontSave = this._dontSaveButton.clicked.pipe(map(_ => true));
+            const onCancel = this._unsavedChangesDialog.cancel.pipe(map(_ => false));
+
+            onSave.pipe(merge(onCancel, onDontSave), take(1))
+                .subscribe(doAction => {
+                    this._unsavedChangesDialog.open = false;
+                    if (doAction) {
+                        action();
+                    }
+                });
+
+            this._unsavedChangesDialog.open = true;
+        } else {
+            action();
+        }
     }
 
     public saveProject() {
-        this._projectService
-            .getProject()
-            .subscribe(project => {
-                this._fileService
-                    .saveProject(project.xml, project.project)
-                    .pipe(
-                        tap(result => this.processError(result)),
-                        filter(result => result.type === FsResultType.OK)
-                    )
-                    .subscribe();
-            });
+        this.saveProjectSilent()
+            .subscribe(_ => this._saveStateService.resetChanges());
     }
 
     public saveProjectAs() {
@@ -158,13 +191,16 @@ export class AppComponent implements OnInit {
                         tap(result => this.processError(result)),
                         filter(result => result.type === FsResultType.OK)
                     )
-                    .subscribe();
+                    .subscribe(_ => this._saveStateService.resetChanges());
             });
     }
 
     public createNewProject() {
-        this._fileService.resetCurrentPath();
-        this._projectService.createNewProject();
+        this.confirmActionWhenChangesAreUnsaved(() => {
+            this._fileService.resetCurrentPath();
+            this._projectService.createNewProject();
+            this._saveStateService.resetChanges();
+        });
     }
 
     public importExistingDmn() {
@@ -281,6 +317,23 @@ export class AppComponent implements OnInit {
                     tableId: propertyName,
                 }
             });
+    }
+
+    private saveProjectSilent() {
+        return this._projectService
+            .getProject()
+            .pipe(
+                take(1),
+                switchMap(project => {
+                    return this._fileService
+                        .saveProject(project.xml, project.project)
+                        .pipe(
+                            take(1),
+                            tap(result => this.processError(result)),
+                            filter(result => result.type === FsResultType.OK)
+                        )
+                })
+            );
     }
 
 }
