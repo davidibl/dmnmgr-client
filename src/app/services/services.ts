@@ -12,6 +12,7 @@ import { DmnModelService } from './dmnModelService';
 import { PluginRegistryService } from './pluginRegistryService';
 import { AppConfigurationService } from './appConfigurationService';
 import { ErrorMessageService } from './errorMessageService';
+import { SaveStateService } from './saveStateService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -28,4 +29,5 @@ export const ALL_SERVICES = [
     PluginRegistryService,
     AppConfigurationService,
     ErrorMessageService,
+    SaveStateService,
 ];
