@@ -42,7 +42,7 @@ export class AppConfigurationService {
         this._currentConfiguration.mostRecent.splice(0, 0, { name: name, path: path });
 
         if (this._currentConfiguration.mostRecent.length > 10) {
-            this._currentConfiguration.mostRecent.splice(9, 1);
+            this._currentConfiguration.mostRecent.splice(10, 1);
         }
 
         this._configurationCache.next(this._currentConfiguration);
