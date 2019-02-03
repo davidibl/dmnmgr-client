@@ -33,6 +33,9 @@ describe('AppConfiguration Service', () => {
             expect(cut).not.toBeNull();
             expect(cut['_currentConfiguration']).toEqual(config);
         }));
+    });
+
+    describe('configuration handling', () => {
 
         it('should ignore filesystem errors and keep last configuration', async(() => {
             const mockFileService = <any>new MockFileService();
@@ -65,7 +68,9 @@ describe('AppConfiguration Service', () => {
 
             expect(cut['_currentConfiguration']).toEqual(configSecond);
         }));
+    });
 
+    describe('Most recent files', () => {
         it('should publish most recent files', async(() => {
             const mockFileService = <any>new MockFileService();
 
