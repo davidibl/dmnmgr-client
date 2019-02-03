@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { ElectronService } from 'ngx-electron';
 import { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import { DmnProject } from '../model/project/dmnProject';
@@ -6,6 +6,7 @@ import { isNull } from '@xnoname/web-components';
 import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
+import { ErrorMessageService } from './errorMessageService';
 
 @Injectable()
 export class FileService {
@@ -21,7 +22,10 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
-    public constructor(private _electronService: ElectronService) {
+    public constructor(private _electronService: ElectronService,
+                       private _errorMessageService: ErrorMessageService,
+                       private _zone: NgZone) {
+
         if (!window['require']) {
             return;
         }
@@ -60,35 +64,41 @@ export class FileService {
         this._currentPath = filepath;
         const path = filepath.substring(0, filepath.lastIndexOf('\\') + 1);
 
-        this._filesystem.readFile(filepath, (err, data) => {
+        this._filesystem.readFile(filepath, (err, data) => this.callback(() => {
             if (err) {
-                observer.next({ type: FsResultType.ERROR, message: this._errorOpeningProject });
-                observer.complete();
+                this._zone.run(() => {
+                    const errorMessage = this._errorMessageService
+                        .getErrorMessage(err.message, this._errorOpeningProject, { path: filepath });
+                    observer.next({ type: FsResultType.ERROR, message: errorMessage });
+                    observer.complete();
+                })
                 return;
             }
             const project = <DmnProject>JSON.parse(data);
-            this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => {
+            this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => this.callback(() => {
                 if (err) {
-                    observer.next({ type: FsResultType.ERROR, message: this._errorOpeningDmn });
+                    const errorMessage = this._errorMessageService
+                        .getErrorMessage(err.message, this._errorOpeningDmn, { path: path + project.dmnPath });
+                    observer.next({ type: FsResultType.ERROR, message: errorMessage });
                     observer.complete();
                     return;
                 }
                 observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data, project: project }});
                 observer.complete();
-            });
-        });
+            }));
+        }));
     }
 
     public openOrCreateFile<T>(filename: string, defaultValue: T): Observable<FileSystemAccessResult<T>> {
         return Observable.create(observer => {
             if (!this._filesystem.existsSync(filename)) {
-                this._filesystem.writeFile(filename, JSON.stringify(defaultValue), err => {
+                this._filesystem.writeFile(filename, JSON.stringify(defaultValue), err => this.callback(() => {
                     if (isNull(err)) {
                         this.readFile<T>(filename, observer);
                     } else {
                         observer.next({ type: FsResultType.ERROR });
                     }
-                });
+                }));
             } else {
                 this.readFile<T>(filename, observer);
             }
@@ -97,7 +107,7 @@ export class FileService {
 
     public saveFile<T>(filename: string, content: T): Observable<FileSystemAccessResult<void>> {
         return Observable.create(observer => {
-            this._filesystem.writeFile(filename, JSON.stringify(content), err => {
+            this._filesystem.writeFile(filename, JSON.stringify(content), err => this.callback(() => {
                 if (isNull(err)) {
                     observer.next({ type: FsResultType.OK });
                     observer.complete();
@@ -105,7 +115,7 @@ export class FileService {
                     observer.next({ type: FsResultType.ERROR });
                     observer.complete();
                 }
-            });
+            }));
         });
     }
 
@@ -154,7 +164,7 @@ export class FileService {
                 }
 
                 const filename = fileNames[0];
-                this._filesystem.readFile(filename, "utf-8", (err, data) => {
+                this._filesystem.readFile(filename, "utf-8", (err, data) => this.callback(() => {
                     if (err) {
                         observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                         observer.complete();
@@ -162,7 +172,7 @@ export class FileService {
                     }
                     observer.next({ type: FsResultType.OK, data: data });
                     observer.complete();
-                });
+                }));
 
             });
         });
@@ -183,10 +193,10 @@ export class FileService {
         project.dmnPath = dmnFilename;
         this._currentPath = filename;
 
-        this._filesystem.writeFile(filename, JSON.stringify(project), err => {
+        this._filesystem.writeFile(filename, JSON.stringify(project), err => this.callback(() => {
             if (isNull(err)) {
 
-                this._filesystem.writeFile(targetPathDmn, xml, err => {
+                this._filesystem.writeFile(targetPathDmn, xml, err => this.callback(() => {
                     if (isNull(err)) {
                     } else {
                         observable.next({ type: FsResultType.ERROR, message: this._errorSavingDmn });
@@ -195,17 +205,17 @@ export class FileService {
                     }
                     observable.next({ type: FsResultType.OK });
                     observable.complete();
-                });
+                }));
             } else {
                 observable.next({ type: FsResultType.ERROR, message: this._errorSavingProject });
                 observable.complete();
                 return;
             }
-        });
+        }));
     }
 
     private readFile<T>(filename, observable: Observer<FileSystemAccessResult<T>>) {
-        this._filesystem.readFile(filename, "utf-8", (err, data) => {
+        this._filesystem.readFile(filename, "utf-8", (err, data) => this.callback(() => {
             if (err) {
                 observable.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                 observable.complete();
@@ -213,6 +223,10 @@ export class FileService {
             }
             observable.next({ type: FsResultType.OK, data: JSON.parse(data) });
             observable.complete();
-        });
+        }));
+    }
+
+    private callback(func: () => void) {
+        this._zone.run(func);
     }
 }
