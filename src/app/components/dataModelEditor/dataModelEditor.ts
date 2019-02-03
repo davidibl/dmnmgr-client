@@ -3,6 +3,9 @@ import { EditorType } from '../../model/json/editorType';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
 import { Observable } from 'rxjs/Observable';
+import { EventService } from '../../services/eventService';
+import { DataChangedEvent } from '../../model/event/dataChangedEvent';
+import { DataChangeType } from '../../model/event/dataChangedType';
 
 @Component({
     selector: 'xn-data-model-editor',
@@ -18,7 +21,8 @@ export class DataModelEditorComponent implements OnInit {
     public requestModelsExceptCurrent$: Observable<string[]>;
     public requestModelReferenced$: Observable<string>;
 
-    public constructor(private _dataModelService: DataModelService) {}
+    public constructor(private _dataModelService: DataModelService,
+                       private _eventService: EventService) {}
 
     public ngOnInit() {
         this.requestModel$ = this._dataModelService.getDataModel();
@@ -28,14 +32,17 @@ export class DataModelEditorComponent implements OnInit {
     }
 
     public onNewModelCreated(requestModel: ObjectDefinition) {
+        this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
         this._dataModelService.newDataModel(requestModel);
     }
 
     public onRequestModelChanged(requestModel: ObjectDefinition) {
+        this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
         this._dataModelService.dataModelChanged(requestModel);
     }
 
     public onExistingModelSelected(existingModel: string) {
+        this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
         this._dataModelService.setCurrentDataModelReference(existingModel);
     }
 }

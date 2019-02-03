@@ -23,6 +23,7 @@ import { PluginMetaDescriptor } from '../../model/plugin/pluginMetaDescriptor';
 import { combineLatest } from 'rxjs';
 import { MostRecentFile } from '../../model/appConfiguration/mostRecentFile';
 import { AppConfigurationService } from '../../services/appConfigurationService';
+import { SaveStateService } from '../../services/saveStateService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -85,7 +86,8 @@ export class AppComponent implements OnInit {
                        private _eventService: EventService,
                        private _pluginService: PluginRegistryService,
                        private _electronService: ElectronService,
-                       private _appConfiguration: AppConfigurationService) {}
+                       private _appConfiguration: AppConfigurationService,
+                       private _saveStateService: SaveStateService) {}
 
     public ngOnInit() {
         this.mostRecentFiles$ = this._appConfiguration.getMostRecentFiles();

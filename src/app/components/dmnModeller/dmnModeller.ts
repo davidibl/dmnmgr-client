@@ -23,6 +23,8 @@ import { DmnModdleElement } from '../../model/dmn/dmnModdleElement';
 import { DmnModdleRule } from '../../model/dmn/dmnModdleRule';
 import { DmnType } from '../../model/dmn/dmnType';
 import { MyDmnModdle } from '../../model/dmn/dmnModdle';
+import { DataChangedEvent } from '../../model/event/dataChangedEvent';
+import { DataChangeType } from '../../model/event/dataChangedType';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -257,6 +259,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             }
             this.updateResponseModel();
             this.refreshTableColumnsList();
+            this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
             if (event.element && event.element.$type === DmnType.DECISION_TABLE) {
@@ -291,6 +294,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.drdListenerInited = true;
         this._modeller._viewers.drd.on('commandStack.shape.delete.postExecuted', (event: ShapeEvent) => {
             this._eventService.publishEvent(new DecisionDeleteEvent(event.context.shape.id));
+        });
+        this._modeller._viewers.drd.on('elements.changed', (event) => {
+            this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
     }
 
