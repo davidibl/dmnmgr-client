@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { ReplaySubject,Observable } from "rxjs";
-import { BaseEvent } from '../model/event';
+import { BaseEvent } from '../model/event/event';
 import { filter } from 'rxjs/operators';
 
 @Injectable()

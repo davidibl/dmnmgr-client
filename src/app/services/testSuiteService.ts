@@ -4,11 +4,11 @@ import { ReplaySubject } from 'rxjs/ReplaySubject';
 import { Observable } from 'rxjs/Observable';
 import { Test } from '../model/test';
 import { EventService } from './eventService';
-import { NewViewEvent } from '../model/newViewEvent';
-import { EventType } from '../model/eventType';
-import { RenameArtefactEvent } from '../model/renameArtefactEvent';
+import { NewViewEvent } from '../model/event/newViewEvent';
+import { EventType } from '../model/event/eventType';
+import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
 import { TestsuiteProject } from '../model/project/testsuiteproject';
-import { DecisionDeleteEvent } from '../model/decisionDeleteEvent';
+import { DecisionDeleteEvent } from '../model/event/decisionDeleteEvent';
 
 @Injectable()
 export class TestSuiteService {

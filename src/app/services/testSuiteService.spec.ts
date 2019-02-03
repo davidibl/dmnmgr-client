@@ -2,7 +2,7 @@ import { TestBed, async } from '@angular/core/testing';
 import { TestSuiteService } from './testSuiteService';
 import { EventService } from './eventService';
 import { of } from 'rxjs/Observable/of';
-import { BaseEvent } from '../model/event';
+import { BaseEvent } from '../model/event/event';
 import { take } from 'rxjs/operators/take';
 
 

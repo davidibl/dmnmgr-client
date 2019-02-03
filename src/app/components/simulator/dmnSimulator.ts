@@ -9,7 +9,7 @@ import { TestDecisionService } from '../../services/testDecisionService';
 import { DecisionSimulationResult } from '../../model/decisionSimulationResult';
 import { tap } from 'rxjs/operators/tap';
 import { EventService } from '../../services/eventService';
-import { BaseEvent } from '../../model/event';
+import { BaseEvent } from '../../model/event/event';
 
 @Component({
     selector: 'xn-dmn-simulator',

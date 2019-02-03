@@ -1,5 +1,4 @@
 import { TestBed, async } from '@angular/core/testing';
-import { BaseEvent } from '../model/event';
 import { SessionDataService } from './sessionDataService';
 
 describe('SessionDataService', () => {

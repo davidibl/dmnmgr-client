@@ -6,7 +6,7 @@ import { DmnProject } from '../model/project/dmnProject';
 import { Observable } from 'rxjs/Observable';
 import { map } from 'rxjs/operators/map';
 import { EventService } from './eventService';
-import { EventType } from '../model/eventType';
+import { EventType } from '../model/event/eventType';
 import { PluginDescriptor } from '../model/plugin/pluginDescriptor';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { PluginMetaDescriptor } from '../model/plugin/pluginMetaDescriptor';

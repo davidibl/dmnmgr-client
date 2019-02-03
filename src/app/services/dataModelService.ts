@@ -6,12 +6,12 @@ import { map } from 'rxjs/operators/map';
 import { filter } from 'rxjs/operators/filter';
 import { DataModelProject } from '../model/project/dataModelProject';
 import { EventService } from './eventService';
-import { EventType } from '../model/eventType';
+import { EventType } from '../model/event/eventType';
 import { DataModelTable } from '../model/project/dataModelTable';
-import { NewViewEvent } from '../model/newViewEvent';
-import { RenameArtefactEvent } from '../model/renameArtefactEvent';
+import { NewViewEvent } from '../model/event/newViewEvent';
+import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
 import { take } from 'rxjs/operators/take';
-import { DecisionDeleteEvent } from '../model/decisionDeleteEvent';
+import { DecisionDeleteEvent } from '../model/event/decisionDeleteEvent';
 import { JsonDatatype } from '../model/json/jsonDatatypes';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { TestBed, async } from '@angular/core/testing';
 import { EventService } from './eventService';
-import { BaseEvent } from '../model/event';
+import { BaseEvent } from '../model/event/event';
 
 describe('Event Service', () => {
     beforeEach(async(() => {

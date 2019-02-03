@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { EventService } from '../../services/eventService';
-import { BaseEvent } from '../../model/event';
+import { BaseEvent } from '../../model/event/event';
 
 @Component({
     selector: 'xn-importer',

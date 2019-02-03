@@ -8,9 +8,9 @@ import { ReplaySubject } from "rxjs/ReplaySubject";
 import { Test } from '../model/test';
 import { Observable } from 'rxjs';
 import { EventService } from './eventService';
-import { NewViewEvent } from '../model/newViewEvent';
-import { RenameArtefactEvent } from '../model/renameArtefactEvent';
-import { EventType } from '../model/eventType';
+import { NewViewEvent } from '../model/event/newViewEvent';
+import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
+import { EventType } from '../model/event/eventType';
 import { ConfigurationService, RestTemplate } from '@xnoname/web-components';
 
 export interface DeploymentResponse {
