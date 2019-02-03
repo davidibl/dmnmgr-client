@@ -4,6 +4,7 @@ import { of } from 'rxjs/Observable/of';
 import { FsResultType } from '../model/fileSystemAccessResult';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { take } from 'rxjs/operators/take';
+import { AppConfig } from '../model/appConfiguration/appConfig';
 
 export class MockFileService {
     public openOrCreateFile() {}
@@ -52,7 +53,7 @@ describe('AppConfiguration Service', () => {
             const mockFileService = <any>new MockFileService();
 
             const config = {mostRecent: []};
-            const configSecond = {mostRecent: [{name: 'x'}]};
+            const configSecond = <AppConfig>{mostRecent: [{name: 'x'}]};
 
             const returnValue = {data: config, type: FsResultType.OK};
             const resultSubject = new BehaviorSubject(returnValue);

@@ -97,6 +97,7 @@
                         "karmaConfig": "./karma.conf.js",
                         "polyfills": "src/polyfills.ts",
                         "tsConfig": "src/tsconfig.spec.json",
+                        "preserveSymlinks": true,
                         "scripts": [
                             "node_modules/openseadragon/build/openseadragon/openseadragon.min.js"
                         ],
