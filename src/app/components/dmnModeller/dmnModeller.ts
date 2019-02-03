@@ -25,6 +25,7 @@ import { DmnType } from '../../model/dmn/dmnType';
 import { MyDmnModdle } from '../../model/dmn/dmnModdle';
 import { DataChangedEvent } from '../../model/event/dataChangedEvent';
 import { DataChangeType } from '../../model/event/dataChangedType';
+import { SaveStateService } from '../../services/saveStateService';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -110,7 +111,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         @Inject(DOCUMENT) private document,
         private _dmnModelService: DmnModelService,
         private renderer: Renderer2,
-        private _dataModelService: DataModelService) { }
+        private _dataModelService: DataModelService,
+        private _saveStateService: SaveStateService) { }
 
     @HostListener('window:keyup', ['$event'])
     public handleKeyboardEvent(event: KeyboardEvent) {
@@ -176,6 +178,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     if (err) {
                         console.log('error rendering', err);
                     }
+                    this._saveStateService.resetChange(DataChangeType.DMN_MODEL);
                     if (this.initialized) {
                         return;
                     }
