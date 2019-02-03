@@ -43,3 +43,4 @@ testem.log
 Thumbs.db
 
 dmnmgr.config.json
+.dmnmgr.config.json
