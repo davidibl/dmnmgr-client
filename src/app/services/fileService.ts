@@ -14,7 +14,7 @@ export class FileService {
     private _errorMessageImporting = 'Beim öffnen der Datei ist ein Fehler aufgreten.' +
                                      ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.'
     private _errorSavingProject = 'Die Projektdatei konnte nicht gespeichert werden. Wählen Sie ' +
-                                  'ein Verzeichnisc auf das Sie Schreibberechtigung haben.';
+                                  'ein Verzeichnis auf das Sie Schreibberechtigung haben.';
     private _errorSavingDmn = 'Die DMN XML Datei konnte nicht gespeichert werden.';
     private _errorOpeningProject = 'Die Projektdatei konnte nicht gelesen werden.';
     private _errorOpeningDmn = 'Die im Projekt referenzierte DMN konnte nicht geladen werden.';
