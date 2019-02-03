@@ -11,7 +11,7 @@ export class SaveStateService {
         this._eventService
             .getEvent((ev) => ev.type === EventType.DATA_CHANGED)
             .subscribe(_ => {
-                console.log('Change'); this.hasChange = true;
+                this.hasChange = true;
             });
     }
 
