@@ -10,7 +10,7 @@ import { MostRecentFile } from '../model/appConfiguration/mostRecentFile';
 @Injectable()
 export class AppConfigurationService {
 
-    private static _configFilename = 'dmnmgr.config.json';
+    private static _configFilename = '.dmnmgr.config.json';
     private static _emptyDefault = { mostRecent: [] };
 
     private _currentConfiguration: AppConfig;
