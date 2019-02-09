@@ -1,9 +1,10 @@
-<xn-menu-header [brandName]="'dmnmgr'" [brandLogoSource]="'assets/logo.png'">
+<xn-menu-header [brandName]="'dmnmgr'" [brandLogoSource]="'assets/logo.png'" (outsideClick)="onMenuOutsideClick()">
     <li class="menu">
-        <xn-button (click)="fileMenuVisible = !fileMenuVisible"
-                   (mouseleave)="fileMenuVisible = false"
-                   class="small transparent">Projekt
-            <ul *ngIf="fileMenuVisible" class="sub-menu">
+        <xn-button (click)="menuVisible = !menuVisible"
+                   (mouseenter)="openMenu('fileMenuVisible')"
+                   [selected]="menuVisible && fileMenuVisible"
+                   class="small transparent nounderline">Projekt
+            <ul *ngIf="menuVisible && fileMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="createNewProject()">
                         <i class="fa fa-file-o mr-05" aria-hidden="true"></i>Neu
@@ -48,10 +49,11 @@
         </xn-button>
     </li>
     <li class="menu">
-        <xn-button (click)="bearbeitenMenuVisible = !bearbeitenMenuVisible"
-                    (mouseleave)="bearbeitenMenuVisible = false"
-                    class="small transparent">Bearbeiten
-            <ul *ngIf="bearbeitenMenuVisible" class="sub-menu">
+        <xn-button (click)="menuVisible = !menuVisible"
+                    (mouseenter)="openMenu('bearbeitenMenuVisible')"
+                    [selected]="menuVisible && bearbeitenMenuVisible"
+                    class="small transparent nounderline">Bearbeiten
+            <ul *ngIf="menuVisible && bearbeitenMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="openSearch()">
                         <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
@@ -62,10 +64,11 @@
         </xn-button>
     </li>
     <li class="menu">
-        <xn-button (click)="testMenuVisible = !testMenuVisible"
-                   (mouseleave)="testMenuVisible = false"
-                   class="small transparent">Tests
-            <ul *ngIf="testMenuVisible" class="sub-menu">
+        <xn-button (click)="menuVisible = !menuVisible"
+                   (mouseenter)="openMenu('testMenuVisible')"
+                   [selected]="menuVisible && testMenuVisible"
+                   class="small transparent nounderline">Tests
+            <ul *ngIf="menuVisible && testMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="openAllTestsDialog()">
                         <i class="fa fa-cogs mr-05" aria-hidden="true"></i>Alle ausführen
@@ -75,10 +78,11 @@
         </xn-button>
     </li>
     <li class="menu">
-        <xn-button (click)="engineMenuVisible = !engineMenuVisible"
-                   (mouseleave)="engineMenuVisible = false"
-                   class="small transparent">Engine
-            <ul *ngIf="engineMenuVisible" class="sub-menu">
+        <xn-button (click)="menuVisible = !menuVisible"
+                   (mouseenter)="openMenu('engineMenuVisible')"
+                   [selected]="menuVisible && engineMenuVisible"
+                   class="small transparent nounderline">Engine
+            <ul *ngIf="menuVisible && engineMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="clearDeployments()">
                         <i class="fa fa-trash-o mr-05" aria-hidden="true"></i>Deployments löschen
@@ -91,11 +95,12 @@
         </xn-button>
     </li>
     <li class="menu">
-        <xn-button (click)="pluginMenuVisible = !pluginMenuVisible"
-                    (mouseleave)="pluginMenuVisible = false"
-                    class="small transparent">Plugins
+        <xn-button (click)="menuVisible = !menuVisible"
+                    (mouseenter)="openMenu('pluginMenuVisible')"
+                    [selected]="menuVisible && pluginMenuVisible"
+                    class="small transparent nounderline">Plugins
             <ng-container *ngIf="pluginsMerged$ | async as plugins">
-                <ul *ngIf="pluginMenuVisible" class="sub-menu">
+                <ul *ngIf="menuVisible && pluginMenuVisible" class="sub-menu">
                     <div class="sub-menu-container">
                         <li *ngFor="let plugin of plugins" (click)="enablePlugin(plugin)">
                             <i class="fa mr-05" [ngClass]="plugin.icon" aria-hidden="true"></i>{{plugin.label}}

@@ -65,6 +65,7 @@ export class AppComponent implements OnInit {
     public bearbeitenMenuVisible = false;
     public pluginMenuVisible = false;
     public engineMenuVisible = false;
+    public menuVisible = false;
 
     public recentFilesMenuVisible = false;
 
@@ -117,6 +118,19 @@ export class AppComponent implements OnInit {
                     })
                 })
             );
+    }
+
+    public onMenuOutsideClick() {
+        this.menuVisible = false;
+    }
+
+    public openMenu(menuName: string) {
+        this.fileMenuVisible = false;
+        this.testMenuVisible = false;
+        this.bearbeitenMenuVisible = false;
+        this.pluginMenuVisible = false;
+        this.engineMenuVisible = false;
+        this[menuName] = true;
     }
 
     public openProject() {
