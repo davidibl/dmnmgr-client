@@ -21,10 +21,8 @@ export class IframeTabComponent implements OnInit {
 
     public set iframeUrl(iframeUrl: string) {
         if (this.iframeUrl === iframeUrl) { return; }
-        this._iframeUrl = iframeUrl;
-        this.configurePlugin({ url: this.iframeUrl, deploymentUrl: this.deploymentUrl });
-        if (!iframeUrl) { this.sanitizedUrl = null; return; }
-        this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
+        this.configurePlugin({ url: iframeUrl, deploymentUrl: this.deploymentUrl });
+        this.setIframeUrl(iframeUrl);
     }
 
     public get deploymentUrl() {
@@ -45,8 +43,8 @@ export class IframeTabComponent implements OnInit {
         this.getPlugin()
             .subscribe(pluginConfiguration => {
                 if (!pluginConfiguration || !pluginConfiguration.configuration) { this.reset(); return; }
-                this.iframeUrl = pluginConfiguration.configuration.url;
-                this.deploymentUrl = pluginConfiguration.configuration.deploymentUrl;
+                this.setIframeUrl(pluginConfiguration.configuration.url);
+                this._deploymentUrl = pluginConfiguration.configuration.deploymentUrl;
             });
     }
 
@@ -58,6 +56,12 @@ export class IframeTabComponent implements OnInit {
                     this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
                 }
             });
+    }
+
+    private setIframeUrl(iframeUrl: string) {
+        this._iframeUrl = iframeUrl;
+        if (!iframeUrl) { this.sanitizedUrl = null; return; }
+        this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
     }
 
     private configurePlugin(configuration: any) {
