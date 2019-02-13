@@ -26,6 +26,7 @@ import { MyDmnModdle } from '../../model/dmn/dmnModdle';
 import { DataChangedEvent } from '../../model/event/dataChangedEvent';
 import { DataChangeType } from '../../model/event/dataChangedType';
 import { SaveStateService } from '../../services/saveStateService';
+import { ImportDataEvent } from '../../model/event/importDataEvent';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -205,8 +206,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .subscribe(datamodel => this.updateInputColumns(datamodel));
 
         this._eventService
-            .getEvent((event) => event.type === 'import')
-            .subscribe(importEvent => this.importData(importEvent.data));
+            .getEvent((event) => event.type === EventType.IMPORT_DATA)
+            .subscribe(importEvent => this.importData(importEvent as ImportDataEvent));
     }
 
     private refreshTableColumnsList() {
@@ -303,9 +304,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         });
     }
 
-    private importData(data: string[][]) {
+    private importData(event: ImportDataEvent) {
 
-        this._dmnModelService.importData(data, this._modeller._moddle, this._modeller._activeView.element.decisionTable);
+        this._dmnModelService.importData(
+            event.data,
+            this._modeller._moddle,
+            this._modeller._activeView.element.decisionTable,
+            event.replaceRules);
 
         this._modeller.saveXML(null, (error, xml) => {
             if (error) { return; }

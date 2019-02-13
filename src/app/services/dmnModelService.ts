@@ -8,7 +8,11 @@ import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
 @Injectable()
 export class DmnModelService {
 
-    public importData(data: string[][], moddle: MyDmnModdle, decisionTable: DmnModdleTable) {
+    public importData(data: string[][], moddle: MyDmnModdle, decisionTable: DmnModdleTable, replaceRules = false) {
+
+        if (replaceRules) {
+            decisionTable.rule.splice(0, decisionTable.rule.length);
+        }
 
         const newRules = <DmnModdleRule[]>[];
         data.forEach(row => {

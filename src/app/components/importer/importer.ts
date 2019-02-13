@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { EventService } from '../../services/eventService';
-import { BaseEvent } from '../../model/event/event';
+import { ImportDataEvent } from '../../model/event/importDataEvent';
 
 @Component({
     selector: 'xn-importer',
@@ -31,7 +31,7 @@ export class ImporterComponent {
         const rows = this.separatedData.split(recordSeparator);
         const cols = rows.map(row => row.split(fieldSeparator));
 
-        const event = new BaseEvent<string[][]>('import', cols);
+        const event = new ImportDataEvent(cols, this.replaceAll);
         this._eventService.publishEvent(event);
     }
 }
