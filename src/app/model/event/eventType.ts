@@ -5,4 +5,5 @@ export class EventType {
     static DECISON_DELETED = 'decisonDeleted';
     static OPEN_SEARCH = 'openSearch';
     static DATA_CHANGED = 'dataChanged';
+    static IMPORT_DATA = 'importData';
 }
