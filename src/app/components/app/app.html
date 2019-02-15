@@ -111,6 +111,23 @@
             </ng-container>
         </xn-button>
     </li>
+    <li class="menu">
+        <xn-button (click)="menuVisible = !menuVisible"
+                    (mouseenter)="openMenu('helpMenuVisible')"
+                    [selected]="menuVisible && helpMenuVisible"
+                    class="small transparent nounderline">Hilfe
+            <ng-container *ngIf="pluginsMerged$ | async as plugins">
+                <ul *ngIf="menuVisible && helpMenuVisible" class="sub-menu">
+                    <div class="sub-menu-container">
+                        <li (click)="showDocumentation()">
+                            <i class="fa mr-05 fa-question-circle" aria-hidden="true"></i>Dokumentation
+                            <span class="right">(STRG + H)</span>
+                        </li>
+                    </div>
+                </ul>
+            </ng-container>
+        </xn-button>
+    </li>
 </xn-menu-header>
 <div class="main-content full-height">
     <router-outlet></router-outlet>

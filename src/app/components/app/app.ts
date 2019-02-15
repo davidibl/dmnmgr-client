@@ -65,6 +65,7 @@ export class AppComponent implements OnInit {
     public bearbeitenMenuVisible = false;
     public pluginMenuVisible = false;
     public engineMenuVisible = false;
+    public helpMenuVisible = false;
     public menuVisible = false;
 
     public recentFilesMenuVisible = false;
@@ -130,6 +131,7 @@ export class AppComponent implements OnInit {
         this.bearbeitenMenuVisible = false;
         this.pluginMenuVisible = false;
         this.engineMenuVisible = false;
+        this.helpMenuVisible = false;
         this[menuName] = true;
     }
 
@@ -301,6 +303,9 @@ export class AppComponent implements OnInit {
             case 'KeyS':
                 this.saveProject();
                 break;
+            case 'KeyH':
+                this.showDocumentation();
+                break;
             case 'KeyR':
                 this.fileMenuVisible = !this.fileMenuVisible;
                 this.recentFilesMenuVisible = !this.recentFilesMenuVisible;
@@ -310,6 +315,10 @@ export class AppComponent implements OnInit {
 
     public enablePlugin(plugin: PluginItem) {
         this._projectService.togglePluginActivation(plugin);
+    }
+
+    public showDocumentation() {
+
     }
 
     private processError(result: FileSystemAccessResult<any>) {
