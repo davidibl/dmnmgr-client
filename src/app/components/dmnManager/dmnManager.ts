@@ -61,7 +61,7 @@ export class DmnManagerComponent implements OnInit {
 
         this.isDecicionTableMode$ = this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
-            .pipe( map(ev => ev.data.isDecisionTable ) );
+            .pipe( map(ev => ev.data.isDecisionTable) );
     }
 
     public onSelectedTabChanged(tabId: string) {
