@@ -27,6 +27,10 @@ import { SaveStateService } from '../../services/saveStateService';
 import { DialogComponent, ButtonComponent } from '@xnoname/web-components';
 import { take } from 'rxjs/operators/take';
 import { merge } from 'rxjs/operators';
+import { NewViewEvent } from '../../model/event/newViewEvent';
+import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
+import { ExportDataType } from '../../model/event/exportDataType';
+import { ExportService } from '../../services/exportService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -81,6 +85,8 @@ export class AppComponent implements OnInit {
     public showErrorDialog = false;
     public showAllTestsDialog = false;
 
+    public isDecicionTableMode$: Observable<boolean>;
+
     public set filesystemError(filesystemError: string) {
         this._filesystemError = filesystemError;
         this.showErrorDialog = true;
@@ -119,6 +125,10 @@ export class AppComponent implements OnInit {
                     })
                 })
             );
+
+        this.isDecicionTableMode$ = this._eventService
+            .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
+            .pipe( map(ev => ev.data.isDecisionTable) );
     }
 
     public onMenuOutsideClick() {
@@ -319,6 +329,10 @@ export class AppComponent implements OnInit {
 
     public showDocumentation() {
 
+    }
+
+    public exportCurrentTable() {
+        this._eventService.publishEvent(new ExportCommandEvent(ExportDataType.CSV));
     }
 
     private processError(result: FileSystemAccessResult<any>) {

@@ -27,6 +27,7 @@ import { DataChangedEvent } from '../../model/event/dataChangedEvent';
 import { DataChangeType } from '../../model/event/dataChangedType';
 import { SaveStateService } from '../../services/saveStateService';
 import { ImportDataEvent } from '../../model/event/importDataEvent';
+import { ExportService } from '../../services/exportService';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -112,6 +113,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         @Inject(DOCUMENT) private document,
         private _dmnModelService: DmnModelService,
         private renderer: Renderer2,
+        private _exportService: ExportService,
         private _dataModelService: DataModelService,
         private _saveStateService: SaveStateService) { }
 
@@ -156,6 +158,11 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((ev) => ev.type === EventType.OPEN_SEARCH)
             .subscribe(_ => this.searchOpen = true);
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.EXPORT)
+            .subscribe((ev) => this._exportService.exportTable(
+                this._modeller._activeView.element.decisionTable, ev.data))
     }
 
     public ngAfterViewInit(): void {

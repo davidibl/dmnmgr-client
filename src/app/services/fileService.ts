@@ -7,6 +7,7 @@ import { Observable } from 'rxjs/Observable';
 import { Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 import { ErrorMessageService } from './errorMessageService';
+import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
 
 @Injectable()
 export class FileService {
@@ -105,9 +106,34 @@ export class FileService {
         });
     }
 
-    public saveFile<T>(filename: string, content: T): Observable<FileSystemAccessResult<void>> {
+    public getSaveLocation(dialogOptions: FileSaveDialogOptions): Observable<FileSystemAccessResult<void>> {
+        const dialog = this._electronService.remote.dialog;
+        const window = this._electronService.remote.getCurrentWindow();
+
+        const saveOptions = <SaveDialogOptions>{
+            filters: [{ name: dialogOptions.typeName, extensions: dialogOptions.extension }],
+            title: dialogOptions.title,
+            properties: ['openFile']
+        };
+
         return Observable.create(observer => {
-            this._filesystem.writeFile(filename, JSON.stringify(content), err => this.callback(() => {
+            dialog.showSaveDialog(window, saveOptions, (filename, _) => {
+                if (isNull(filename)) {
+                    this.callback(() => observer.next({ type: FsResultType.NOTHING_SELECTED }));
+                    return;
+                }
+                this.callback(() => observer.next({ type: FsResultType.OK, filepath: filename }));
+            });
+        });
+    }
+
+    public saveFile<T>(filename: string, content: T): Observable<FileSystemAccessResult<void>> {
+        return this.saveTextToFile(filename, JSON.stringify(content));
+    }
+
+    public saveTextToFile(filename: string, content: string) {
+        return Observable.create(observer => {
+            this._filesystem.writeFile(filename, content, err => this.callback(() => {
                 if (isNull(err)) {
                     observer.next({ type: FsResultType.OK });
                     observer.complete();

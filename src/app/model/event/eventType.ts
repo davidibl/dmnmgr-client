@@ -6,4 +6,5 @@ export class EventType {
     static OPEN_SEARCH = 'openSearch';
     static DATA_CHANGED = 'dataChanged';
     static IMPORT_DATA = 'importData';
+    static EXPORT = 'export';
 }

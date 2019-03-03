@@ -13,6 +13,8 @@ import { PluginRegistryService } from './pluginRegistryService';
 import { AppConfigurationService } from './appConfigurationService';
 import { ErrorMessageService } from './errorMessageService';
 import { SaveStateService } from './saveStateService';
+import { ExportService } from './exportService';
+import { CsvExportService } from './csvExportService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -30,4 +32,6 @@ export const ALL_SERVICES = [
     AppConfigurationService,
     ErrorMessageService,
     SaveStateService,
+    ExportService,
+    CsvExportService,
 ];
