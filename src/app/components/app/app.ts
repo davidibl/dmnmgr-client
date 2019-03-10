@@ -85,7 +85,7 @@ export class AppComponent implements OnInit {
     public showErrorDialog = false;
     public showAllTestsDialog = false;
 
-    public isDecicionTableMode$: Observable<boolean>;
+    public isDecicionTableMode: boolean;
 
     public set filesystemError(filesystemError: string) {
         this._filesystemError = filesystemError;
@@ -126,9 +126,10 @@ export class AppComponent implements OnInit {
                 })
             );
 
-        this.isDecicionTableMode$ = this._eventService
+        this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
-            .pipe( map(ev => ev.data.isDecisionTable) );
+            .pipe( map(ev => ev.data.isDecisionTable) )
+            .subscribe(isDecisionTableMode => this.isDecicionTableMode = isDecisionTableMode);
     }
 
     public onMenuOutsideClick() {

@@ -59,7 +59,7 @@
                         <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
                         <span class="right">(STRG + F)</span>
                     </li>
-                    <li *ngIf="isDecicionTableMode$ | async" (click)="exportCurrentTable()">
+                    <li *ngIf="isDecicionTableMode" (click)="exportCurrentTable()">
                         <i class="fa fa-exchange mr-05" aria-hidden="true"></i>CSV Exportieren
                         <span class="right">(STRG + X)</span>
                     </li>
