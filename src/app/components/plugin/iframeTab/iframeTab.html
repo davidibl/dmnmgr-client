@@ -28,3 +28,18 @@
     </div>
     <iframe *ngIf="sanitizedUrl" class="full-height full-width" [src]="sanitizedUrl"></iframe>
 </div>
+
+<xn-dialog [closable]="true"
+           [(open)]="showErrorDialog"
+           (confirm)="clearError()"
+           [hideCancelButton]="true"
+           [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Fehler beim Bereitstellen
+    </div>
+    <div class="dialog-body pb-1">
+        <p>
+            {{errorDeployment}}
+        </p>
+    </div>
+</xn-dialog>

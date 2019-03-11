@@ -3,6 +3,8 @@ import { DeploymentService } from '../../../services/deploymentService';
 import { DomSanitizer } from '@angular/platform-browser';
 import { take } from 'rxjs/operators/take';
 import { DmnProjectService } from '../../../services/dmnProjectService';
+import { catchError } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 
 @Component({
     selector: 'xn-iframe-tab',
@@ -14,6 +16,8 @@ export class IframeTabComponent implements OnInit {
     private _iframeUrl: string;
     public sanitizedUrl = null;
     public _deploymentUrl: string;
+    public errorDeployment: string;
+    public showErrorDialog = false;
 
     public get iframeUrl() {
         return this._iframeUrl;
@@ -51,11 +55,21 @@ export class IframeTabComponent implements OnInit {
     public deployDmn() {
         this._deploymentService
             .deployXml(this.deploymentUrl)
+            .pipe( catchError(response => {
+                this.errorDeployment = response.error.message;
+                this.showErrorDialog = true;
+                return of(null);
+            }))
             .subscribe(_ => {
                 if (this._iframeUrl) {
                     this.sanitizedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.iframeUrl);
                 }
             });
+    }
+
+    public clearError() {
+        this.showErrorDialog = false;
+        this.errorDeployment = null;
     }
 
     private setIframeUrl(iframeUrl: string) {
