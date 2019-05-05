@@ -23,11 +23,13 @@ export class DmnModelService {
             newRule.outputEntry = [];
             let counter = 0;
             if (decisionTable.input) {
-                decisionTable.input.forEach(_ => {
+                decisionTable.input.forEach(cell => {
+                    cell.typeRef
                     const input = newRule
                         .$model
                         .create(DmnType.UNARY_TEST);
-                    input.text = (counter < row.length) ? `${row[counter]}` : null;
+                    const escapeChar = (cell.typeRef === 'string' && !this.hasEscapeChar(row[counter])) ? '"' : '';
+                    input.text = (counter < row.length) ? `${escapeChar}${row[counter]}${escapeChar}` : null;
                     input.id = this.generateId(DmnType.UNARY_TEST);
                     newRule.inputEntry.push(input);
                     counter++;
@@ -35,11 +37,12 @@ export class DmnModelService {
             }
 
             if (decisionTable.output) {
-                decisionTable.output.forEach(_ => {
+                decisionTable.output.forEach(cell => {
                     const input = newRule
                         .$model
                         .create(DmnType.LITERAL_EXPRESSION);
-                    input.text = (counter < row.length) ? `${row[counter]}` : null;
+                    const escapeChar = (cell.typeRef === 'string' && !this.hasEscapeChar(row[counter])) ? '"' : '';
+                    input.text = (counter < row.length) ? `${escapeChar}${row[counter]}${escapeChar}` : null;
                     input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
                     newRule.outputEntry.push(input);
                     counter++;
@@ -55,5 +58,9 @@ export class DmnModelService {
 
     public generateId(type: string) {
         return type.substr(type.indexOf(':') + 1) + UUID.new();
+    }
+
+    public hasEscapeChar(value: string) {
+        return value.indexOf('"') === 0;
     }
 }
