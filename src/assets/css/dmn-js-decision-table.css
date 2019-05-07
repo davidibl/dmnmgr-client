@@ -242,7 +242,7 @@
   top: 79px;
   right: 60px;
   margin-right: 10px;
-  z-index: 10000;
+  z-index: 1050;
 }
 
 .dmn-decision-table-container .view-drd .view-drd-button {
@@ -288,7 +288,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10000;
+  z-index: 1050;
 }
 
 .dmn-decision-table-container .powered-by-overlay .powered-by-overlay-content {
