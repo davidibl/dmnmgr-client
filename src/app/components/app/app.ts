@@ -78,6 +78,7 @@ export class AppComponent implements OnInit {
     public pluginsConfigured$: Observable<PluginDescriptor[]>;
     public pluginsMerged$: Observable<PluginItem[]>;
     public mostRecentFiles$: Observable<MostRecentFile[]>;
+    public hasChanges$: Observable<boolean>;
 
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
@@ -108,6 +109,7 @@ export class AppComponent implements OnInit {
 
     public ngOnInit() {
         this.mostRecentFiles$ = this._appConfiguration.getMostRecentFiles();
+        this.hasChanges$ = this._saveStateService.hasChanges$();
         this.plugins$ = this._pluginService.getPlugins();
         this.pluginsConfigured$ = this._projectService.getPlugins();
         this.pluginsMerged$ = combineLatest(this.plugins$, this.pluginsConfigured$)
@@ -249,7 +251,9 @@ export class AppComponent implements OnInit {
     }
 
     public quit() {
-        this._electronService.process.exit();
+        this.confirmActionWhenChangesAreUnsaved(() => {
+            this._electronService.process.exit();
+        });
     }
 
     public onOpenChange($event) {

@@ -3,7 +3,8 @@
         <xn-button (click)="menuVisible = !menuVisible"
                    (mouseenter)="openMenu('fileMenuVisible')"
                    [selected]="menuVisible && fileMenuVisible"
-                   class="small transparent nounderline">Projekt
+                   class="small transparent nounderline">
+                   Projekt<ng-container *ngIf="hasChanges$ | async">*</ng-container>
             <ul *ngIf="menuVisible && fileMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
                     <li (click)="createNewProject()">
