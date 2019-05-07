@@ -88,6 +88,8 @@ export interface DmnColumn {
 })
 export class DmnModellerComponent implements AfterViewInit, OnInit {
 
+    private static SAVE_OPTIONS = { format: true };
+
     private initialized = false;
     private drdListenerInited = false;
 
@@ -201,7 +203,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             type: this.type,
             saveFunc: () => {
                 const subject = new ReplaySubject<string>(1);
-                this._modeller.saveXML(null, (error, result) => {
+                this._modeller.saveXML(DmnModellerComponent.SAVE_OPTIONS, (error, result) => {
                     subject.next(result);
                 });
                 return subject.asObservable().pipe(distinctUntilChanged());
@@ -319,7 +321,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             this._modeller._activeView.element.decisionTable,
             event.replaceRules);
 
-        this._modeller.saveXML(null, (error, xml) => {
+        this._modeller.saveXML(DmnModellerComponent.SAVE_OPTIONS, (error, xml) => {
             if (error) { return; }
             this._modeller.importXML(xml, (err => { }));
         });
