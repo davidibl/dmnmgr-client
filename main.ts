@@ -20,7 +20,7 @@ function createWindow() {
     title: 'dmnmgr',
     icon: path.join(__dirname, 'favicon.64x64.png'),
     webPreferences: {
-        devTools: false
+        devTools: serve
     }
   });
 
