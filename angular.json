@@ -44,6 +44,7 @@
                             "src/assets/css/dmn-embedded.css",
                             "src/assets/css/dmn-js-literal-expression.css",
                             "src/assets/css/dmn-js-shared.css",
+                            "src/assets/css/dmn-js-override.css",
                             "node_modules/font-awesome/scss/font-awesome.scss",
                             "node_modules/breakpoint-sass/stylesheets/_breakpoint.scss",
                             "src/scss/site.scss"
