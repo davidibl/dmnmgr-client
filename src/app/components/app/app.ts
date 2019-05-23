@@ -7,7 +7,7 @@ import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAcce
 import { filter } from 'rxjs/operators/filter';
 import { TestSuiteService } from '../../services/testSuiteService';
 import { Test } from '../../model/test';
-import { of } from 'rxjs/Observable/of';
+import { of } from 'rxjs/observable/of';
 import { map } from 'rxjs/operators/map';
 import { TestsuiteProject } from '../../model/project/testsuiteproject';
 import { TestDecisionService } from '../../services/testDecisionService';
