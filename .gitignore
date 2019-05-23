@@ -44,3 +44,7 @@ Thumbs.db
 
 dmnmgr.config.json
 .dmnmgr.config.json
+
+# Electron
+main.js
+main.js.map
