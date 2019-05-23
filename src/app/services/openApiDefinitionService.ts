@@ -6,7 +6,7 @@ import { ObjectDefinition } from '../model/json/objectDefinition';
 import { getObjectProperty, ConfigurationService, RestTemplate } from '@xnoname/web-components';
 import { OpenApiSchema } from '../model/json/openApiSchema';
 import { Observable } from 'rxjs/Observable';
-import { of } from 'rxjs/Observable/of';
+import { of } from 'rxjs/observable/of';
 import { map } from 'rxjs/operators/map';
 import { HttpClient } from '@angular/common/http';
 
