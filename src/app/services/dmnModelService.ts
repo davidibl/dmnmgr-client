@@ -6,6 +6,7 @@ import { DmnType } from '../model/dmn/dmnType';
 import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
 import { DmnModdleEventType, DmnModdleEventTypes } from '../model/dmn/dmnModdleEventType';
 import { DmnModdleEvent } from '../model/dmn/dmnModdleEvent';
+import { DmnModdleElement } from '../model/dmn/dmnModdleElement';
 
 @Injectable()
 export class DmnModelService {
@@ -30,7 +31,7 @@ export class DmnModelService {
                     const input = newRule
                         .$model
                         .create(DmnType.UNARY_TEST);
-                    const escapeChar = (cell.typeRef === 'string' && !this.hasEscapeChar(row[counter])) ? '"' : '';
+                    const escapeChar = this.getEscapeCharToAdd(cell, row[counter]);
                     input.text = (counter < row.length) ? `${escapeChar}${row[counter]}${escapeChar}` : null;
                     input.id = this.generateId(DmnType.UNARY_TEST);
                     newRule.inputEntry.push(input);
@@ -43,7 +44,7 @@ export class DmnModelService {
                     const input = newRule
                         .$model
                         .create(DmnType.LITERAL_EXPRESSION);
-                    const escapeChar = (cell.typeRef === 'string' && !this.hasEscapeChar(row[counter])) ? '"' : '';
+                    const escapeChar = this.getEscapeCharToAdd(cell, row[counter]);
                     input.text = (counter < row.length) ? `${escapeChar}${row[counter]}${escapeChar}` : null;
                     input.id = this.generateId(DmnType.LITERAL_EXPRESSION);
                     newRule.outputEntry.push(input);
@@ -83,5 +84,16 @@ export class DmnModelService {
     public isInputClause(event: DmnModdleEvent) {
         return (event.elements && event.elements.length > 1 &&
             !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
+    }
+
+    private getEscapeCharToAdd(cell: DmnModdleElement, value: string): string {
+        const typeRef = cell.inputExpression ? cell.inputExpression.typeRef : cell.typeRef;
+        return (typeRef === 'string' &&
+                !this.hasEscapeChar(value) &&
+                this.hasValue(value)) ? '"' : '';
+    }
+
+    private hasValue(csvCell: string): boolean {
+        return !!csvCell && csvCell.length > 0;
     }
 }
