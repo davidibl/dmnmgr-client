@@ -78,6 +78,7 @@ export class DmnModelService {
         if (!event.elements || !event.elements[0].$parent) { return false; }
         const changedElement = event.elements[0];
         const parentRule = changedElement.$parent;
+        if (!parentRule || !parentRule.outputEntry) { return false; }
         return !!parentRule.outputEntry.find(entry => entry.id === changedElement.id);
     }
 
