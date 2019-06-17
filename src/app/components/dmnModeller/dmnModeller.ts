@@ -97,6 +97,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private _modeller: DMNJS;
     private _searchStylesheet: any;
 
+    private _errorNodes: any[] = [];
+
     private _internalEventService = new ReplaySubject<{ type: string, identity: any, func: () => void }>();
     private _debounceSubject = new ReplaySubject<() => void>(1);
 
@@ -258,6 +260,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     this.fixMissingExpressionLanguage(event);
                     break;
             }
+            this.checkAllErrors();
             this.updateResponseModel();
             this.refreshTableColumnsList();
             this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
@@ -274,6 +277,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         });
         this.updateResponseModel();
         this.refreshTableColumnsList();
+        this.checkAllErrors();
 
         const ev = new NewViewEvent(this._modeller._activeView.element.id);
         if (this._modeller._activeView.element.$type !== 'decisionTable') {
@@ -288,6 +292,69 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             }
         });
         this.initDrdListeners();
+    }
+
+    private checkAllErrors() {
+        this.clearErrorNodes();
+        this.getAllInputClauseErrors()
+            .concat(...this.getAllOutputClauseErrors())
+            .forEach(columnDataId => {
+                const newErrorIcon = this.addErrorElement(`th[data-col-id="${columnDataId}"]`);
+                this._errorNodes.push(newErrorIcon);
+            });
+    }
+
+    private addErrorElement(selector: string) {
+        const icon = this.renderer.createElement('i');
+        this.renderer.addClass(icon, 'fa');
+        this.renderer.addClass(icon, 'fa-exclamation-triangle');
+        this.renderer.setStyle(icon, 'float', 'right');
+        this.renderer.setStyle(icon, 'margin-top', '4px');
+        this.renderer.setStyle(icon, 'color', '#f13943');
+        this.renderer.setAttribute(icon, 'aria-hidden', 'true');
+        const host = this._container.nativeElement.querySelector(selector);
+        this.renderer.appendChild(host, icon);
+        return { host: host, child: icon};
+    }
+
+    private clearErrorNodes() {
+        this._errorNodes.forEach(node => this.renderer.removeChild(node.host, node.child));
+        this._errorNodes = [];
+    }
+
+    private getAllOutputClauseErrors(): string[] {
+        return this._modeller
+            ._activeView
+            .element
+            .decisionTable
+            .output
+            .filter(output => this.hasOutputClauseError(output))
+            .map(output => output.id);
+    }
+
+    private getAllInputClauseErrors(): string[] {
+        return this._modeller
+            ._activeView
+            .element
+            .decisionTable
+            .input
+            .filter(input => this.hasInputClauseError(input))
+            .map(input => input.id);
+    }
+
+    private hasInputClauseError(clause: DmnModdleElement) {
+        const expression = clause.inputExpression;
+        if (!expression) { return false; }
+        if (DmnExpressionLanguage.isJuel(expression.expressionLanguage)) {
+            if (expression.text.indexOf('${') !== 0 || !expression.text.endsWith('}')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private hasOutputClauseError(clause: DmnModdleElement) {
+        return !!clause && !clause.name;
     }
 
     private fixMissingExpressionLanguage(event: DmnModdleEvent) {
@@ -488,9 +555,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private clearSearchStyles() {
-        const count = this._searchStylesheet.rules.length;
+        this.clearStyles(this._searchStylesheet);
+    }
+
+    private clearStyles(stylesheet: any) {
+        const count = stylesheet.rules.length;
         for (let i = 0; i < count; i++) {
-            this._searchStylesheet.deleteRule(0);
+            stylesheet.deleteRule(0);
         }
     }
 
