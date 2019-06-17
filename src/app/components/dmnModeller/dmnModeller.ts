@@ -28,6 +28,9 @@ import { DataChangeType } from '../../model/event/dataChangedType';
 import { SaveStateService } from '../../services/saveStateService';
 import { ImportDataEvent } from '../../model/event/importDataEvent';
 import { ExportService } from '../../services/exportService';
+import { DmnExpressionLanguage } from '../../model/dmn/dmnExpressionLanguage';
+import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
+import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -58,11 +61,6 @@ export interface ShapeEventContext {
 
 export interface Shape {
     id: string;
-}
-
-export interface DmnModdleEvent {
-    elements: DmnModdleElement[];
-    element: DmnModdleElement;
 }
 
 export class DmnDatatypeMapping {
@@ -252,23 +250,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             }
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
-            if (this.isInputExpressionChanged(event)) {
-                const literalExpression = this.getElementByType(event, DmnType.LITERAL_EXPRESSION);
-                const inputClause = this.getElementByType(event, DmnType.INPUT_CLAUSE);
-                this._dataModelService
-                    .getEnumValuesByPath(literalExpression.text)
-                    .pipe(take(1))
-                    .subscribe(values => {
-                        this.setInputValueRestriction(inputClause, values);
-                    });
-                this._dataModelService
-                    .getDatatypeByPath(literalExpression.text)
-                    .pipe(
-                        take(1),
-                        map(type => this.getDmnByJsonType(type)),
-                        filter(type => !!type)
-                    )
-                    .subscribe(value => literalExpression.typeRef = value);
+            switch (this._dmnModelService.dmnModelChangeEventType(event)) {
+                case DmnModdleEventType.INPUT_CLAUSE:
+                    this.setDataModelPropertiesOnColumns(event);
+                    break;
+                case DmnModdleEventType.OUTPUT_EXPRESSION:
+                    this.fixMissingExpressionLanguage(event);
+                    break;
             }
             this.updateResponseModel();
             this.refreshTableColumnsList();
@@ -300,6 +288,27 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             }
         });
         this.initDrdListeners();
+    }
+
+    private fixMissingExpressionLanguage(event: DmnModdleEvent) {
+        if (!event.elements[0].expressionLanguage) {
+            event.elements[0].expressionLanguage = DmnExpressionLanguage.JUEL;
+        }
+    }
+
+    private setDataModelPropertiesOnColumns(event: DmnModdleEvent) {
+        const literalExpression = this.getElementByType(event, DmnType.LITERAL_EXPRESSION);
+        const inputClause = this.getElementByType(event, DmnType.INPUT_CLAUSE);
+        this._dataModelService
+            .getEnumValuesByPath(literalExpression.text)
+            .pipe(take(1))
+            .subscribe(values => {
+                this.setInputValueRestriction(inputClause, values);
+            });
+        this._dataModelService
+            .getDatatypeByPath(literalExpression.text)
+            .pipe(take(1), map(type => this.getDmnByJsonType(type)), filter(type => !!type))
+            .subscribe(value => literalExpression.typeRef = value);
     }
 
     private initDrdListeners() {

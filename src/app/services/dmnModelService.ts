@@ -4,6 +4,8 @@ import { MyDmnModdle } from '../model/dmn/dmnModdle';
 import { UUID } from '../functions/UUID';
 import { DmnType } from '../model/dmn/dmnType';
 import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
+import { DmnModdleEventType, DmnModdleEventTypes } from '../model/dmn/dmnModdleEventType';
+import { DmnModdleEvent } from '../model/dmn/dmnModdleEvent';
 
 @Injectable()
 export class DmnModelService {
@@ -62,5 +64,24 @@ export class DmnModelService {
 
     public hasEscapeChar(value: string) {
         return value.indexOf('"') === 0;
+    }
+
+    public dmnModelChangeEventType(event: DmnModdleEvent): DmnModdleEventTypes {
+        if (!event) { return DmnModdleEventType.NONE }
+        if (this.isInputClause(event)) { return DmnModdleEventType.INPUT_CLAUSE; }
+        if (this.isOutputEntry(event)) { return DmnModdleEventType.OUTPUT_EXPRESSION; }
+        return DmnModdleEventType.NONE;
+    }
+
+    public isOutputEntry(event: DmnModdleEvent) {
+        if (!event.elements || !event.elements[0].$parent) { return false; }
+        const changedElement = event.elements[0];
+        const parentRule = changedElement.$parent;
+        return !!parentRule.outputEntry.find(entry => entry.id === changedElement.id);
+    }
+
+    public isInputClause(event: DmnModdleEvent) {
+        return (event.elements && event.elements.length > 1 &&
+            !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
     }
 }
