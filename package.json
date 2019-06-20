@@ -7,7 +7,7 @@
   "main": "main.js",
   "repository": {
     "type": "git",
-    "url": "https://xnoname.visualstudio.com/schokospeck-client"
+    "url": "https://github.com/davidibl/dmnmgr-client"
   },
   "scripts": {
     "postinstall": "npm run link",
