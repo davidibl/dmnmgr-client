@@ -45,7 +45,6 @@
 
 .dmn-decision-table-container .tjs-table {
   min-width: 100%;
-  width: auto;
 }
 
 /* end basic styles */
@@ -84,8 +83,7 @@
 }
 
 .dmn-decision-table-container th {
-    min-width: 35px;
-    overflow: hidden;
+  min-width: 192px;
 }
 
 .dmn-decision-table-container th,
@@ -238,11 +236,8 @@
 /* view drd */
 .dmn-decision-table-container .view-drd {
   float: right;
-  position: fixed;
-  top: 79px;
-  right: 60px;
+
   margin-right: 10px;
-  z-index: 1050;
 }
 
 .dmn-decision-table-container .view-drd .view-drd-button {
@@ -270,8 +265,6 @@
   width: 38px;
   z-index: 10;
   cursor: pointer;
-  position: fixed;
-  right: 20px;
 }
 
 .dmn-decision-table-container .powered-by-logo .logo {
@@ -288,7 +281,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1050;
+  z-index: 10000;
 }
 
 .dmn-decision-table-container .powered-by-overlay .powered-by-overlay-content {

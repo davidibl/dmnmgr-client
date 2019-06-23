@@ -60,7 +60,7 @@ export class DataModelService {
         return this._datamodels
             .pipe(
                 map(datamodel => {
-                    if (this.isReferenced(datamodel)) {
+                    if (this.isReferenced(datamodel) && !!this._dataModelProject[datamodel.name.substr(5)]) {
                         datamodel = this._dataModelProject[datamodel.name.substr(5)].requestModel;
                     }
                     return datamodel;

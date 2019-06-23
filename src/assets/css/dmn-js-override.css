@@ -1,0 +1,45 @@
+.dmn-decision-table-container .tjs-table {
+    width: auto;
+}
+
+.dmn-decision-table-container th {
+    min-width: 35px;
+    overflow: hidden;
+}
+
+/* view drd */
+
+.dmn-decision-table-container .view-drd {
+    position: fixed;
+    top: 79px;
+    right: 60px;
+    z-index: 1050;
+}
+
+/* powered by */
+.dmn-decision-table-container .powered-by-logo {
+    position: fixed;
+    right: 20px;
+}
+
+.dmn-decision-table-container .powered-by-overlay {
+    z-index: 1050;
+}
+
+
+.dmn-decision-table-container .tjs-container {
+    width: auto;
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+}
+
+.dmn-decision-table-container {
+    width: 100%;
+    height: 100%;
+    position: initial;
+}
+
+.dmn-js-parent {
+    position: initial;
+}

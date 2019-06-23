@@ -1,5 +1,6 @@
 import { DmnModdleTable } from './dmnModdleTable';
 import { MyDmnModdle } from './dmnModdle';
+import { DmnModdleRule } from './dmnModdleRule';
 
 export interface DmnModdleElement {
     $type: string;
@@ -7,6 +8,7 @@ export interface DmnModdleElement {
     name: string;
     text: string;
     label: string;
+    expressionLanguage?: string;
     inputValues?: DmnModdleElement;
     inputExpression?: DmnModdleElement;
     input?: DmnModdleElement[];
@@ -14,5 +16,5 @@ export interface DmnModdleElement {
     decisionTable?: DmnModdleTable;
     $model: MyDmnModdle;
     typeRef: string;
-    $parent: DmnModdleElement;
+    $parent: DmnModdleRule;
 }

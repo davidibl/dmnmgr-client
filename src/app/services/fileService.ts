@@ -76,7 +76,7 @@ export class FileService {
                 return;
             }
             const project = <DmnProject>JSON.parse(data);
-            this._filesystem.readFile(path + project.dmnPath, "utf-8", (err, data) => this.callback(() => {
+            this._filesystem.readFile(path + project.dmnPath, 'utf-8', (err, data) => this.callback(() => {
                 if (err) {
                     const errorMessage = this._errorMessageService
                         .getErrorMessage(err.message, this._errorOpeningDmn, { path: path + project.dmnPath });
@@ -190,7 +190,7 @@ export class FileService {
                 }
 
                 const filename = fileNames[0];
-                this._filesystem.readFile(filename, "utf-8", (err, data) => this.callback(() => {
+                this._filesystem.readFile(filename, 'utf-8', (err, data) => this.callback(() => {
                     if (err) {
                         observer.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                         observer.complete();
@@ -241,7 +241,7 @@ export class FileService {
     }
 
     private readFile<T>(filename, observable: Observer<FileSystemAccessResult<T>>) {
-        this._filesystem.readFile(filename, "utf-8", (err, data) => this.callback(() => {
+        this._filesystem.readFile(filename, 'utf-8', (err, data) => this.callback(() => {
             if (err) {
                 observable.next({ type: FsResultType.ERROR, message: this._errorMessageImporting });
                 observable.complete();
