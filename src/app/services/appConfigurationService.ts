@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { FileService } from './fileService';
 import { AppConfig } from '../model/appConfiguration/appConfig';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators/map';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { map } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
 import { FsResultType } from '../model/fileSystemAccessResult';
 import { MostRecentFile } from '../model/appConfiguration/mostRecentFile';
 

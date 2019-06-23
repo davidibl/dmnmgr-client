@@ -1,4 +1,4 @@
-import { JsonObjectDefinition } from "./jsonObjectDefinition";
+import { JsonObjectDefinition } from './jsonObjectDefinition';
 
 export interface JsonObjectDefinitions {
     [key: string]: JsonObjectDefinition;

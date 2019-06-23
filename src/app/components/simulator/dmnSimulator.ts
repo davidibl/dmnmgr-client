@@ -1,13 +1,12 @@
 import { Component, OnInit, Input } from '@angular/core';
+import { Observable } from 'rxjs';
+import { take, tap } from 'rxjs/operators';
 import { EditorType } from '../../model/json/editorType';
 import { DataModelService } from '../../services/dataModelService';
-import { Observable } from 'rxjs/Observable';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { SessionDataService } from '../../services/sessionDataService';
-import { take } from 'rxjs/operators/take';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { DecisionSimulationResult } from '../../model/decisionSimulationResult';
-import { tap } from 'rxjs/operators/tap';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 

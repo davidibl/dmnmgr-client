@@ -6,6 +6,6 @@ export interface DmnProject {
 
     dmnPath: string;
     plugins: PluginDescriptor[];
-    testsuite: TestsuiteProject,
+    testsuite: TestsuiteProject;
     definitions: DataModelProject;
 }

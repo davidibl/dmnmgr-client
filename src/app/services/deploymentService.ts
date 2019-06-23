@@ -1,9 +1,8 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { DmnXmlService } from './dmnXmlService';
-import { take } from 'rxjs/operators/take';
-import { switchMap } from 'rxjs/operators/switchMap';
-import { Observable } from 'rxjs/Observable';
+import { take, switchMap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 @Injectable()
 export class DeploymentService {

@@ -3,8 +3,7 @@ import { ElectronService } from 'ngx-electron';
 import { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import { DmnProject } from '../model/project/dmnProject';
 import { isNull } from '@xnoname/web-components';
-import { Observable } from 'rxjs/Observable';
-import { Observer } from 'rxjs';
+import { Observable, Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 import { ErrorMessageService } from './errorMessageService';
 import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
@@ -13,7 +12,7 @@ import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
 export class FileService {
 
     private _errorMessageImporting = 'Beim öffnen der Datei ist ein Fehler aufgreten.' +
-                                     ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.'
+                                     ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.';
     private _errorSavingProject = 'Die Projektdatei konnte nicht gespeichert werden. Wählen Sie ' +
                                   'ein Verzeichnis auf das Sie Schreibberechtigung haben.';
     private _errorSavingDmn = 'Die DMN XML Datei konnte nicht gespeichert werden.';
@@ -72,19 +71,19 @@ export class FileService {
                         .getErrorMessage(err.message, this._errorOpeningProject, { path: filepath });
                     observer.next({ type: FsResultType.ERROR, message: errorMessage });
                     observer.complete();
-                })
+                });
                 return;
             }
             const project = <DmnProject>JSON.parse(data);
-            this._filesystem.readFile(path + project.dmnPath, 'utf-8', (err, data) => this.callback(() => {
-                if (err) {
+            this._filesystem.readFile(path + project.dmnPath, 'utf-8', (err2, data2) => this.callback(() => {
+                if (err2) {
                     const errorMessage = this._errorMessageService
                         .getErrorMessage(err.message, this._errorOpeningDmn, { path: path + project.dmnPath });
                     observer.next({ type: FsResultType.ERROR, message: errorMessage });
                     observer.complete();
                     return;
                 }
-                observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data, project: project }});
+                observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data2, project: project }});
                 observer.complete();
             }));
         }));
@@ -154,7 +153,7 @@ export class FileService {
             filters: [{ name: 'DMN Projekt Files', extensions: ['dmnapp.json'] }],
             title: 'DMN Projekt speichern',
             properties: ['openFile']
-        }
+        };
 
         return Observable.create(observer => {
             if (!this._currentPath || chooseLocation) {
@@ -222,8 +221,8 @@ export class FileService {
         this._filesystem.writeFile(filename, JSON.stringify(project), err => this.callback(() => {
             if (isNull(err)) {
 
-                this._filesystem.writeFile(targetPathDmn, xml, err => this.callback(() => {
-                    if (isNull(err)) {
+                this._filesystem.writeFile(targetPathDmn, xml, err2 => this.callback(() => {
+                    if (isNull(err2)) {
                     } else {
                         observable.next({ type: FsResultType.ERROR, message: this._errorSavingDmn });
                         observable.complete();

@@ -27,7 +27,6 @@ export class DmnModelService {
             let counter = 0;
             if (decisionTable.input) {
                 decisionTable.input.forEach(cell => {
-                    cell.typeRef
                     const input = newRule
                         .$model
                         .create(DmnType.UNARY_TEST);
@@ -68,7 +67,7 @@ export class DmnModelService {
     }
 
     public dmnModelChangeEventType(event: DmnModdleEvent): DmnModdleEventTypes {
-        if (!event) { return DmnModdleEventType.NONE }
+        if (!event) { return DmnModdleEventType.NONE; }
         if (this.isInputClause(event)) { return DmnModdleEventType.INPUT_CLAUSE; }
         if (this.isOutputEntry(event)) { return DmnModdleEventType.OUTPUT_EXPRESSION; }
         return DmnModdleEventType.NONE;

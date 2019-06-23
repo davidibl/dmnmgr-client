@@ -1,8 +1,8 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
 import { DataChangeTypes } from '../model/event/dataChangedType';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable()
 export class SaveStateService {

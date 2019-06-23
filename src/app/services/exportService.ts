@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { DmnModdleElement } from '../model/dmn/dmnModdleElement';
 import { ExportDataTypes, ExportDataType } from '../model/event/exportDataType';
 import { CsvExportService } from './csvExportService';
 import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
@@ -18,7 +17,7 @@ export class ExportService {
         this._fileService
             .getSaveLocation(new FileSaveDialogOptions(['csv'], 'CSV Datei', 'CSV Export speichern'))
             .subscribe(result => {
-                if (result.type == FsResultType.OK) {
+                if (result.type === FsResultType.OK) {
                     this.exportData(result.filepath, dmnTable, datatype);
                 }
             });

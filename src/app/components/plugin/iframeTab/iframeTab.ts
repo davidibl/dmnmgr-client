@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DeploymentService } from '../../../services/deploymentService';
 import { DomSanitizer } from '@angular/platform-browser';
-import { take } from 'rxjs/operators/take';
+import { take } from 'rxjs/operators';
 import { DmnProjectService } from '../../../services/dmnProjectService';
 import { catchError } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';

@@ -1,6 +1,6 @@
 import { TestBed, async } from '@angular/core/testing';
 import { PluginRegistryService } from './pluginRegistryService';
-import { take } from 'rxjs/operators/take';
+import { take } from 'rxjs/operators';
 
 describe('Pluginregistry Service', () => {
     beforeEach(async(() => {

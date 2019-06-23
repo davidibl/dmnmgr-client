@@ -1,19 +1,16 @@
 import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
+import { concat, Observable, of } from 'rxjs';
+import { tap, filter, map, mergeMap, switchMap, take } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
-import { tap } from 'rxjs/operators/tap';
+
 import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAccessResult';
-import { filter } from 'rxjs/operators/filter';
 import { TestSuiteService } from '../../services/testSuiteService';
 import { Test } from '../../model/test';
-import { of } from 'rxjs/observable/of';
-import { map } from 'rxjs/operators/map';
 import { TestsuiteProject } from '../../model/project/testsuiteproject';
 import { TestDecisionService } from '../../services/testDecisionService';
-import { mergeMap } from 'rxjs/operators/mergeMap';
-import { concat, Observable } from 'rxjs';
-import { switchMap } from 'rxjs/operators/switchMap';
+
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
@@ -25,12 +22,10 @@ import { MostRecentFile } from '../../model/appConfiguration/mostRecentFile';
 import { AppConfigurationService } from '../../services/appConfigurationService';
 import { SaveStateService } from '../../services/saveStateService';
 import { DialogComponent, ButtonComponent } from '@xnoname/web-components';
-import { take } from 'rxjs/operators/take';
 import { merge } from 'rxjs/operators';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
 import { ExportDataType } from '../../model/event/exportDataType';
-import { ExportService } from '../../services/exportService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -123,8 +118,8 @@ export class AppComponent implements OnInit {
                             label: plugin.label,
                             icon: plugin.icon,
                             activated: active,
-                        }
-                    })
+                        };
+                    });
                 })
             );
 
@@ -263,7 +258,7 @@ export class AppComponent implements OnInit {
     }
 
     public openSearch() {
-        this._eventService.publishEvent(new BaseEvent(EventType.OPEN_SEARCH))
+        this._eventService.publishEvent(new BaseEvent(EventType.OPEN_SEARCH));
     }
 
     public clearError() {
@@ -357,7 +352,7 @@ export class AppComponent implements OnInit {
                         };
                     }),
                     tableId: propertyName,
-                }
+                };
             });
     }
 
@@ -373,7 +368,7 @@ export class AppComponent implements OnInit {
                             take(1),
                             tap(result => this.processError(result)),
                             filter(result => result.type === FsResultType.OK)
-                        )
+                        );
                 })
             );
     }

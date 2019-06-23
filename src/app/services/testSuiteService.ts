@@ -1,7 +1,6 @@
-import { Injectable } from "@angular/core";
-import { Testsuite } from "../model/testsuite";
-import { ReplaySubject } from 'rxjs/ReplaySubject';
-import { Observable } from 'rxjs/Observable';
+import { Injectable } from '@angular/core';
+import { Testsuite } from '../model/testsuite';
+import { ReplaySubject, Observable } from 'rxjs';
 import { Test } from '../model/test';
 import { EventService } from './eventService';
 import { NewViewEvent } from '../model/event/newViewEvent';

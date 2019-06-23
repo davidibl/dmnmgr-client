@@ -52,8 +52,7 @@
     "zone.js": "^0.8.26",
     "bpmn-js": "3.0.1",
     "dmn-js": "5.2.0",
-    "ngx-electron": "2.0.0",
-    "rxjs-compat": "^6.0.0-rc.0"
+    "ngx-electron": "2.0.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~0.10.0",

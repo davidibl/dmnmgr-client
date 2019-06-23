@@ -1,4 +1,4 @@
 export interface OpenApiSchemaTag {
-    name: string,
+    name: string;
     description: string;
 }

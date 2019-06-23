@@ -1,13 +1,11 @@
 import { Component, ViewChild, ElementRef, AfterViewInit, Input, Output, HostListener, OnInit, Inject, Renderer2 } from '@angular/core';
-
-import { DmnXmlService } from '../../services/dmnXmlService';
 import { ReplaySubject } from 'rxjs';
+import { take, filter, map, debounceTime } from 'rxjs/operators';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
+
 import { DataModelService } from '../../services/dataModelService';
-import { take } from 'rxjs/operators/take';
-import { filter } from 'rxjs/operators/filter';
-import { map } from 'rxjs/operators/map';
+import { DmnXmlService } from '../../services/dmnXmlService';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
 import { EventService } from '../../services/eventService';
@@ -15,7 +13,6 @@ import { NewViewEvent } from '../../model/event/newViewEvent';
 import { RenameArtefactEvent } from '../../model/event/renameArtefactEvent';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
 import { DOCUMENT } from '@angular/platform-browser';
-import { debounceTime } from 'rxjs/operators/debounceTime';
 import { DecisionDeleteEvent } from '../../model/event/decisionDeleteEvent';
 import { EventType } from '../../model/event/eventType';
 import { DmnModelService } from '../../services/dmnModelService';
@@ -34,17 +31,17 @@ import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
-}
+};
 
 declare interface DMNJS {
+    _viewers: any;
+    _activeView: DmnModelerView;
+    _moddle: MyDmnModdle;
     importXML(xml: string, callback: (error: any) => void);
     saveXML(options: any, callback: (error: any, xml: string) => void);
     getViews(): any[];
     on(eventname: string, eventCallback: (event) => void);
     _updateViews(): void;
-    _viewers: any;
-    _activeView: DmnModelerView;
-    _moddle: MyDmnModdle;
 }
 
 export interface DmnModelerView {
@@ -75,8 +72,8 @@ export class DmnDatatypeMapping {
 export interface DmnColumn {
     label: string;
     id: string;
-    index: number,
-    type: string,
+    index: number;
+    type: string;
 }
 
 @Component({
@@ -164,7 +161,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((ev) => ev.type === EventType.EXPORT)
             .subscribe((ev) => this._exportService.exportTable(
-                this._modeller._activeView.element.decisionTable, ev.data))
+                this._modeller._activeView.element.decisionTable, ev.data));
     }
 
     public ngAfterViewInit(): void {
@@ -228,7 +225,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const columns = <DmnColumn[]>[];
         columns.splice(0, 0, ...this.createOutputColumnArray());
         columns.splice(0, 0, ...this.createInputColumnArray());
-        columns.push({ label: 'Annotation', id: 'description', type: 'ANNOTATION', index: null })
+        columns.push({ label: 'Annotation', id: 'description', type: 'ANNOTATION', index: null });
         this.currentColumns = columns;
     }
 
@@ -439,7 +436,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         };
         this._modeller._activeView.element.decisionTable.output.forEach(outputClause => {
             responseModel.items.properties.push(
-                { name: outputClause.name, type: DmnDatatypeMapping[outputClause.typeRef] })
+                { name: outputClause.name, type: DmnDatatypeMapping[outputClause.typeRef] });
         });
         this._dataModelService.setResponseModel(responseModel);
     }
@@ -512,7 +509,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
         const column = this.currentColumns.find(col => col.id === this.searchColumn);
 
-        let columnFilter = (!this.searchColumn) ?
+        const columnFilter = (!this.searchColumn) ?
             (_: number) => true : (index: number, type?: string) => index === column.index && type === column.type;
 
         this._modeller

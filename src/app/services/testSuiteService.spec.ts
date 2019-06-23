@@ -1,9 +1,9 @@
 import { TestBed, async } from '@angular/core/testing';
 import { TestSuiteService } from './testSuiteService';
 import { EventService } from './eventService';
-import { of } from 'rxjs/Observable/of';
+import { of } from 'rxjs';
 import { BaseEvent } from '../model/event/event';
-import { take } from 'rxjs/operators/take';
+import { take } from 'rxjs/operators';
 
 
 describe('Testsuite Service', () => {
@@ -45,7 +45,7 @@ describe('Testsuite Service', () => {
 
     describe('tests', () => {
 
-        var cut;
+        let cut;
 
         beforeEach(() => {
             const ev = new BaseEvent('', {});

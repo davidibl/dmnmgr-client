@@ -1,12 +1,12 @@
 import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
-import { DOCUMENT } from "@angular/platform-browser";
+import { DOCUMENT } from '@angular/platform-browser';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
-import { map } from 'rxjs/operators/map';
 import { EventType } from '../../model/event/eventType';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { TabsComponent } from '@xnoname/web-components';
-import { Observable } from 'rxjs/Observable';
 import { DmnProjectService } from '../../services/dmnProjectService';
 
 @Component({

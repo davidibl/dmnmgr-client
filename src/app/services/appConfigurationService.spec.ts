@@ -1,9 +1,8 @@
 import { TestBed, async } from '@angular/core/testing';
+import { of, BehaviorSubject } from 'rxjs';
+import { take } from 'rxjs/operators';
 import { AppConfigurationService } from './appConfigurationService';
-import { of } from 'rxjs/Observable/of';
 import { FsResultType } from '../model/fileSystemAccessResult';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
-import { take } from 'rxjs/operators/take';
 import { AppConfig } from '../model/appConfiguration/appConfig';
 
 export class MockFileService {

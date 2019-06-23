@@ -1,11 +1,11 @@
 import { Component, Output, EventEmitter, QueryList, ViewChildren, ViewChild, OnInit, Pipe } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { ReplaySubject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { KeyValuePair, WorkflowState, WorkflowStateTypes, AccordionComponent } from '@xnoname/web-components';
 import { OpenApiSchema } from '../../../model/json/openApiSchema';
 import { OpenApiDefinitionService } from '../../../services/openApiDefinitionService';
 import { ObjectDefinition } from '../../../model/json/objectDefinition';
-import { NgForm } from '@angular/forms';
-import { ReplaySubject } from 'rxjs/ReplaySubject';
-import { debounceTime } from 'rxjs/operators/debounceTime';
 
 export class UserInputType {
     static URL = 'url';
@@ -58,8 +58,8 @@ export class ImportApiDefinitionComponent implements OnInit {
         this._userInputDebounceSubject
             .pipe( debounceTime(500) )
             .subscribe(type => {
-                if (type === UserInputType.URL) { this.loadDefinitionFromUrl(); }
-                else if (type === UserInputType.TEXT) { this.loadDefinitionFromText() }
+                if (type === UserInputType.URL) { this.loadDefinitionFromUrl();
+                } else if (type === UserInputType.TEXT) { this.loadDefinitionFromText(); }
             });
 
     }

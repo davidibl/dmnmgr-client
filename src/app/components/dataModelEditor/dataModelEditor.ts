@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { Observable } from 'rxjs';
 import { EditorType } from '../../model/json/editorType';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
-import { Observable } from 'rxjs/Observable';
 import { EventService } from '../../services/eventService';
 import { DataChangedEvent } from '../../model/event/dataChangedEvent';
 import { DataChangeType } from '../../model/event/dataChangedType';

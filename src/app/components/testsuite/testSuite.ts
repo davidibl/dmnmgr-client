@@ -1,16 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { TestSuiteService } from '../../services/testSuiteService';
-import { Observable } from 'rxjs/Observable';
-import { map } from 'rxjs/operators/map';
-import { take } from 'rxjs/operators/take';
+import { Observable, ReplaySubject } from 'rxjs';
+import { map, take, merge, mergeMap, tap } from 'rxjs/operators';
 import { Test } from '../../model/test';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
 import { TestDecisionService, DeploymentResponse } from '../../services/testDecisionService';
-import { merge } from 'rxjs/operators/merge';
-import { ReplaySubject } from 'rxjs/ReplaySubject';
-import { mergeMap } from 'rxjs/operators/mergeMap';
-import { tap } from 'rxjs/operators/tap';
 import { from } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
@@ -73,12 +68,12 @@ export class TestSuiteComponent implements OnInit {
         this.testCases$
             .pipe(
                 take(1),
-                switchMap(tests => this._testDecisionService.deployDecision(), (o, i) => { return { deployment: i, tests: o }; })
+                switchMap(tests => this._testDecisionService.deployDecision(), (o, i) => ({ deployment: i, tests: o }))
             )
             .subscribe(({deployment, tests}) => {
                 from(tests)
                     .pipe(
-                        mergeMap(test => this.runTestInternal(test, deployment), (o, i) => { return { test: o, result: i}; })
+                        mergeMap(test => this.runTestInternal(test, deployment), (o, i) => ({ test: o, result: i}))
                     )
                     .subscribe(result => {
                         tests.splice(tests.findIndex(item => item === result.test), 1, result.test);
@@ -101,7 +96,7 @@ export class TestSuiteComponent implements OnInit {
     }
 
     private assignTestResult(item: TestCaseContainer, result: Object) {
-        item.result = result['testSucceded']
+        item.result = result['testSucceded'];
         item.clazz = (item.result) ? 'success' : 'error';
         item.finalResult = result['result'];
         item.message = result['message'];

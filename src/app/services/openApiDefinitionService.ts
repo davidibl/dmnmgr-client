@@ -5,9 +5,8 @@ import { JsonObjectDefinition } from '../model/json/jsonObjectDefinition';
 import { ObjectDefinition } from '../model/json/objectDefinition';
 import { getObjectProperty, ConfigurationService, RestTemplate } from '@xnoname/web-components';
 import { OpenApiSchema } from '../model/json/openApiSchema';
-import { Observable } from 'rxjs/Observable';
-import { of } from 'rxjs/observable/of';
-import { map } from 'rxjs/operators/map';
+import { Observable, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable()
@@ -19,7 +18,7 @@ export class OpenApiDefinitionService {
     public loadOpenApiFromText(text: string): Observable<OpenApiSchema> {
         return of(text)
             .pipe(
-                map(text => JSON.parse(text))
+                map(asynctext => JSON.parse(asynctext))
             );
     }
 
@@ -101,7 +100,7 @@ export class OpenApiDefinitionService {
         datamodel.properties.forEach(property => {
             const serializedProperty = this.transformInternalToOpenApiDefinition(property);
             serializedObject.properties[property.name] = serializedProperty;
-        })
+        });
         if (datamodel.items) {
             serializedObject.items = this.transformInternalToOpenApiDefinition(datamodel.items);
         }

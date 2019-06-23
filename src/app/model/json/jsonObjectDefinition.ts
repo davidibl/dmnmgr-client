@@ -1,5 +1,5 @@
-import { JsonObjectDefinitions } from "./jsonObjectDefinitions";
-import { JsonDatatypes } from "./jsonDatatypes";
+import { JsonObjectDefinitions } from './jsonObjectDefinitions';
+import { JsonDatatypes } from './jsonDatatypes';
 
 export interface JsonObjectDefinition {
     root?: boolean;

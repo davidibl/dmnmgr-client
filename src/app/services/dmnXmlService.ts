@@ -1,8 +1,7 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 import { XmlProvider } from '../model/xmlProvider';
-import { ReplaySubject } from 'rxjs/ReplaySubject';
+import { ReplaySubject, Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs/Observable';
 
 @Injectable()
 export class DmnXmlService {

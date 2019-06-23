@@ -1,16 +1,13 @@
 import { Injectable } from '@angular/core';
 import { ObjectDefinition } from '../model/json/objectDefinition';
-import { ReplaySubject } from 'rxjs/ReplaySubject';
-import { Observable } from 'rxjs/Observable';
-import { map } from 'rxjs/operators/map';
-import { filter } from 'rxjs/operators/filter';
+import { ReplaySubject, Observable } from 'rxjs';
+import { map, filter, take } from 'rxjs/operators';
 import { DataModelProject } from '../model/project/dataModelProject';
 import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
 import { DataModelTable } from '../model/project/dataModelTable';
 import { NewViewEvent } from '../model/event/newViewEvent';
 import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
-import { take } from 'rxjs/operators/take';
 import { DecisionDeleteEvent } from '../model/event/decisionDeleteEvent';
 import { JsonDatatype } from '../model/json/jsonDatatypes';
 

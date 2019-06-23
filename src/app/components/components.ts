@@ -4,7 +4,7 @@ import { TestSuiteComponent } from './testsuite/testSuite';
 import { JsonEditorComponent } from './json/jsonEditor';
 import { JsonModelEditorComponent } from './json/jsonModelEditor';
 import { JsonTreeNodeComponent } from './json/jsonTreeNode';
-import { JsonValueEditor } from './json/jsonValueEditor';
+import { JsonValueEditorComponent } from './json/jsonValueEditor';
 import { ImportApiDefinitionComponent } from './json/importWorkflow/importApiDefinition';
 import { DataModelEditorComponent } from './dataModelEditor/dataModelEditor';
 import { DmnSimulatorComponent } from './simulator/dmnSimulator';
@@ -20,7 +20,7 @@ export const ALL_COMPONENTS = [
     JsonEditorComponent,
     JsonModelEditorComponent,
     JsonTreeNodeComponent,
-    JsonValueEditor,
+    JsonValueEditorComponent,
     ImportApiDefinitionComponent,
     DataModelEditorComponent,
     DmnSimulatorComponent,

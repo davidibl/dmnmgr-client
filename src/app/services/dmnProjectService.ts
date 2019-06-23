@@ -1,14 +1,13 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 import { DmnXmlService } from './dmnXmlService';
 import { TestSuiteService } from './testSuiteService';
 import { DataModelService } from './dataModelService';
 import { DmnProject } from '../model/project/dmnProject';
-import { Observable } from 'rxjs/Observable';
-import { map } from 'rxjs/operators/map';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
 import { PluginDescriptor } from '../model/plugin/pluginDescriptor';
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { PluginMetaDescriptor } from '../model/plugin/pluginMetaDescriptor';
 
 @Injectable()

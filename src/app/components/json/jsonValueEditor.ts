@@ -8,7 +8,7 @@ import { isNull } from '@xnoname/web-components';
     templateUrl: 'jsonValueEditor.html',
     styleUrls: ['jsonValueEditor.scss'],
 })
-export class JsonValueEditor implements OnChanges {
+export class JsonValueEditorComponent implements OnChanges {
 
     private _datamodel: ObjectDefinition;
     private _value: any;

@@ -1,12 +1,11 @@
-import { Injectable } from "@angular/core";
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { DmnXmlService } from './dmnXmlService';
 import { map, switchMap } from 'rxjs/operators';
-import { IDecisionSimulationResponse } from "../model/decisionSimulationResponse";
+import { IDecisionSimulationResponse } from '../model/decisionSimulationResponse';
 import { DecisionSimulationResult } from '../model/decisionSimulationResult';
-import { ReplaySubject } from "rxjs/ReplaySubject";
+import { ReplaySubject, Observable } from 'rxjs';
 import { Test } from '../model/test';
-import { Observable } from 'rxjs';
 import { EventService } from './eventService';
 import { NewViewEvent } from '../model/event/newViewEvent';
 import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
@@ -52,11 +51,12 @@ export class TestDecisionService {
                         dmnTableId: this._currentArtefactId,
                         variables: simulationData,
                         xml: xml
-                    }
+                    };
                 }),
                 switchMap(request => this._http
                     .post<IDecisionSimulationResponse>(this.getUrl('decision/simulation'), request)),
-                map(response => new DecisionSimulationResult(response.result, response.message, response.resultRuleIds))
+                map((response: IDecisionSimulationResponse) =>
+                    new DecisionSimulationResult(response.result, response.message, response.resultRuleIds))
             ).subscribe(response => this._resultSubject.next(response));
     }
 
@@ -83,7 +83,8 @@ export class TestDecisionService {
             .getXmlModels('editor')
             .pipe(
                 switchMap(xml => this._http.post<DeploymentResponse>(this.getUrl('decision'), { xml: xml })),
-                switchMap(deployment => this.testDecision(test, deployment.decisionRequirementsId, this._currentArtefactId))
+                switchMap((deployment: DeploymentResponse) =>
+                    this.testDecision(test, deployment.decisionRequirementsId, this._currentArtefactId))
             );
     }
 
