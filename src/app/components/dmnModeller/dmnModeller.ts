@@ -513,7 +513,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const column = this.currentColumns.find(col => col.id === this.searchColumn);
 
         let columnFilter = (!this.searchColumn) ?
-            (_) => true : (index: number, type?: string) => index === column.index && type === column.type;
+            (_: number) => true : (index: number, type?: string) => index === column.index && type === column.type;
 
         this._modeller
             ._activeView
