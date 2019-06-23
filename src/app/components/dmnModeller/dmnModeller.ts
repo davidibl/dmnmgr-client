@@ -320,21 +320,23 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private getAllOutputClauseErrors(): string[] {
-        return this._modeller
-            ._activeView
-            .element
-            .decisionTable
-            .output
+        const outputColumns = this._modeller
+                                ._activeView
+                                .element
+                                .decisionTable
+                                .output || [];
+        return outputColumns
             .filter(output => this.hasOutputClauseError(output))
             .map(output => output.id);
     }
 
     private getAllInputClauseErrors(): string[] {
-        return this._modeller
-            ._activeView
-            .element
-            .decisionTable
-            .input
+        const inputColumns = this._modeller
+                                ._activeView
+                                .element
+                                .decisionTable
+                                .input || [];
+        return inputColumns
             .filter(input => this.hasInputClauseError(input))
             .map(input => input.id);
     }
