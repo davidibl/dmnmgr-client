@@ -10,7 +10,8 @@ import { EventService } from './eventService';
 import { NewViewEvent } from '../model/event/newViewEvent';
 import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
 import { EventType } from '../model/event/eventType';
-import { ConfigurationService, RestTemplate } from '@xnoname/web-components';
+import { RestTemplate } from '@xnoname/web-components';
+import { AppConfigurationService } from './appConfigurationService';
 
 export interface DeploymentResponse {
     decisionRequirementsId: string;
@@ -25,7 +26,7 @@ export class TestDecisionService {
 
     public constructor(private _http: HttpClient,
                        private dmnXmlService: DmnXmlService,
-                       private _configuration: ConfigurationService,
+                       private _appConfigurationService: AppConfigurationService,
                        private _eventService: EventService) {
 
         this._eventService
@@ -53,8 +54,9 @@ export class TestDecisionService {
                         xml: xml
                     };
                 }),
-                switchMap(request => this._http
-                    .post<IDecisionSimulationResponse>(this.getUrl('decision/simulation'), request)),
+                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({request: outer, url: inner})),
+                switchMap(({url, request}) => this._http
+                    .post<IDecisionSimulationResponse>(url, request)),
                 map((response: IDecisionSimulationResponse) =>
                     new DecisionSimulationResult(response.result, response.message, response.resultRuleIds))
             ).subscribe(response => this._resultSubject.next(response));
@@ -64,7 +66,8 @@ export class TestDecisionService {
         return this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
-                switchMap(xml => this._http.post<DeploymentResponse>(this.getUrl('decision'), { xml: xml }))
+                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
+                switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml }))
             );
     }
 
@@ -75,21 +78,26 @@ export class TestDecisionService {
             expectedData: test.expectedData,
             decisionRequirementsId: requirementsId
         };
-        return this._http.post<Object>(this.getUrl('decision/test'), request);
+        return this.getUrl('decision/test')
+            .pipe( switchMap(url => this._http.post<Object>(url, request)) );
     }
 
     public deployAndTestDecision(test: Test): Observable<Object> {
         return this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
-                switchMap(xml => this._http.post<DeploymentResponse>(this.getUrl('decision'), { xml: xml })),
+                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
+                switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml })),
                 switchMap((deployment: DeploymentResponse) =>
                     this.testDecision(test, deployment.decisionRequirementsId, this._currentArtefactId))
             );
     }
 
     public clearProcessEngine() {
-        this._http.delete<void>(this.getUrl('decision')).subscribe();
+        this.getUrl('decision')
+            .pipe(
+                switchMap(url => this._http.delete<void>(url))
+            ).subscribe();
     }
 
     public getResult() {
@@ -100,11 +108,12 @@ export class TestDecisionService {
         this._resultSubject.next(null);
     }
 
-    private getUrl(path: string) {
-        const baseUrl = this._configuration.getConfigValue<string>('endpoints.dmnbackend');
-        return RestTemplate.create(baseUrl)
-            .withPathParameter('api')
-            .withPathParameter(path)
-            .build();
+    private getUrl(path: string): Observable<string> {
+        return this._appConfigurationService
+            .getBaseUrlSimulator()
+            .pipe( map(baseUrl => RestTemplate.create(baseUrl)
+                        .withPathParameter('api')
+                        .withPathParameter(path)
+                        .build()));
     }
 }

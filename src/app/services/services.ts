@@ -15,6 +15,7 @@ import { ErrorMessageService } from './errorMessageService';
 import { SaveStateService } from './saveStateService';
 import { ExportService } from './exportService';
 import { CsvExportService } from './csvExportService';
+import { FileDialogService } from './fileDialogService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -34,4 +35,5 @@ export const ALL_SERVICES = [
     SaveStateService,
     ExportService,
     CsvExportService,
+    FileDialogService,
 ];
