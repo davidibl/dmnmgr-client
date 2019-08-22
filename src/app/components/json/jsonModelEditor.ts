@@ -65,7 +65,6 @@ export class JsonModelEditorComponent {
     }
 
     public addProperty() {
-        console.log(this.datamodel);
         if (!this.datamodel.properties) {
             this.datamodel.properties = [];
         }

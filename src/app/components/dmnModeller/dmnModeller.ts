@@ -180,7 +180,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._dmnXmlService
             .getDmnXml()
             .subscribe(xml => {
-                console.log(this._modeller);
                 this._modeller.importXML(xml, (err) => {
                     if (err) {
                         console.log('error rendering', err);
