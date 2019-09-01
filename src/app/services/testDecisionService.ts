@@ -54,7 +54,7 @@ export class TestDecisionService {
                         xml: xml
                     };
                 }),
-                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({request: outer, url: inner})),
+                switchMap(_ => this.getUrl('decision/simulation'), (outer, inner) => ({request: outer, url: inner})),
                 switchMap(({url, request}) => this._http
                     .post<IDecisionSimulationResponse>(url, request)),
                 map((response: IDecisionSimulationResponse) =>
