@@ -50,7 +50,6 @@
                             "src/scss/site.scss"
                         ],
                         "scripts": [
-                            "node_modules/openseadragon/build/openseadragon/openseadragon.min.js",
                             "src/assets/dmn-modeler.production.min.js"
                         ]
                     },
