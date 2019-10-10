@@ -49,6 +49,7 @@ export class DataModelService {
     }
 
     public setDataModelProject(dataModelPoject: DataModelProject) {
+        this._currentArtefactId = null;
         this._dataModelProject = dataModelPoject;
         this.provideRequestModel(this._currentArtefactId);
     }
