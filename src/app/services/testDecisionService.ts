@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { DmnXmlService } from './dmnXmlService';
-import { map, switchMap } from 'rxjs/operators';
+import { map, switchMap, take } from 'rxjs/operators';
 import { IDecisionSimulationResponse } from '../model/decisionSimulationResponse';
 import { DecisionSimulationResult } from '../model/decisionSimulationResult';
 import { ReplaySubject, Observable } from 'rxjs';
@@ -47,6 +47,7 @@ export class TestDecisionService {
         this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
+                take(1),
                 map(xml => {
                     return {
                         dmnTableId: this._currentArtefactId,
@@ -66,6 +67,7 @@ export class TestDecisionService {
         return this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
+                take(1),
                 switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
                 switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml }))
             );
@@ -86,6 +88,7 @@ export class TestDecisionService {
         return this.dmnXmlService
             .getXmlModels('editor')
             .pipe(
+                take(1),
                 switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
                 switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml })),
                 switchMap((deployment: DeploymentResponse) =>
@@ -111,9 +114,12 @@ export class TestDecisionService {
     private getUrl(path: string): Observable<string> {
         return this._appConfigurationService
             .getBaseUrlSimulator()
-            .pipe( map(baseUrl => RestTemplate.create(baseUrl)
+            .pipe(
+                map(baseUrl => RestTemplate.create(baseUrl)
                         .withPathParameter('api')
                         .withPathParameter(path)
-                        .build()));
+                        .build()),
+                take(1)
+            );
     }
 }

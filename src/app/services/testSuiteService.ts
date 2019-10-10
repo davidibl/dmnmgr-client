@@ -50,6 +50,7 @@ export class TestSuiteService {
     }
 
     public setTestSuiteProject(testSuiteProject: TestsuiteProject) {
+        this._currentArtefactId = null;
         this._testsuiteProject = testSuiteProject;
         this._testSuiteSubject.next(this.getOrCreateCurrentTestsuite());
     }
