@@ -2,5 +2,5 @@ export interface Test {
 
     name: string;
     data: Object;
-    expectedData: Object;
+    expectedData: Object[];
 }

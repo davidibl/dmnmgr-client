@@ -6,7 +6,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class JsonToStringPipe implements PipeTransform {
 
-    transform(value: any): any {
+    transform<T>(value: T): string {
         if (!value) {
             return null;
         }
