@@ -59,6 +59,7 @@ export class TestSuiteComponent implements OnInit {
         this._testDecisionService
             .deployAndTestDecision(item.testcase)
             .pipe(
+                take(1),
                 tap(result => this.assignTestResult(item, result))
             )
             .subscribe();
