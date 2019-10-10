@@ -167,7 +167,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     public ngAfterViewInit(): void {
 
         this._internalEventService
-            .pipe(distinctUntilChanged((e1, e2) => e1.identity === e2.identity && e1.type === e2.type))
+            .pipe(
+                distinctUntilChanged((e1, e2) => e1.identity === e2.identity && e1.type === e2.type)
+            )
             .subscribe(e => e.func());
 
         this._modeller = new DmnJS({
@@ -185,6 +187,11 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                         console.log('error rendering', err);
                     }
                     this._saveStateService.resetChange(DataChangeType.DMN_MODEL);
+                    this._internalEventService.next({
+                        identity: 12345,
+                        type: 'views.changed',
+                        func: () => {}
+                    });
                     if (this.initialized) {
                         return;
                     }
