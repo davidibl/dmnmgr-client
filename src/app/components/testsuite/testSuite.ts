@@ -1,13 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { TestSuiteService } from '../../services/testSuiteService';
-import { Observable, ReplaySubject } from 'rxjs';
-import { map, take, merge, mergeMap, tap } from 'rxjs/operators';
+import { Observable, ReplaySubject, from } from 'rxjs';
+import { map, take, merge, mergeMap, tap, switchMap } from 'rxjs/operators';
 import { Test } from '../../model/test';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
 import { TestDecisionService, DeploymentResponse } from '../../services/testDecisionService';
-import { from } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
 
 export class TestCaseContainer {
     public result: boolean;
