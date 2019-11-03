@@ -30,6 +30,9 @@ export class JsonEditorComponent implements OnInit {
     @Input()
     public hideButtons = false;
 
+    @Input()
+    public open = true;
+
     public get value() {
         return this._value;
     }

@@ -1,11 +1,13 @@
 <ng-container [ngSwitch]="type">
     <ng-container *ngSwitchCase="editorTypes.MODEL">
         <xn-json-model-editor [datamodel]="datamodel"
+                              [open]="open"
                               (datamodelChange)="datamodelChange.emit()"></xn-json-model-editor>
     </ng-container>
     <ng-container *ngSwitchDefault>
         <xn-json-value-editor [viewOnly]="viewOnly"
                               [datamodel]="datamodel"
+                              [open]="open"
                               [value]="value"></xn-json-value-editor>
     </ng-container>
 </ng-container>

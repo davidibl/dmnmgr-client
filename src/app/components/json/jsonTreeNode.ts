@@ -35,6 +35,7 @@ export class JsonTreeNodeComponent {
         return this._open;
     }
 
+    @Input()
     public set open(open: boolean) {
         this._open = open;
         this.openChange.emit(this._open);
