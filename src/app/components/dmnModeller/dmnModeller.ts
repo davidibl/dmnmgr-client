@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input, Output, HostListener, OnInit, Inject, Renderer2 } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, Input, HostListener, OnInit, Inject, Renderer2 } from '@angular/core';
 import { ReplaySubject } from 'rxjs';
 import { take, filter, map, debounceTime } from 'rxjs/operators';
 
@@ -243,15 +243,15 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
             this.clearSearch();
-            const ev = new NewViewEvent(event.activeView.element.id);
+            const newViewEvent = new NewViewEvent(event.activeView.element.id);
             if (event.activeView.type !== 'decisionTable') {
-                ev.data.isDecisionTable = false;
+                newViewEvent.data.isDecisionTable = false;
             }
             this._internalEventService.next({
                 identity: event.activeView.element.id,
                 type: 'views.changed',
                 func: () => {
-                    this._eventService.publishEvent(ev);
+                    this._eventService.publishEvent(newViewEvent);
                     this.updateResponseModel();
                 }
             });

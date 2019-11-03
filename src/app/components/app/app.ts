@@ -180,7 +180,7 @@ export class AppComponent implements OnInit {
             const onSave = this._unsavedChangesDialog
                 .confirm
                 .pipe(
-                    switchMap(_ => this.saveProjectSilent().pipe(take(1), map(_ => true)))
+                    switchMap(_ => this.saveProjectSilent().pipe(take(1), map(__ => true)))
                 );
 
             const onDontSave = this._dontSaveButton.clicked.pipe(map(_ => true));
