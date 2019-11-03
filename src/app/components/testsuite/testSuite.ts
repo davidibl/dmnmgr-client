@@ -30,6 +30,7 @@ export class TestSuiteComponent implements OnInit {
     public testCases$: Observable<TestCaseContainer[]>;
     public dataModel$: Observable<ObjectDefinition>;
     public responseModel$: Observable<ObjectDefinition>;
+    public testitem: TestCaseContainer;
 
     public constructor(private _testSuiteService: TestSuiteService,
         private _dataModelService: DataModelService,
@@ -53,6 +54,10 @@ export class TestSuiteComponent implements OnInit {
 
     public deleteCase(item: TestCaseContainer) {
         this._testSuiteService.deleteTestCase(item.testcase);
+    }
+
+    public editCase(item: TestCaseContainer) {
+        this.testitem = item;
     }
 
     public testCase(item: TestCaseContainer) {

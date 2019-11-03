@@ -14,8 +14,8 @@
                     [data]="testCases$ | async"
                     [templateRef]="testCaseTemplate">
             <th class="name-column" xnHeaderColumn [propertyPath]="'testCase.testcase.name'">Testname</th>
-            <th xnHeaderColumn>Eingabedaten</th>
-            <th xnHeaderColumn>Erwartetes Ergebnis</th>
+            <th class="data-model-column" xnHeaderColumn>Eingabedaten</th>
+            <th class="data-model-column" xnHeaderColumn>Erwartetes Ergebnis</th>
             <th class="button-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
             <th class="button-column" xnHeaderColumn></th>
             <th class="button-column" xnHeaderColumn></th>
@@ -38,12 +38,14 @@
             <xn-json-editor [requestModel]="dataModel$ | async"
                             [value]="item.testcase.data"
                             [hideButtons]="true"
+                            [open]="item === testitem"
                             [type]="1"></xn-json-editor>
         </td>
         <td>
             <xn-json-editor [requestModel]="responseModel$ | async"
                             [value]="item.testcase.expectedData"
                             [hideButtons]="true"
+                            [open]="item === testitem"
                             [type]="1"></xn-json-editor>
         </td>
         <td class="text-center" [ngClass]="item.clazz" (click)="item.showError = true">
