@@ -115,7 +115,7 @@
                 <i class="fa fa-minus-circle" aria-hidden="true"></i>
             </button>
         </ng-container>
-        <ng-container *ngIf="!objectSetToNull && datamodel.type === jsonDatatype.OBJECT">
+        <ng-container *ngIf="arrayIndex < 0 && !objectSetToNull && datamodel.type === jsonDatatype.OBJECT">
             <button class="small no-border no-background" (click)="deleteObjectValue()">
                 <i class="fa fa-minus-circle" aria-hidden="true"></i>
             </button>
