@@ -109,3 +109,11 @@ li.test-item:last-child {
     left: 100%;
     z-index: -1;
 }
+
+.link-to-test {
+    cursor: pointer;
+}
+
+.link-to-test:hover {
+    text-decoration: underline;
+}

@@ -2,31 +2,32 @@
     <xn-tab [title]="'Datenmodell'"
             [visible]="isDecicionTableMode$ | async"
             [iconClass]="'fa-database'"
-            [id]="'datamodel-editor'">
+            [id]="tabIds.datamodelEditor">
         <xn-data-model-editor></xn-data-model-editor>
     </xn-tab>
     <xn-tab [title]="'Dein Modell'"
             [iconClass]="'fa-table'"
-            [id]="'dmn-editor'">
+            #editorTab
+            [id]="tabIds.editor">
         <xn-dmn-modeller [type]="'editor'"></xn-dmn-modeller>
     </xn-tab>
     <xn-tab [title]="'Tests'"
             [visible]="isDecicionTableMode$ | async"
             [iconClass]="'fa-cog'"
-            [id]="'test-editor'">
+            [id]="tabIds.testEditor">
         <xn-test-suite></xn-test-suite>
     </xn-tab>
     <xn-tab [title]="'Import'"
             [visible]="isDecicionTableMode$ | async"
             [iconClass]="'fa-cloud-upload'"
-            [id]="'import'">
+            [id]="tabIds.importer">
         <xn-importer></xn-importer>
     </xn-tab>
     <xn-tab [title]="'Example'"
             [visible]="pluginExampleActivated$ | async"
             [iconClass]="'fa-internet-explorer'"
-            [id]="'example'">
+            [id]="tabIds.example">
         <xn-iframe-tab></xn-iframe-tab>
     </xn-tab>
 </xn-tabs>
-<xn-dmn-simulator *ngIf="isDecicionTableMode$ | async" [isVisisble]="tabId === 'dmn-editor'"></xn-dmn-simulator>
+<xn-dmn-simulator *ngIf="isDecicionTableMode$ | async" [isVisisble]="showSimulator$ | async"></xn-dmn-simulator>

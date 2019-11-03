@@ -196,7 +196,7 @@
                             <i *xnIfFalse="test.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
                             <i *ngIf="test.result" class="fa fa-check-square" aria-hidden="true"></i>
                         </div>
-                        <div class="inline-block">
+                        <div (click)="jumpToTest(item.tableId)" class="inline-block link-to-test">
                             {{test.test.name}}
                         </div>
                     </li>

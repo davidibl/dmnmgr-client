@@ -39,9 +39,10 @@ declare interface DMNJS {
     _moddle: MyDmnModdle;
     importXML(xml: string, callback: (error: any) => void);
     saveXML(options: any, callback: (error: any, xml: string) => void);
-    getViews(): any[];
+    getViews(): DmnModelerView[];
     on(eventname: string, eventCallback: (event) => void);
     _updateViews(): void;
+    _switchView(tableId: string);
 }
 
 export interface DmnModelerView {
@@ -162,6 +163,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .getEvent((ev) => ev.type === EventType.EXPORT)
             .subscribe((ev) => this._exportService.exportTable(
                 this._modeller._activeView.element.decisionTable, ev.data));
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
+            .subscribe((ev) => this.selectTable(ev.data));
     }
 
     public ngAfterViewInit(): void {
@@ -394,8 +399,12 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         });
     }
 
-    private importData(event: ImportDataEvent) {
+    private selectTable(tableId: string) {
+        const newView = this._modeller.getViews().find(view => view.element.id === tableId);
+        this._modeller._switchView(<any>newView);
+    }
 
+    private importData(event: ImportDataEvent) {
         this._dmnModelService.importData(
             event.data,
             this._modeller._moddle,

@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/platform-browser';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
@@ -20,15 +20,20 @@ export class DmnManagerComponent implements OnInit {
     private tabs: TabsComponent;
 
     private stylesheet: any = null;
-    private _tabId: string;
 
-    public get tabId() {
-        return this._tabId;
-    }
+    public tabIds = {
+        editor: 'dmn-editor',
+        datamodelEditor: 'datamodel-editor',
+        testEditor: 'test-editor',
+        importer: 'import',
+        example: 'example',
+    };
 
     public isDecicionTableMode$: Observable<boolean>;
 
     public pluginExampleActivated$: Observable<boolean>;
+
+    public showSimulator$ = new BehaviorSubject<boolean>(false);
 
     public constructor(@Inject(DOCUMENT) private document,
                        private renderer: Renderer2,
@@ -62,10 +67,15 @@ export class DmnManagerComponent implements OnInit {
         this.isDecicionTableMode$ = this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
             .pipe( map(ev => ev.data.isDecisionTable) );
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
+            .pipe( map(_ => 'test-editor') )
+            .subscribe(newTab => this.tabs.selectTabById(newTab));
     }
 
     public onSelectedTabChanged(tabId: string) {
-        this._tabId = tabId;
+        this.showSimulator$.next((tabId === this.tabIds.editor));
     }
 
     private clearStyleRules() {

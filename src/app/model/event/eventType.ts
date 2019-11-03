@@ -7,4 +7,5 @@ export class EventType {
     static DATA_CHANGED = 'dataChanged';
     static IMPORT_DATA = 'importData';
     static EXPORT = 'export';
+    static JUMP_TO_TEST = 'jumpToTest';
 }

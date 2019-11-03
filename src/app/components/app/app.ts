@@ -331,6 +331,11 @@ export class AppComponent implements OnInit {
 
     }
 
+    public jumpToTest(tableId: string) {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TEST, tableId));
+        this.showAllTestsDialog = false;
+    }
+
     public exportCurrentTable() {
         this._eventService.publishEvent(new ExportCommandEvent(ExportDataType.CSV));
     }
