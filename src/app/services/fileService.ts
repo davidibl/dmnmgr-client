@@ -32,6 +32,10 @@ export class FileService {
         this._filesystem = window['require']('fs');
     }
 
+    public getUserDataPath() {
+        return this._electronService.remote.app.getPath('userData');
+    }
+
     public openProject(filepath?: string): Observable<FileSystemAccessResult<{xml?: string, project?: DmnProject}>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
@@ -90,6 +94,8 @@ export class FileService {
     }
 
     public openOrCreateFile<T>(filename: string, defaultValue: T): Observable<FileSystemAccessResult<T>> {
+        // const path = (!this._electronService.process.env.PORTABLE_EXECUTABLE_FILE) ?
+        //    './' : this._electronService.process.env.PORTABLE_EXECUTABLE_FILE;
         return Observable.create(observer => {
             if (!this._filesystem.existsSync(filename)) {
                 this._filesystem.writeFile(filename, JSON.stringify(defaultValue), err => this.callback(() => {
