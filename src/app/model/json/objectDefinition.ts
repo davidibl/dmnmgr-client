@@ -1,5 +1,4 @@
-import { JsonObjectDefinitions } from "./jsonObjectDefinitions";
-import { JsonDatatypes } from "./jsonDatatypes";
+import { JsonDatatypes } from './jsonDatatypes';
 
 export interface ObjectDefinition {
     name?: string;
