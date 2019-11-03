@@ -20,8 +20,10 @@
                         [requestModel]="requestModel$ | async"></xn-json-editor>
     </div>
     <div class="col-12 col-6-m">
-        <h4>Antwort-Modell (optional)</h4>
+        <h4>Antwort-Modell (der aktuellen DMN Tabelle)</h4>
         <xn-json-editor [type]="editorTypes.MODEL"
+                        [viewOnly]="true"
+                        [hideButtons]="true"
                         [requestModel]="responseModel$ | async"></xn-json-editor>
     </div>
 </div>
