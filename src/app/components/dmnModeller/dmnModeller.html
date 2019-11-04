@@ -1,4 +1,4 @@
-<div *ngIf="searchOpen" class="search mb-1">
+<div *ngIf="searchOpen | async" class="search mb-1">
     Suche:
     <xn-input-form [title]="'suche'"
                    [label]="'Suchwort'"

@@ -10,7 +10,7 @@ import {
     Renderer2,
     ChangeDetectionStrategy,
 } from '@angular/core';
-import { ReplaySubject } from 'rxjs';
+import { ReplaySubject, BehaviorSubject } from 'rxjs';
 import { take, filter, map, debounceTime } from 'rxjs/operators';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
@@ -115,7 +115,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     @Input()
     public type: string;
 
-    public searchOpen = false;
+    public searchOpen = new BehaviorSubject(false);
     public searchValue: string;
     public searchColumn: string = null;
     public currentColumns: DmnColumn[] = [];
@@ -136,15 +136,21 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         }
 
         if (event.ctrlKey && event.code === 'KeyF') {
-            this.searchOpen = !this.searchOpen;
-            if (!this.searchOpen) {
-                this.clearSearch();
-            }
+            this.searchOpen
+                .pipe(
+                    take(1),
+                ).subscribe(searchOpen => {
+                    searchOpen = !searchOpen;
+                    this.searchOpen.next(searchOpen);
+                    if (!searchOpen) {
+                        this.clearSearch();
+                    }
+                });
         }
     }
 
     public closeAndClearSearch() {
-        this.searchOpen = false;
+        this.searchOpen.next(false);
         this.clearSearch();
     }
 
@@ -169,7 +175,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
         this._eventService
             .getEvent((ev) => ev.type === EventType.OPEN_SEARCH)
-            .subscribe(_ => this.searchOpen = true);
+            .subscribe(_ => this.searchOpen.next(true));
 
         this._eventService
             .getEvent((ev) => ev.type === EventType.EXPORT)
@@ -575,7 +581,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private clearSearch() {
         this.clearSearchStyles();
-        this.searchOpen = false;
+        this.searchOpen.next(false);
         this.searchColumn = null;
         this.searchValue = null;
     }
