@@ -1,4 +1,15 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, Input, HostListener, OnInit, Inject, Renderer2 } from '@angular/core';
+import {
+    Component,
+    ViewChild,
+    ElementRef,
+    AfterViewInit,
+    Input,
+    HostListener,
+    OnInit,
+    Inject,
+    Renderer2,
+    ChangeDetectionStrategy,
+} from '@angular/core';
 import { ReplaySubject } from 'rxjs';
 import { take, filter, map, debounceTime } from 'rxjs/operators';
 
@@ -81,6 +92,7 @@ export interface DmnColumn {
     selector: 'xn-dmn-modeller',
     templateUrl: 'dmnModeller.html',
     styleUrls: ['dmnModeller.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DmnModellerComponent implements AfterViewInit, OnInit {
 
