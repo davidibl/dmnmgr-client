@@ -117,3 +117,10 @@ li.test-item:last-child {
 .link-to-test:hover {
     text-decoration: underline;
 }
+
+:host::deep {
+    .as-split-area {
+        display: block;
+        overflow-y: hidden;
+    }
+}

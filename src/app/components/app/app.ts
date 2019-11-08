@@ -159,6 +159,21 @@ export class AppComponent implements OnInit {
         });
     }
 
+    public openFolder() {
+        this.confirmActionWhenChangesAreUnsaved(() => {
+            this._fileService
+                .openFolder()
+                .pipe(
+                    tap(result => this.processError(result)),
+                    filter(result => result.type === FsResultType.OK)
+                )
+                .subscribe(_ => {
+                    this._projectService.readProject(null, null);
+                    this._saveStateService.resetChanges();
+                });
+        });
+    }
+
     public openRecentFile(recentProject: string) {
         this.recentFilesMenuVisible = false;
         this.confirmActionWhenChangesAreUnsaved(() => {

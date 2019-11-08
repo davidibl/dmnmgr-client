@@ -15,6 +15,10 @@
                         <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Öffnen
                         <span class="right">(STRG + O)</span>
                     </li>
+                    <li (click)="openFolder()">
+                        <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Ordner öffnen
+                        <span class="right">(STRG + P)</span>
+                    </li>
                     <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="saveProject()">
                         <i class="fa fa-floppy-o mr-05" aria-hidden="true"></i>Speichern
@@ -134,8 +138,17 @@
         </xn-button>
     </li>
 </xn-menu-header>
+
 <div class="main-content full-height">
-    <router-outlet></router-outlet>
+    <as-split unit="percent" [direction]="'horizontal'" >
+        <as-split-area size="10" #area1="asSplitArea">
+            <xn-workspace (openFileRequested)="openRecentFile($event)"></xn-workspace>
+        </as-split-area>
+        <as-split-area size="90" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
+            <router-outlet></router-outlet>
+
+        </as-split-area>
+    </as-split>
 </div>
 
 <xn-dialog [closable]="true"

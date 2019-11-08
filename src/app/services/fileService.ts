@@ -7,14 +7,17 @@ import { Observable, Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 import { ErrorMessageService } from './errorMessageService';
 import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
+import { EventService } from './eventService';
+import { BaseEvent } from '../model/event/event';
+import { EventType } from '../model/event/eventType';
 
 @Injectable()
 export class FileService {
 
     private _errorMessageImporting = 'Beim öffnen der Datei ist ein Fehler aufgreten.' +
-                                     ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.';
+        ' Evtl. verfügen Sie nicht über ausreichende Berechtigungen.';
     private _errorSavingProject = 'Die Projektdatei konnte nicht gespeichert werden. Wählen Sie ' +
-                                  'ein Verzeichnis auf das Sie Schreibberechtigung haben.';
+        'ein Verzeichnis auf das Sie Schreibberechtigung haben.';
     private _errorSavingDmn = 'Die DMN XML Datei konnte nicht gespeichert werden.';
     private _errorOpeningProject = 'Die Projektdatei konnte nicht gelesen werden.';
     private _errorOpeningDmn = 'Die im Projekt referenzierte DMN konnte nicht geladen werden.';
@@ -22,9 +25,12 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
-    public constructor(private _electronService: ElectronService,
-                       private _errorMessageService: ErrorMessageService,
-                       private _zone: NgZone) {
+    public constructor(
+        private _electronService: ElectronService,
+        private _errorMessageService: ErrorMessageService,
+        private _zone: NgZone,
+        private _eventService: EventService,
+    ) {
 
         if (!window['require']) {
             return;
@@ -36,7 +42,7 @@ export class FileService {
         return this._electronService.remote.app.getPath('userData');
     }
 
-    public openProject(filepath?: string): Observable<FileSystemAccessResult<{xml?: string, project?: DmnProject}>> {
+    public openProject(filepath?: string): Observable<FileSystemAccessResult<{ xml?: string, project?: DmnProject }>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -49,6 +55,10 @@ export class FileService {
         return Observable.create(observer => {
             if (filepath) {
                 this.openFile(filepath, observer);
+                this._eventService.publishEvent(
+                    new BaseEvent(EventType.FOLDER_CHANGED, this.getDirectory(filepath)));
+                this._eventService.publishEvent(
+                    new BaseEvent(EventType.OPENED_FILE_CHANGED, filepath));
                 return;
             }
             dialog.showOpenDialog(window, openOptions, (fileNames) => {
@@ -60,11 +70,57 @@ export class FileService {
 
                 const filename = fileNames[0];
                 this.openFile(filename, observer);
+                this._eventService.publishEvent(
+                    new BaseEvent(EventType.FOLDER_CHANGED, filename));
+                this._eventService.publishEvent(
+                    new BaseEvent(EventType.OPENED_FILE_CHANGED, filepath));
             });
         });
     }
 
-    public openFile(filepath: string, observer: Observer<FileSystemAccessResult<{xml?: string, project?: DmnProject}>>) {
+    public openFolder(): Observable<FileSystemAccessResult<string>> {
+        const dialog = this._electronService.remote.dialog;
+        const window = this._electronService.remote.getCurrentWindow();
+
+        const openOptions = <OpenDialogOptions>{
+            title: 'Projektordner öffnen',
+            properties: ['openDirectory']
+        };
+
+        return Observable.create(observer => {
+            dialog.showOpenDialog(window, openOptions, (directoryNames) => {
+                if (directoryNames === undefined || directoryNames.length < 1) {
+                    observer.next({ error: false });
+                    observer.complete();
+                    return;
+                }
+
+                const directoryName = directoryNames[0];
+                this._eventService.publishEvent(
+                    new BaseEvent(EventType.FOLDER_CHANGED, directoryName));
+            });
+        });
+    }
+
+    public findFiles(folderPath: string): Observable<string[]> {
+        return Observable.create(observer => {
+            this._filesystem.readdir(folderPath, (err, files) => {
+                observer.next(files);
+                observer.complete();
+            });
+        });
+    }
+
+    public getDirectory(path: string) {
+        return this._filesystem.lstatSync(path).isDirectory() ? path :
+            path.substring(0, path.lastIndexOf('\\'));
+    }
+
+    public getFilename(path: string) {
+        return path.substr(path.lastIndexOf('\\'));
+    }
+
+    public openFile(filepath: string, observer: Observer<FileSystemAccessResult<{ xml?: string, project?: DmnProject }>>) {
         this._currentPath = filepath;
         const path = filepath.substring(0, filepath.lastIndexOf('\\') + 1);
 
@@ -87,7 +143,7 @@ export class FileService {
                     observer.complete();
                     return;
                 }
-                observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data2, project: project }});
+                observer.next({ type: FsResultType.OK, filepath: filepath, data: { xml: data2, project: project } });
                 observer.complete();
             }));
         }));
@@ -151,7 +207,7 @@ export class FileService {
     }
 
     public saveProject(xml: string, project: DmnProject, chooseLocation = false):
-            Observable<FileSystemAccessResult<void>> {
+        Observable<FileSystemAccessResult<void>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
@@ -214,9 +270,9 @@ export class FileService {
     }
 
     private writeFiles(filename: string,
-                       xml: string,
-                       project: DmnProject,
-                       observable: Observer<FileSystemAccessResult<void>>) {
+        xml: string,
+        project: DmnProject,
+        observable: Observer<FileSystemAccessResult<void>>) {
         const filenameParts = filename.split('.');
         const withoutExtension = filenameParts.slice(0, filenameParts.length - 2).join('.');
         const dmnFilename = withoutExtension.substr(withoutExtension.lastIndexOf('\\') + 1) + '.dmn';

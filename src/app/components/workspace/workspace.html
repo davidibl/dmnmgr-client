@@ -1,0 +1,12 @@
+<ul>
+    <li>
+        <small>Workspace</small>
+    </li>
+</ul>
+<div class="filetree">
+    <ul>
+        <li [class.active]="file.active" (click)="openFile(file)" *ngFor="let file of currentFiles$ | async">
+            <small>{{file.filenameWithoutExtension}}</small>
+        </li>
+    </ul>
+</div>
