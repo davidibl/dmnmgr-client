@@ -2,6 +2,7 @@ import { ALL_SERVICES } from './services/services';
 import { environment } from './../environments/environment';
 import { routing } from './app.routes';
 import { AppComponent } from './components/app/app';
+import { AngularSplitModule } from 'angular-split';
 
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +40,7 @@ export function startupServiceFactory(startupService: StartupService): Function 
         CoreModule,
         routing,
         NgxElectronModule,
+        AngularSplitModule.forRoot(),
     ],
     providers: [
         ConfigurationService,
