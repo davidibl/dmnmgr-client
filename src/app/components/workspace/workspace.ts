@@ -40,9 +40,11 @@ export class WorkspaceComponent {
 
     public isFileChanged(filepath: string) {
         filepath = filepath.replace(new RegExp('\\\\', 'g'), '/');
+        const alternateFilePath = filepath.replace('dmnapp.json', 'dmn');
         return this._gitService.getCurrentChangesInTree()
             .pipe(
-                map(changes => !!changes.find(change => filepath.endsWith(change.path)))
+                map(changes => !!changes.find(change =>
+                    filepath.endsWith(change.path) || alternateFilePath.endsWith(change.path)))
             );
     }
 
