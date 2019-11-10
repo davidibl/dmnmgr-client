@@ -17,6 +17,7 @@ import { ExportService } from './exportService';
 import { CsvExportService } from './csvExportService';
 import { FileDialogService } from './fileDialogService';
 import { WorkspaceService } from './workspaceService';
+import { GitService } from './gitService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -38,4 +39,5 @@ export const ALL_SERVICES = [
     CsvExportService,
     FileDialogService,
     WorkspaceService,
+    GitService,
 ];

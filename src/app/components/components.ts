@@ -13,6 +13,7 @@ import { DmnResultViewComponent } from './dmnResultView/dmnResultView';
 import { ImporterComponent } from './importer/importer';
 import { IframeTabComponent } from './plugin/iframeTab/iframeTab';
 import { WorkspaceComponent } from './workspace/workspace';
+import { CommitComponent } from './workspace/commit';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -30,4 +31,5 @@ export const ALL_COMPONENTS = [
     ImporterComponent,
     IframeTabComponent,
     WorkspaceComponent,
+    CommitComponent,
 ];

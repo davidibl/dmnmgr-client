@@ -3,19 +3,22 @@ import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
 import { switchMap, map, filter } from 'rxjs/operators';
 import { FileService } from './fileService';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { WorkspaceFileModel } from '../model/workspaceFileModel';
 import { GenericCache2 } from '@xnoname/web-components';
+import { GitService } from './gitService';
 
 @Injectable()
 export class WorkspaceService {
 
     private _filesCache: GenericCache2<WorkspaceFileModel[]>;
+    private _workspaceFolderCache: GenericCache2<string>;
     private _fileCache: GenericCache2<WorkspaceFileModel>;
 
     public constructor(
         private _eventService: EventService,
-        private _fileService: FileService
+        private _fileService: FileService,
+        _gitService: GitService,
     ) {
 
         this._filesCache = GenericCache2
@@ -29,6 +32,16 @@ export class WorkspaceService {
             .create<WorkspaceFileModel>()
             .switchTo(() => this.getCurrentWorkspaceFile())
             .initialize();
+
+        this._workspaceFolderCache = GenericCache2
+            .create<string>()
+            .basedOn(this.getNewDirectoryPathEvent())
+            .switchTo(workspaceFolder => of(workspaceFolder))
+            .initialize();
+
+        this._workspaceFolderCache
+            .getCache()
+            .subscribe(workspaceFolder => _gitService.openRepository(workspaceFolder));
     }
 
     public getCurrentFiles() {
@@ -37,6 +50,11 @@ export class WorkspaceService {
 
     public getCurrentFile() {
         return this._fileCache.getCache();
+    }
+
+    public refresh() {
+        this._filesCache.refresh();
+        this._workspaceFolderCache.refresh();
     }
 
     private getNewDirectoryPathEvent(): Observable<string> {

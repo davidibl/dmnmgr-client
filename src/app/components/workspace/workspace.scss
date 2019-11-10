@@ -13,11 +13,26 @@ li {
     width: 140px;
     padding: 8px;
     text-align: left;
-    cursor: pointer;
     display: block;
 }
 
+.workspace-header {
+    height: 39px;
+    min-height: 39px;
+}
+
+ul.toolbar {
+    height: 33px;
+    min-height: 33px;
+    li {
+        display: flex;
+        width: 32px;
+        cursor: pointer;
+    }
+}
+
 .filetree {
+    overflow-y: auto;
     margin-top: 20px;
 
     ul {
@@ -30,6 +45,7 @@ li {
         li {
             border-bottom: 1px solid #E3E5E6;
             width: auto;
+            cursor: pointer;
         }
 
         li.active {
@@ -37,6 +53,28 @@ li {
             transition: background-color 0.3s linear;
             -webkit-transition: background-color 0.3s linear;
             -moz-transition: background-color 0.3s linear;
+        }
+
+        li.changed {
+            border-right: solid 5px $danger;
+        }
+    }
+}
+
+.history {
+    overflow-y: auto;
+    margin-top: 20px;
+
+    ul {
+        border-top: 1px solid #E3E5E6;
+        border-bottom: none;
+        display: block;
+        overflow: hidden;
+        width: 100%;
+
+        li {
+            border-bottom: 1px solid #E3E5E6;
+            width: auto;
         }
     }
 }

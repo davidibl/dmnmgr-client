@@ -1,0 +1,6 @@
+@import 'variables';
+@import 'mixins';
+
+.message {
+    @include font-size($base-font-size);
+}

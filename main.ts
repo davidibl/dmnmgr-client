@@ -6,6 +6,9 @@ let win, serve;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 
+const NodeGit = require('nodegit');
+(<any>global).nodegit = NodeGit;
+
 function createWindow() {
 
   const electronScreen = screen;

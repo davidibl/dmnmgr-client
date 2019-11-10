@@ -1,12 +1,32 @@
-<ul>
-    <li>
-        <small>Workspace</small>
-    </li>
-</ul>
-<div class="filetree">
-    <ul>
-        <li [class.active]="file.active" (click)="openFile(file)" *ngFor="let file of currentFiles$ | async">
-            <small>{{file.filenameWithoutExtension}}</small>
+<div class="full-height flex flex-column">
+    <ul class="workspace-header">
+        <li>
+            <small>Workspace</small>
         </li>
     </ul>
+    <ul class="toolbar">
+        <li (click)="refresh()"><small><xn-icon [iconClass]="'fa-refresh'"></xn-icon></small></li>
+        <li *ngIf="isInFiletreeMode$ | async" (click)="switchViewMode(historyViewmode)">
+            <small><xn-icon [iconClass]="'fa-history'"></xn-icon></small>
+        </li>
+        <li *ngIf="isInHistoryMode$ | async" (click)="switchViewMode(filetreeViewmode)">
+            <small><xn-icon [iconClass]="'fa-file'"></xn-icon></small>
+        </li>
+    </ul>
+    <div *ngIf="isInFiletreeMode$ | async" class="filetree">
+        <ul>
+            <li [class.changed]="isFileChanged(file.filepath) | async"
+                [class.active]="file.active" (click)="openFile(file)"
+                *ngFor="let file of currentFiles$ | async">
+                <small>{{file.filenameWithoutExtension}}</small>
+            </li>
+        </ul>
+    </div>
+    <div *ngIf="isInHistoryMode$ | async" class="history">
+        <ul>
+            <li *ngFor="let commit of currentHistory$ | async">
+                <xn-commit [commit]="commit"></xn-commit>
+            </li>
+        </ul>
+    </div>
 </div>

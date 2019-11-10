@@ -140,13 +140,12 @@
 </xn-menu-header>
 
 <div class="main-content full-height">
-    <as-split unit="percent" [direction]="'horizontal'" >
-        <as-split-area size="10" #area1="asSplitArea">
+    <as-split unit="pixel" [direction]="'horizontal'" >
+        <as-split-area size="220" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
             <xn-workspace (openFileRequested)="openRecentFile($event)"></xn-workspace>
         </as-split-area>
-        <as-split-area size="90" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
+        <as-split-area size="*" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
             <router-outlet></router-outlet>
-
         </as-split-area>
     </as-split>
 </div>
