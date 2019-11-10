@@ -8,6 +8,6 @@ export class EventType {
     static IMPORT_DATA = 'importData';
     static EXPORT = 'export';
     static JUMP_TO_TEST = 'jumpToTest';
-    static FOLDER_CHANGED: 'folderChanged';
-    static OPENED_FILE_CHANGED: 'openedFileChanged';
+    static FOLDER_CHANGED = 'folderChanged';
+    static OPENED_FILE_CHANGED = 'openedFileChanged';
 }
