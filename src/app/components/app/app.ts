@@ -26,6 +26,7 @@ import { merge } from 'rxjs/operators';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
 import { ExportDataType } from '../../model/event/exportDataType';
+import { GitService } from '../../services/gitService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -61,6 +62,7 @@ export class AppComponent implements OnInit {
 
     public fileMenuVisible = false;
     public testMenuVisible = false;
+    public repositoryMenuVisible = false;
     public bearbeitenMenuVisible = false;
     public pluginMenuVisible = false;
     public engineMenuVisible = false;
@@ -74,6 +76,8 @@ export class AppComponent implements OnInit {
     public pluginsMerged$: Observable<PluginItem[]>;
     public mostRecentFiles$: Observable<MostRecentFile[]>;
     public hasChanges$: Observable<boolean>;
+
+    public isRepositoryConnected$ = this._gitService.isRepositoryConnected();
 
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
@@ -100,7 +104,8 @@ export class AppComponent implements OnInit {
                        private _pluginService: PluginRegistryService,
                        private _electronService: ElectronService,
                        private _appConfiguration: AppConfigurationService,
-                       private _saveStateService: SaveStateService) {}
+                       private _saveStateService: SaveStateService,
+                       private _gitService: GitService) {}
 
     public ngOnInit() {
         this.mostRecentFiles$ = this._appConfiguration.getMostRecentFiles();
@@ -140,6 +145,7 @@ export class AppComponent implements OnInit {
         this.pluginMenuVisible = false;
         this.engineMenuVisible = false;
         this.helpMenuVisible = false;
+        this.repositoryMenuVisible = false;
         this[menuName] = true;
     }
 
@@ -278,6 +284,14 @@ export class AppComponent implements OnInit {
 
     public clearError() {
         this.showErrorDialog = false;
+    }
+
+    public commitChanges() {
+
+    }
+
+    public cloneRepository() {
+
     }
 
     public openAllTestsDialog() {

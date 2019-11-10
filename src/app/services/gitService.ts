@@ -62,6 +62,10 @@ export class GitService {
         return this._currentChangesInTree;
     }
 
+    public isRepositoryConnected() {
+        return this._currentRepository.pipe(map(repository => !!repository));
+    }
+
     public getCurrentHistory() {
         return this._currentHistory.asObservable();
     }

@@ -74,6 +74,24 @@
     </li>
     <li class="menu">
         <xn-button (click)="menuVisible = !menuVisible"
+                    (mouseenter)="openMenu('repositoryMenuVisible')"
+                    [selected]="menuVisible && repositoryMenuVisible"
+                    class="small transparent nounderline">
+                    Repository<ng-container *ngIf="hasChanges$ | async">*</ng-container>
+            <ul *ngIf="menuVisible && repositoryMenuVisible" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="cloneRepository()">
+                        <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
+                    </li>
+                    <li *ngIf="isRepositoryConnected$ | async" (click)="commitChanges()">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen commiten
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="menuVisible = !menuVisible"
                    (mouseenter)="openMenu('testMenuVisible')"
                    [selected]="menuVisible && testMenuVisible"
                    class="small transparent nounderline">Tests
