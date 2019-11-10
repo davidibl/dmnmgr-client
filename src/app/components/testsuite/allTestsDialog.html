@@ -1,0 +1,34 @@
+<xn-dialog [closable]="true"
+           [open]="open"
+           (openChange)="onDialogOpenChanged($event)"
+           (confirm)="runAllTests()"
+           [defaultOkButtonText]="'Tests ausführen'"
+           [hideCancelButton]="false"
+           [closeOnConfirm]="false"
+           [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Alle Tests ausführen
+    </div>
+    <div class="dialog-body pb-1">
+        <ng-container *ngIf="testSuite">
+            <ng-container *ngFor="let item of testSuite">
+                <ul *ngIf="item.tests?.length > 0" class="testsuite-item">
+                    <li class="test-tableid">{{item.tableId}}</li>
+                    <li *ngFor="let test of item.tests" [ngClass]="test.clazz" class="test-item">
+                        <div class="inline-block mr-05">
+                            <i *xnIfNull="test.result" class="fa fa-question-circle" aria-hidden="true"></i>
+                            <i *xnIfFalse="test.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                            <i *ngIf="test.result" class="fa fa-check-square" aria-hidden="true"></i>
+                        </div>
+                        <div (click)="jumpToTest(item.tableId)" class="inline-block link-to-test">
+                            {{test.test.name}}
+                        </div>
+                    </li>
+                </ul>
+            </ng-container>
+        </ng-container>
+        <div *ngIf="isTestSuiteEmpty">
+            <i class="fa fa-fire mr-1" aria-hidden="true"></i>Kein Test? Dein ernst?
+        </div>
+    </div>
+</xn-dialog>

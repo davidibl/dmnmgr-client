@@ -1,16 +1,11 @@
 import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
-import { concat, Observable, of } from 'rxjs';
-import { tap, filter, map, mergeMap, switchMap, take } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { tap, filter, map, switchMap, take } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { ElectronService } from 'ngx-electron';
-
 import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAccessResult';
-import { TestSuiteService } from '../../services/testSuiteService';
-import { Test } from '../../model/test';
-import { TestsuiteProject } from '../../model/project/testsuiteproject';
 import { TestDecisionService } from '../../services/testDecisionService';
-
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
@@ -27,19 +22,6 @@ import { NewViewEvent } from '../../model/event/newViewEvent';
 import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
 import { ExportDataType } from '../../model/event/exportDataType';
 import { GitService } from '../../services/gitService';
-
-export interface TestSuiteItem {
-    tableId: string;
-    tests: TestItem[];
-}
-
-export interface TestItem {
-    test: Test;
-    tableId: string;
-    deploymentId: string;
-    clazz?: string;
-    result: boolean;
-}
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;
@@ -79,9 +61,6 @@ export class AppComponent implements OnInit {
 
     public isRepositoryConnected$ = this._gitService.isRepositoryConnected();
 
-    public testSuite: TestSuiteItem[];
-    public isTestSuiteEmpty = false;
-
     public showErrorDialog = false;
     public showAllTestsDialog = false;
 
@@ -98,7 +77,6 @@ export class AppComponent implements OnInit {
 
     public constructor(private _fileService: FileService,
                        private _projectService: DmnProjectService,
-                       private _testsuiteService: TestSuiteService,
                        private _testDecisionService: TestDecisionService,
                        private _eventService: EventService,
                        private _pluginService: PluginRegistryService,
@@ -295,37 +273,7 @@ export class AppComponent implements OnInit {
     }
 
     public openAllTestsDialog() {
-        this.testSuite = this.mapTestSuite(this._testsuiteService.getTestSuiteProject());
-        if (!this.testSuite || this.testSuite.length < 1 ||
-            this.testSuite.map(item => item.tests).reduce((acc, next) => acc += next.length, 0) < 1) {
-            this.isTestSuiteEmpty = true;
-        } else { this.isTestSuiteEmpty = false; }
-
         this.showAllTestsDialog = true;
-    }
-
-    public runAllTests() {
-        this._testDecisionService
-            .deployDecision()
-            .pipe(
-                switchMap(deployment =>
-                    of(this.testSuite)
-                        .pipe(
-                            mergeMap(tests => tests),
-                            mergeMap(test => test.tests),
-                            tap(test => test.deploymentId = deployment.decisionRequirementsId))
-                ),
-                map(test => this._testDecisionService
-                        .testDecision(test.test, test.deploymentId, test.tableId)
-                        .pipe(
-                            map(result => {
-                                test.result = result['testSucceded'];
-                                test.clazz = result['testSucceded'] ? 'success' : 'error';
-                                return result;
-                            })
-                        ))
-            )
-            .subscribe(obs => concat(obs).subscribe());
     }
 
     @HostListener('window:keyup', ['$event'])
@@ -360,11 +308,6 @@ export class AppComponent implements OnInit {
 
     }
 
-    public jumpToTest(tableId: string) {
-        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TEST, tableId));
-        this.showAllTestsDialog = false;
-    }
-
     public exportCurrentTable() {
         this._eventService.publishEvent(new ExportCommandEvent(ExportDataType.CSV));
     }
@@ -373,21 +316,6 @@ export class AppComponent implements OnInit {
         if (result.type === FsResultType.ERROR) {
             this.filesystemError = result.message;
         }
-    }
-
-    private mapTestSuite(testSuite: TestsuiteProject): TestSuiteItem[] {
-        return Object.getOwnPropertyNames(testSuite)
-            .map(propertyName => {
-                return <TestSuiteItem>{
-                    tests: testSuite[propertyName].tests.map(test => {
-                        return <TestItem>{
-                            test: test,
-                            tableId: propertyName
-                        };
-                    }),
-                    tableId: propertyName,
-                };
-            });
     }
 
     private saveProjectSilent() {

@@ -33,38 +33,6 @@ xn-menu-header {
     }
 }
 
-.testsuite-item {
-    list-style-type: none;
-    padding-left: 0px;
-}
-
-li.test-tableid {
-    padding: 5px 5px;
-    border-top: 1px solid #E3E5E6;
-    border-bottom: 1px solid #E3E5E6;
-    font-weight: bold;
-}
-
-li.test-item {
-    padding-top: 5px;
-    padding-bottom: 3px;
-    padding-left: 4px;
-    padding-right: 5px;
-    border-left: 8px solid transparent;
-}
-
-li.test-item.success {
-    border-left: 8px solid $brand-teritiary-color-60;
-}
-
-li.test-item.error {
-    border-left: 8px solid $danger;
-}
-
-li.test-item:last-child {
-    margin-bottom: 5px;
-}
-
 .sub-menu {
     position: absolute;
     top: 29px;
@@ -108,14 +76,6 @@ li.test-item:last-child {
     top: 0px;
     left: 100%;
     z-index: -1;
-}
-
-.link-to-test {
-    cursor: pointer;
-}
-
-.link-to-test:hover {
-    text-decoration: underline;
 }
 
 :host::deep {
