@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Repository, Commit } from 'nodegit';
 import { ElectronService } from 'ngx-electron';
-import { Observable, from, BehaviorSubject, ReplaySubject } from 'rxjs';
-import { map, switchMap, filter, reduce } from 'rxjs/operators';
+import { Observable, from, BehaviorSubject, ReplaySubject, of } from 'rxjs';
+import { map, switchMap, filter, reduce, catchError } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
@@ -45,6 +45,13 @@ export class GitService {
                 switchMap(this.getCurrentChanges)
             )
             .subscribe(result => this._currentChangesInTree.next(result));
+
+        this._currentRepository
+            .pipe(
+                catchError(_ => of(null)),
+                filter(repository => !repository),
+            )
+            .subscribe(_ => this.resetRepository());
     }
 
     public getCurrentRepository() {
@@ -65,6 +72,11 @@ export class GitService {
                 (repository: Repository) => this._currentRepository.next(repository),
                 _ => this._currentRepository.next(null)
             );
+    }
+
+    public resetRepository() {
+        this._currentChangesInTree.next([]);
+        this._currentHistory.next(null);
     }
 
     private getCurrentChanges(repository: Repository) {
