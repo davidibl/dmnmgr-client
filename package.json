@@ -68,7 +68,7 @@
     "@types/jasmine": "~2.5.53",
     "@types/jasminewd2": "~2.0.2",
     "@types/node": "~6.0.60",
-    "@types/nodegit": "0.18.7",
+    "@types/nodegit": "0.24.13",
     "codelyzer": "4.5.0",
     "electron": "4.0.0",
     "electron-builder": "20.36.2",
