@@ -15,6 +15,7 @@ import { IframeTabComponent } from './plugin/iframeTab/iframeTab';
 import { WorkspaceComponent } from './workspace/workspace';
 import { CommitComponent } from './workspace/commit';
 import { AllTestsDialogComponent } from './testsuite/allTestsDialog';
+import { CommitDialogComponent } from './commitDialog/commitDialog';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -34,4 +35,5 @@ export const ALL_COMPONENTS = [
     WorkspaceComponent,
     CommitComponent,
     AllTestsDialogComponent,
+    CommitDialogComponent,
 ];

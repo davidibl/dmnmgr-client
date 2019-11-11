@@ -1,16 +1,24 @@
 import { Injectable } from '@angular/core';
-import { Repository, Commit } from 'nodegit';
+import { Repository, Commit, Oid, Index, Signature } from 'nodegit';
 import { ElectronService } from 'ngx-electron';
-import { Observable, from, BehaviorSubject, ReplaySubject, of } from 'rxjs';
-import { map, switchMap, filter, reduce, catchError } from 'rxjs/operators';
+import { Observable, from, BehaviorSubject, ReplaySubject, of, zip } from 'rxjs';
+import { map, switchMap, filter, reduce, catchError, tap, take, switchMapTo } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
 
-function toObservable<T, F>(resultFieldName: string, promise: Promise<T>, args?: F):
-    Observable<{[name: string]: T} & F> {
+function toObservable<T, F, PropertyName extends string>(
+    resultFieldName: PropertyName,
+    promise: Promise<T>,
+    args?: F,
+    errorFunc?: (error) => Observable<any>): Observable<{[K in PropertyName]: T} & F> {
+
+        type ReturnType = {
+            [K in PropertyName]: T
+        };
         return from(promise).pipe(
-            map(result => Object.assign({[resultFieldName]: result}, args))
+            map(result => Object.assign({[resultFieldName]: result} as ReturnType, args) as ReturnType & F),
+            catchError(errorFunc)
         );
 }
 
@@ -70,6 +78,21 @@ export class GitService {
         return this._currentHistory.asObservable();
     }
 
+    public commitCurrentChanges(message: string): Observable<{}> {
+        return this.getCurrentRepository()
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('index', repository.refreshIndex(), {repository: repository})),
+                switchMap(index => toObservable('addAllResult', index.index.addAll('.', 0, null), index)),
+                tap(index => index.index.write()),
+                switchMap(index => toObservable('oid', index.index.writeTree(), index)),
+                switchMap(index => toObservable('branchCommit', index.repository.getHeadCommit(), index)),
+                switchMap(data => this.createCommit(data, message)),
+                switchMap(index => toObservable('addAllResultAfter', index.index.addAll('.', 1, null), index)),
+                switchMap(data => toObservable('index', data.repository.refreshIndex(), data))
+            );
+    }
+
     public openRepository(repositoryRootPath: string) {
         this._nodegit.Repository.openExt(repositoryRootPath, 0, '')
             .then(
@@ -109,17 +132,45 @@ export class GitService {
     }
 
     private toGitCommit(commit: Commit) {
-        const email = (<any>commit.committer()).email();
-        const name = (<any>commit.committer()).name();
-        const when = (<any>commit.committer()).when();
+        const email = commit.committer().email();
+        const name = commit.committer().name();
+        const when = commit.committer().when();
         return new GitCommit(
             commit.message(),
             new GitSignature(
                 email,
                 name,
-                new Date(when.time)
+                new Date((when.time() * 1000))
             )
         );
+    }
+
+    private createCommit(data: {['repository']: Repository, ['index']: Index, ['branchCommit']: Commit, 'oid': Oid}, message: string) {
+
+        return this.createSignature()
+            .pipe(
+                switchMap(signature => {
+                    return toObservable(
+                        'newOid',
+                        data.repository.createCommit(
+                            'HEAD',
+                            signature,
+                            signature,
+                            message,
+                            data.oid,
+                            [data.branchCommit]), data,
+                            (error) => {
+                                console.log(error);
+                                return of(null);
+                            });
+                })
+            );
+    }
+
+    private createSignature(): Observable<Signature> {
+        const commitTime = Math.round((new Date().getTime() / 1000));
+        const signature = this._nodegit.Signature.create('David Ibl', 'david.ibl@xnoname.com', commitTime, 120);
+        return of(signature);
     }
 
 }

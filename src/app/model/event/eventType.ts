@@ -10,4 +10,5 @@ export class EventType {
     static JUMP_TO_TEST = 'jumpToTest';
     static FOLDER_CHANGED = 'folderChanged';
     static OPENED_FILE_CHANGED = 'openedFileChanged';
+    static REFRESH_WORKSPACE = 'refreshWorkspace';
 }

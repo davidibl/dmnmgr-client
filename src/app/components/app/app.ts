@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, merge, combineLatest } from 'rxjs';
 import { tap, filter, map, switchMap, take } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
@@ -12,16 +12,15 @@ import { EventType } from '../../model/event/eventType';
 import { PluginRegistryService } from '../../services/pluginRegistryService';
 import { PluginDescriptor } from '../../model/plugin/pluginDescriptor';
 import { PluginMetaDescriptor } from '../../model/plugin/pluginMetaDescriptor';
-import { combineLatest } from 'rxjs';
 import { MostRecentFile } from '../../model/appConfiguration/mostRecentFile';
 import { AppConfigurationService } from '../../services/appConfigurationService';
 import { SaveStateService } from '../../services/saveStateService';
 import { DialogComponent, ButtonComponent } from '@xnoname/web-components';
-import { merge } from 'rxjs/operators';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
 import { ExportDataType } from '../../model/event/exportDataType';
 import { GitService } from '../../services/gitService';
+import { CommitDialogComponent } from '../commitDialog/commitDialog';
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;
@@ -36,6 +35,9 @@ export class AppComponent implements OnInit {
 
     @ViewChild('unsavedChangesDialog')
     private _unsavedChangesDialog: DialogComponent;
+
+    @ViewChild('commitMessageDialog')
+    private _commitMessageDialog: CommitDialogComponent;
 
     @ViewChild('dontSaveButton')
     private _dontSaveButton: ButtonComponent;
@@ -185,7 +187,8 @@ export class AppComponent implements OnInit {
             const onDontSave = this._dontSaveButton.clicked.pipe(map(_ => true));
             const onCancel = this._unsavedChangesDialog.cancel.pipe(map(_ => false));
 
-            onSave.pipe(merge(onCancel, onDontSave), take(1))
+            merge(onSave, onCancel, onDontSave)
+                .pipe(take(1))
                 .subscribe(doAction => {
                     this._unsavedChangesDialog.open = false;
                     if (doAction) {
@@ -212,7 +215,8 @@ export class AppComponent implements OnInit {
                     .saveProject(project.xml, project.project, true)
                     .pipe(
                         tap(result => this.processError(result)),
-                        filter(result => result.type === FsResultType.OK)
+                        filter(result => result.type === FsResultType.OK),
+                        tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
                     )
                     .subscribe(_ => this._saveStateService.resetChanges());
             });
@@ -265,7 +269,21 @@ export class AppComponent implements OnInit {
     }
 
     public commitChanges() {
+        const commitObservable = this._commitMessageDialog
+            .commit
+            .pipe(
+                take(1),
+                switchMap(message => this._gitService.commitCurrentChanges(message)),
+                tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
+            );
 
+        const cancelObservable = this._commitMessageDialog.cancel.pipe(take(1));
+
+        merge(commitObservable, cancelObservable)
+            .pipe(tap(_ => this._commitMessageDialog.commitMessage = null))
+            .subscribe(_ => this._commitMessageDialog.open = false);
+
+        this._commitMessageDialog.open = true;
     }
 
     public cloneRepository() {
@@ -329,7 +347,8 @@ export class AppComponent implements OnInit {
                         .pipe(
                             take(1),
                             tap(result => this.processError(result)),
-                            filter(result => result.type === FsResultType.OK)
+                            filter(result => result.type === FsResultType.OK),
+                            tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
                         );
                 })
             );

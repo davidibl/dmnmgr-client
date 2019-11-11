@@ -42,6 +42,10 @@ export class WorkspaceService {
         this._workspaceFolderCache
             .getCache()
             .subscribe(workspaceFolder => _gitService.openRepository(workspaceFolder));
+
+        this._eventService
+            .getEvent(ev => ev.type === EventType.REFRESH_WORKSPACE)
+            .subscribe(_ => this.refresh());
     }
 
     public getCurrentFiles() {

@@ -1,0 +1,27 @@
+<xn-dialog [closable]="true"
+            [open]="open"
+            (openChange)="onDialogOpenChanged($event)"
+            (confirm)="onCommitClicked()"
+            (cancel)="onCancelClicked()"
+            [defaultOkButtonText]="'Änderung bestätigen'"
+            [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Änderungshinweis
+    </div>
+    <div class="dialog-body pb-1">
+        <form #commitForm="ngForm">
+            <p>
+                Bitte geben Sie einen Änderungshinweis an. Der Hinweis sollte kurz zusammengefasst
+                den Grund der Anpassung beschreiben.
+            </p>
+            <xn-input-form [multiline]="true"
+                        [name]="'commitMessage'"
+                        xnRequired
+                        xnRequiredMessage="'Der Änderungshinweis ist Pflicht.'"
+                        xnMinLength="10"
+                        [placeholder]="'Änderungshinweis'"
+                        minLengthMessage="'Der Änderungshinweis muss mindestens {minLength} Zeichen haben.'"
+                        [(ngModel)]="commitMessage"></xn-input-form>
+        </form>
+    </div>
+</xn-dialog>
