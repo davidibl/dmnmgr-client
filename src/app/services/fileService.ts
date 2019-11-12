@@ -1,7 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
-import { ElectronService } from 'ngx-electron';
-import { OpenDialogOptions, SaveDialogOptions } from 'electron';
+import { OpenDialogOptions, SaveDialogOptions, OpenDialogReturnValue, SaveDialogReturnValue } from 'electron';
 import { DmnProject } from '../model/project/dmnProject';
+import { Remote } from 'electron';
 import { isNull } from '@xnoname/web-components';
 import { Observable, Observer } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
@@ -25,8 +25,11 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
+    private _electronService: {
+        remote?: Remote
+    } = { remote: null };
+
     public constructor(
-        private _electronService: ElectronService,
         private _errorMessageService: ErrorMessageService,
         private _zone: NgZone,
         private _eventService: EventService,
@@ -35,7 +38,8 @@ export class FileService {
         if (!window['require']) {
             return;
         }
-        this._filesystem = window['require']('fs');
+        this._electronService.remote = <any>window.require('electron').remote;
+        this._filesystem = window.require('fs');
     }
 
     public getUserDataPath() {
@@ -61,7 +65,8 @@ export class FileService {
                     new BaseEvent(EventType.OPENED_FILE_CHANGED, filepath));
                 return;
             }
-            dialog.showOpenDialog(window, openOptions, (fileNames) => {
+            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+                const fileNames = openDialogReturnValue.filePaths;
                 if (fileNames === undefined || fileNames.length < 1) {
                     observer.next({ error: false });
                     observer.complete();
@@ -88,7 +93,8 @@ export class FileService {
         };
 
         return Observable.create(observer => {
-            dialog.showOpenDialog(window, openOptions, (directoryNames) => {
+            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+                const directoryNames = openDialogReturnValue.filePaths;
                 if (directoryNames === undefined || directoryNames.length < 1) {
                     observer.next({ error: false });
                     observer.complete();
@@ -178,7 +184,8 @@ export class FileService {
         };
 
         return Observable.create(observer => {
-            dialog.showSaveDialog(window, saveOptions, (filename, _) => {
+            dialog.showSaveDialog(window, saveOptions).then((saveDialogReturnValue: SaveDialogReturnValue) => {
+                const filename = saveDialogReturnValue.filePath;
                 if (isNull(filename)) {
                     this.callback(() => observer.next({ type: FsResultType.NOTHING_SELECTED }));
                     return;
@@ -219,7 +226,8 @@ export class FileService {
 
         return Observable.create(observer => {
             if (!this._currentPath || chooseLocation) {
-                dialog.showSaveDialog(window, saveOptions, (filename, bookmark) => {
+                dialog.showSaveDialog(window, saveOptions).then((saveDialogReturnValue: SaveDialogReturnValue) => {
+                    const filename = saveDialogReturnValue.filePath;
                     if (isNull(filename)) {
                         observer.next({ type: FsResultType.NOTHING_SELECTED });
                         return;
@@ -243,7 +251,8 @@ export class FileService {
         };
 
         return Observable.create(observer => {
-            dialog.showOpenDialog(window, openOptions, (fileNames) => {
+            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+                const fileNames = openDialogReturnValue.filePaths;
                 if (isNull(fileNames) || fileNames.length < 1) {
                     observer.next({ type: FsResultType.NOTHING_SELECTED, message: this._errorMessageImporting });
                     observer.complete();
