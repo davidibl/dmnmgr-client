@@ -60,7 +60,7 @@ export class WorkspaceComponent {
         return this._workspaceService
             .getCurrentFiles()
             .pipe(
-                map(files => files.filter(file => file.filename.endsWith('dmnapp.json')))
+                map(files => (!!files) ? files.filter(file => file.filename.endsWith('dmnapp.json')) : [])
             );
     }
 

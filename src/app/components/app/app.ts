@@ -227,6 +227,8 @@ export class AppComponent implements OnInit {
             this._fileService.resetCurrentPath();
             this._projectService.createNewProject();
             this._saveStateService.resetChanges();
+            this._eventService.publishEvent(
+                new BaseEvent(EventType.FOLDER_CHANGED, null));
         });
     }
 
