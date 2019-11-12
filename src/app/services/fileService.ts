@@ -3,7 +3,7 @@ import { OpenDialogOptions, SaveDialogOptions, OpenDialogReturnValue, SaveDialog
 import { DmnProject } from '../model/project/dmnProject';
 import { Remote } from 'electron';
 import { isNull } from '@xnoname/web-components';
-import { Observable, Observer } from 'rxjs';
+import { Observable, Observer, of } from 'rxjs';
 import { FileSystemAccessResult, FsResultType } from '../model/fileSystemAccessResult';
 import { ErrorMessageService } from './errorMessageService';
 import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
@@ -109,6 +109,9 @@ export class FileService {
     }
 
     public findFiles(folderPath: string): Observable<string[]> {
+        if (!folderPath) {
+            return of([]);
+        }
         return Observable.create(observer => {
             this._filesystem.readdir(folderPath, (err, files) => {
                 observer.next(files);
@@ -118,6 +121,9 @@ export class FileService {
     }
 
     public getDirectory(path: string) {
+        if (!path) {
+            return null;
+        }
         return this._filesystem.lstatSync(path).isDirectory() ? path :
             path.substring(0, path.lastIndexOf('\\'));
     }
@@ -233,6 +239,8 @@ export class FileService {
                         return;
                     }
                     this.writeFiles(filename, xml, project, observer);
+                    this._eventService.publishEvent(
+                        new BaseEvent(EventType.FOLDER_CHANGED, filename));
                 });
                 return;
             }
