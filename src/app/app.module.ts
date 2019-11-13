@@ -19,7 +19,6 @@ import {
 } from '@xnoname/web-components';
 import { ALL_COMPONENTS } from './components/components';
 import { ALL_PIPES } from './pipes/pipes';
-import { NgxElectronModule } from 'ngx-electron';
 
 export function startupServiceFactory(startupService: StartupService): Function {
     return () => startupService.load(environment.configuration);
@@ -39,7 +38,6 @@ export function startupServiceFactory(startupService: StartupService): Function 
         RouterModule,
         CoreModule,
         routing,
-        NgxElectronModule,
         AngularSplitModule.forRoot(),
     ],
     providers: [

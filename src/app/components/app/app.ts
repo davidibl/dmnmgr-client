@@ -3,7 +3,6 @@ import { Observable, merge, combineLatest } from 'rxjs';
 import { tap, filter, map, switchMap, take } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
-import { ElectronService } from 'ngx-electron';
 import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAccessResult';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
@@ -21,6 +20,7 @@ import { ExportCommandEvent } from '../../model/event/exportCommandEvent';
 import { ExportDataType } from '../../model/event/exportDataType';
 import { GitService } from '../../services/gitService';
 import { CommitDialogComponent } from '../commitDialog/commitDialog';
+import { ElectronService } from '../../services/electronService';
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;

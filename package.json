@@ -50,7 +50,7 @@
         "getbase": "3.1.5",
         "moment": "^2.18.1",
         "nodegit": "^0.26.2",
-        "openseadragon": "2.2.1",
+        "v8-compile-cache": "2.1.0",
         "rxjs": "^6.3.3",
         "tslib": "^1.9.0",
         "zone.js": "^0.8.26"

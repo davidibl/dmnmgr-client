@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Repository, Commit, Oid, Index, Signature } from 'nodegit';
-import { ElectronService } from 'ngx-electron';
-import { Observable, from, BehaviorSubject, ReplaySubject, of, zip } from 'rxjs';
+import { Observable, from, BehaviorSubject, ReplaySubject, of } from 'rxjs';
 import { map, switchMap, filter, reduce, catchError, tap, take, switchMapTo } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
+import { ElectronService } from './electronService';
 
 function toObservable<T, F, PropertyName extends string>(
     resultFieldName: PropertyName,

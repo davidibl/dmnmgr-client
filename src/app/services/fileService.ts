@@ -10,6 +10,7 @@ import { FileSaveDialogOptions } from '../model/fileSaveDialogOptions';
 import { EventService } from './eventService';
 import { BaseEvent } from '../model/event/event';
 import { EventType } from '../model/event/eventType';
+import { ElectronService } from './electronService';
 
 @Injectable()
 export class FileService {
@@ -25,20 +26,16 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
-    private _electronService: {
-        remote?: Remote
-    } = { remote: null };
-
     public constructor(
         private _errorMessageService: ErrorMessageService,
         private _zone: NgZone,
+        private _electronService: ElectronService,
         private _eventService: EventService,
     ) {
 
         if (!window['require']) {
             return;
         }
-        this._electronService.remote = <any>window.require('electron').remote;
         this._filesystem = window.require('fs');
     }
 
