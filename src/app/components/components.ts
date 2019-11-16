@@ -17,6 +17,7 @@ import { CommitComponent } from './workspace/commit';
 import { AllTestsDialogComponent } from './testsuite/allTestsDialog';
 import { CommitDialogComponent } from './commitDialog/commitDialog';
 import { SettingsComponent } from './settings/settings';
+import { DmnmgrDocumentationComponent } from './documentation/dmnmgrDocumentation';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -38,4 +39,5 @@ export const ALL_COMPONENTS = [
     AllTestsDialogComponent,
     CommitDialogComponent,
     SettingsComponent,
+    DmnmgrDocumentationComponent,
 ];

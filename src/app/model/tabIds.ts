@@ -5,4 +5,5 @@ export class TabIds {
     static importer = 'import';
     static settings = 'settings';
     static example = 'example';
+    static documentation = 'documentation';
 }

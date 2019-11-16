@@ -324,7 +324,7 @@ export class AppComponent implements OnInit {
     }
 
     public showDocumentation() {
-
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.documentation));
     }
 
     public exportCurrentTable() {

@@ -29,6 +29,12 @@
             [id]="tabIds.settings">
         <xn-settings *ngIf="settingsTab.active"></xn-settings>
     </xn-tab>
+    <xn-tab [title]="'Hilfe'"
+            [visible]="false"
+            #documentationTab
+            [id]="tabIds.documentation">
+        <xn-dmnmgr-documentation *ngIf="documentationTab.active"></xn-dmnmgr-documentation>
+    </xn-tab>
     <xn-tab [title]="'Example'"
             [visible]="pluginExampleActivated$ | async"
             [iconClass]="'fa-internet-explorer'"
