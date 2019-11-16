@@ -189,7 +189,7 @@ export class FileService {
         return Observable.create(observer => {
             dialog.showSaveDialog(window, saveOptions).then((saveDialogReturnValue: SaveDialogReturnValue) => {
                 const filename = saveDialogReturnValue.filePath;
-                if (isNull(filename)) {
+                if (isNull(filename) || filename.length < 1) {
                     this.callback(() => observer.next({ type: FsResultType.NOTHING_SELECTED }));
                     return;
                 }
