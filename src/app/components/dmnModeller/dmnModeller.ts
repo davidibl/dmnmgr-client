@@ -293,7 +293,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             this.checkAllErrors();
             this.updateResponseModel();
             this.refreshTableColumnsList();
-            this._domService.synchronizeHeaderWidth(this._newHeadElement, this._elementRef);
             this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
