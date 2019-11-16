@@ -18,13 +18,13 @@ const HIDE_MENU = 'out';
             'max-height': '0px', 'opacity': '0', 'visibility': 'hidden'
         })),
         transition('in => out', [group([
-            animate('400ms ease-in-out', style({
+            animate('100ms ease-in-out', style({
                 'opacity': '0'
             })),
-            animate('600ms ease-in-out', style({
+            animate('100ms ease-in-out', style({
                 'max-height': '0px'
             })),
-            animate('700ms ease-in-out', style({
+            animate('200ms ease-in-out', style({
                 'visibility': 'hidden'
             }))
         ]
