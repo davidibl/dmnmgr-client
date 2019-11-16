@@ -31,6 +31,7 @@ export class GitService {
     private _currentChangesInTree: ReplaySubject<FileStatus[]>;
     private _currentHistory = new ReplaySubject<GitCommit[]>(1);
     private _currentCommit = new ReplaySubject<GitCommit>(1);
+    private _branchnameCache = new ReplaySubject<string>(1);
 
     public constructor(
         private _electronService: ElectronService,
@@ -68,14 +69,25 @@ export class GitService {
             .pipe(
                 filter(repository => !!repository)
             ).subscribe(_ => this.fetchCurrentCommit());
+
+        this._currentRepository
+            .pipe(
+                filter(repository => !!repository),
+                switchMap(repository => from(repository.getCurrentBranch())),
+                map(branch => branch.name())
+            ).subscribe(name => this._branchnameCache.next(name));
     }
 
     public getCurrentRepository() {
-        return this._currentRepository;
+        return this._currentRepository.asObservable();
+    }
+
+    public getCurrentBranchname() {
+        return this._branchnameCache.asObservable();
     }
 
     public getCurrentChangesInTree() {
-        return this._currentChangesInTree;
+        return this._currentChangesInTree.asObservable();
     }
 
     public isRepositoryConnected() {

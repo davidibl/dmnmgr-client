@@ -24,6 +24,7 @@
     </div>
     <div *ngIf="isInHistoryMode$ | async" class="history">
         <ul>
+            <li class="current-commit mb-1">{{branchname$ | async}}</li>
             <li [class.current-commit]="commit.current" class="commit-entry" *ngFor="let commit of currentHistory$ | async">
                 <xn-commit (commitSelect)="checkoutCommit($event)" [commit]="commit"></xn-commit>
             </li>
