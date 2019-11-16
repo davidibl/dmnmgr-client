@@ -73,8 +73,12 @@ ul.toolbar {
         width: 100%;
 
         li {
-            border-bottom: 1px solid #E3E5E6;
             width: auto;
+            border-bottom: 1px solid #E3E5E6;
+        }
+
+        li.current-commit {
+            background-color: $tab-header-col-active-bg-color;
         }
     }
 }

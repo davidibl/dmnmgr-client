@@ -1,3 +1,19 @@
-<small class="message block">{{commit.message}}</small>
-<small class="block">{{commit.committer.name}}</small>
-<small class="block">{{commit.committer.time | toDateString}}</small>
+<div (click)="selectCommit()" class="commit-entry">
+    <small class="message block">{{commit.message}}</small>
+    <small class="block">{{commit.committer.name}}</small>
+    <small class="block">{{commit.committer.time | toDateString}}</small>
+</div>
+<div class="commit-menu" [@slideInOut]="showCommitMenu">
+    <ul class="toolbar">
+        <li (click)="checkout()">
+            <small>
+                <xn-icon [iconClass]="'fa-shopping-cart'"></xn-icon>
+            </small>
+        </li>
+    </ul>
+    <div class="changes">
+        <ul>
+            <li *ngFor="let changedFile of commit.changedFiles">{{changedFile}}</li>
+        </ul>
+    </div>
+</div>

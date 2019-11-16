@@ -18,14 +18,14 @@
             <li [class.changed]="isFileChanged(file.filepath) | async"
                 [class.active]="file.active" (click)="openFile(file)"
                 *ngFor="let file of currentFiles$ | async">
-                <small>{{file.filenameWithoutExtension}}</small>
+                <small><xn-icon class="mr-05" [iconClass]="'fa-table'"></xn-icon>{{file.filenameWithoutExtension}}</small>
             </li>
         </ul>
     </div>
     <div *ngIf="isInHistoryMode$ | async" class="history">
         <ul>
-            <li *ngFor="let commit of currentHistory$ | async">
-                <xn-commit [commit]="commit"></xn-commit>
+            <li [class.current-commit]="commit.current" class="commit-entry" *ngFor="let commit of currentHistory$ | async">
+                <xn-commit (commitSelect)="checkoutCommit($event)" [commit]="commit"></xn-commit>
             </li>
         </ul>
     </div>

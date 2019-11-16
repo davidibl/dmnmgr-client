@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Output, ChangeDetectionStrategy, OnInit } from '@angular/core';
 import { WorkspaceService } from '../../services/workspaceService';
-import { map, filter } from 'rxjs/operators';
+import { map, filter, tap } from 'rxjs/operators';
 import { WorkspaceFileModel } from '../../model/workspaceFileModel';
-import { merge, combineLatest, BehaviorSubject } from 'rxjs';
+import { merge, combineLatest, BehaviorSubject, zip } from 'rxjs';
 import { GitService } from '../../services/gitService';
+import { GitCommit } from '../../model/git/gitCommit';
 
 @Component({
     selector: 'xn-workspace',
@@ -11,7 +12,7 @@ import { GitService } from '../../services/gitService';
     styleUrls: ['workspace.scss'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WorkspaceComponent {
+export class WorkspaceComponent implements OnInit {
 
     public filetreeViewmode = 'FILETREE';
     public historyViewmode = 'HISTORY';
@@ -34,6 +35,17 @@ export class WorkspaceComponent {
         private _gitService: GitService,
     ) { }
 
+    public ngOnInit() {
+        combineLatest(this._gitService.getCurrentCommit(), this.currentHistory$)
+            .pipe(
+                filter(([commit, history]) => !!commit && !!history),
+                tap(([commit, history]) => {
+                    const currentCommit = history.find(c => c.sha === commit.sha);
+                    if (!!currentCommit) { currentCommit.current = true; }
+                })
+            ).subscribe();
+    }
+
     public openFile(file: WorkspaceFileModel) {
         this.openFileRequested.emit(file.filepath);
     }
@@ -54,6 +66,10 @@ export class WorkspaceComponent {
 
     public switchViewMode(viewmode: string) {
         this.viewmode.next(viewmode);
+    }
+
+    public checkoutCommit(commit: GitCommit) {
+        this._gitService.checkoutCommit(commit);
     }
 
     private getFilesOfCurrentFolder() {

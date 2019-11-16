@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Repository, Commit, Oid, Index, Signature } from 'nodegit';
-import { Observable, from, BehaviorSubject, ReplaySubject, of } from 'rxjs';
-import { map, switchMap, filter, reduce, catchError, tap, take, switchMapTo } from 'rxjs/operators';
+import { Repository, Commit, Index, Signature, Oid } from 'nodegit';
+import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject } from 'rxjs';
+import { map, switchMap, filter, reduce, catchError, tap, take, mergeMap } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
@@ -29,6 +29,7 @@ export class GitService {
     private _currentRepository = new BehaviorSubject<Repository>(null);
     private _currentChangesInTree: ReplaySubject<FileStatus[]>;
     private _currentHistory = new ReplaySubject<GitCommit[]>(1);
+    private _currentCommit = new ReplaySubject<GitCommit>(1);
 
     public constructor(
         private _electronService: ElectronService
@@ -42,7 +43,7 @@ export class GitService {
                 switchMap(repository => toObservable('branch', repository.getCurrentBranch(), {repository: repository})),
                 switchMap(repositoryBranch => repositoryBranch.repository.getBranchCommit(repositoryBranch.branch)),
                 switchMap(branchCommit => this.getCommitHistoryFramLatest(branchCommit)),
-                map(commits => commits.map(this.toGitCommit))
+                switchMap(commits => zip(...commits.map(commit => this.toGitCommit(commit))))
             )
             .subscribe(commits => this._currentHistory.next(commits));
 
@@ -60,6 +61,11 @@ export class GitService {
                 filter(repository => !repository),
             )
             .subscribe(_ => this.resetRepository());
+
+        this._currentRepository
+            .pipe(
+                filter(repository => !!repository)
+            ).subscribe(_ => this.fetchCurrentCommit());
     }
 
     public getCurrentRepository() {
@@ -76,6 +82,10 @@ export class GitService {
 
     public getCurrentHistory() {
         return this._currentHistory.asObservable();
+    }
+
+    public getCurrentCommit() {
+        return this._currentCommit;
     }
 
     public commitCurrentChanges(message: string): Observable<{}> {
@@ -106,11 +116,32 @@ export class GitService {
         this._currentHistory.next(null);
     }
 
+    public checkoutCommit(commit: GitCommit) {
+        this._currentRepository
+            .pipe(
+                take(1),
+                tap(repository => repository.setHeadDetached(this._nodegit.Oid.fromString(commit.id))),
+                switchMap(_ => this._currentRepository),
+                take(1)
+            )
+            .subscribe(repository => this._currentRepository.next(repository));
+    }
+
     private getCurrentChanges(repository: Repository) {
         return toObservable('status', repository.getStatusExt(), {})
             .pipe(
                 map(status => status.status.map(fileStatus => new FileStatus(fileStatus.status(), fileStatus.path())))
             );
+    }
+
+    private fetchCurrentCommit() {
+        this._currentRepository
+            .pipe(
+                filter(repository => !!repository),
+                switchMap(repository => toObservable('headCommit', repository.getHeadCommit(), {})),
+                switchMap(commit => this.toGitCommit(commit.headCommit))
+            )
+            .subscribe(commit => this._currentCommit.next(commit));
     }
 
     private collectAll<T>(acc: any[], value: T, index: number): T[] {
@@ -120,29 +151,45 @@ export class GitService {
 
     private getCommitHistoryFramLatest(branchCommit): Observable<Commit[]> {
         const commitWalker = branchCommit.history();
-        const observable = Observable.create(observer => {
-            commitWalker.on('commit', function(commit){ observer.next(commit); });
-            commitWalker.on('end', function() {observer.complete(); });
-        });
+        const subject = new Subject<Commit>();
+        commitWalker.on('commit', function(commit){ subject.next(commit); });
+        commitWalker.on('end', function() { subject.complete(); });
         commitWalker.start();
-        return observable
+        return subject
             .pipe(
                 reduce(this.collectAll, [])
             );
     }
 
-    private toGitCommit(commit: Commit) {
+    private toGitCommit(commit: Commit): Observable<GitCommit> {
         const email = commit.committer().email();
         const name = commit.committer().name();
         const when = commit.committer().when();
-        return new GitCommit(
-            commit.message(),
-            new GitSignature(
-                email,
-                name,
-                new Date((when.time() * 1000))
-            )
-        );
+        return this.getDeltaFileList(commit)
+            .pipe(
+                map(changedFiles => {
+                    return new GitCommit(
+                        commit.message(),
+                        new GitSignature(
+                            email,
+                            name,
+                            new Date((when.time() * 1000))
+                        ),
+                        changedFiles,
+                        commit.sha(),
+                        commit.id().tostrS(),
+                    );
+                })
+            );
+    }
+
+    private getDeltaFileList(commit: Commit): Observable<string[]> {
+        return toObservable('diff', commit.getDiff())
+            .pipe(
+                mergeMap(diff => diff.diff),
+                map(diff => Array(diff.numDeltas()).fill(0).map((e, i) => i).map(idx => diff.getDelta(idx))),
+                map(deltas => deltas.map(delta => (delta as any).newFile().path()))
+            );
     }
 
     private createCommit(data: {['repository']: Repository, ['index']: Index, ['branchCommit']: Commit, 'oid': Oid}, message: string) {
