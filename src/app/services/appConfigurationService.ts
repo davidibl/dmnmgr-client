@@ -2,17 +2,19 @@ import { Injectable } from '@angular/core';
 import { FileService } from './fileService';
 import { AppConfig } from '../model/appConfiguration/appConfig';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, filter } from 'rxjs/operators';
 import { BehaviorSubject } from 'rxjs';
 import { FsResultType } from '../model/fileSystemAccessResult';
 import { MostRecentFile } from '../model/appConfiguration/mostRecentFile';
 import { concatPath } from '@xnoname/web-components';
+import { GitSignatureIdentity } from '../model/git/gitSignatureIdentity';
+import { DEFAULT_EMPTY_CONFIGURATION } from '../model/appConfiguration/emptyAppConfig';
 
 @Injectable()
 export class AppConfigurationService {
 
     private static _configFilename = '.dmnmgr.config.json';
-    private static _emptyDefault = { mostRecent: [], simulatorBaseUrl: 'http://zeus:11401' };
+    private static _emptyDefault = DEFAULT_EMPTY_CONFIGURATION;
 
     private _currentConfiguration: AppConfig;
     private set currentConfiguration(appConfig: AppConfig) {
@@ -26,10 +28,12 @@ export class AppConfigurationService {
     private init() {
         this._fileService
             .openOrCreateFile<AppConfig>(this.getFilename(), AppConfigurationService._emptyDefault)
-            .subscribe(configFileResult => {
-                if (configFileResult.type !== FsResultType.OK) { return; }
-                this.currentConfiguration = configFileResult.data;
-            });
+            .pipe(
+                filter(configFileResult => configFileResult.type === FsResultType.OK),
+                map(configFileResult => configFileResult.data),
+                map(appConfig => Object.assign(DEFAULT_EMPTY_CONFIGURATION, appConfig))
+            )
+            .subscribe(data => this.currentConfiguration = data);
     }
 
     public getBaseUrlSimulator(): Observable<string> {
@@ -40,6 +44,25 @@ export class AppConfigurationService {
     public getMostRecentFiles(): Observable<MostRecentFile[]> {
         return this._configurationCache
             .pipe( map(config => config.mostRecent ));
+    }
+
+    public getGitSignature(): Observable<GitSignatureIdentity> {
+        return this._configurationCache
+            .pipe( map(config => config.gitSignature ));
+    }
+
+    public getConfiguration(): Observable<AppConfig> {
+        return this._configurationCache.asObservable();
+    }
+
+    public saveConfiguration(configuration: AppConfig) {
+        this._currentConfiguration = Object.assign(this._currentConfiguration, configuration);
+        this.saveFile();
+        this._configurationCache.next(this._currentConfiguration);
+    }
+
+    public discardChangesConfiguration() {
+        this._configurationCache.next(this._currentConfiguration);
     }
 
     public addMostRecentFile(path: string) {
@@ -58,6 +81,10 @@ export class AppConfigurationService {
 
         this._configurationCache.next(this._currentConfiguration);
 
+        this.saveFile();
+    }
+
+    private saveFile() {
         this._fileService
             .saveFile(this.getFilename(), this._currentConfiguration)
             .subscribe();
