@@ -11,4 +11,5 @@ export class EventType {
     static FOLDER_CHANGED = 'folderChanged';
     static OPENED_FILE_CHANGED = 'openedFileChanged';
     static REFRESH_WORKSPACE = 'refreshWorkspace';
+    static JUMP_TO_TAB = 'jumpToTab';
 }

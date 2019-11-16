@@ -8,6 +8,8 @@ import { EventType } from '../../model/event/eventType';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { TabsComponent } from '@xnoname/web-components';
 import { DmnProjectService } from '../../services/dmnProjectService';
+import { BaseEvent } from '../../model/event/event';
+import { TabIds } from '../../model/tabIds';
 
 @Component({
     selector: 'xn-dmn-manager',
@@ -21,13 +23,7 @@ export class DmnManagerComponent implements OnInit {
 
     private stylesheet: any = null;
 
-    public tabIds = {
-        editor: 'dmn-editor',
-        datamodelEditor: 'datamodel-editor',
-        testEditor: 'test-editor',
-        importer: 'import',
-        example: 'example',
-    };
+    public tabIds = TabIds;
 
     public isDecicionTableMode$: Observable<boolean>;
 
@@ -72,10 +68,15 @@ export class DmnManagerComponent implements OnInit {
             .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
             .pipe( map(_ => 'test-editor') )
             .subscribe(newTab => this.tabs.selectTabById(newTab));
+
+        this._eventService
+            .getEvent<BaseEvent<string>>((ev) => ev.type === EventType.JUMP_TO_TAB)
+            .pipe( map((ev) => ev.data))
+            .subscribe(tabId => this.tabs.selectTabById(tabId));
     }
 
     public onSelectedTabChanged(tabId: string) {
-        this.showSimulator$.next((tabId === this.tabIds.editor));
+        this.showSimulator$.next((tabId === TabIds.editor));
     }
 
     private clearStyleRules() {

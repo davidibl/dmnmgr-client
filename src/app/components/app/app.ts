@@ -21,6 +21,7 @@ import { ExportDataType } from '../../model/event/exportDataType';
 import { GitService } from '../../services/gitService';
 import { CommitDialogComponent } from '../commitDialog/commitDialog';
 import { ElectronService } from '../../services/electronService';
+import { TabIds } from '../../model/tabIds';
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;
@@ -331,6 +332,7 @@ export class AppComponent implements OnInit {
     }
 
     public importCsv() {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.importer));
     }
 
     public showSettings() {
