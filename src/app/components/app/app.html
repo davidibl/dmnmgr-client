@@ -66,7 +66,16 @@
                     </li>
                     <li *ngIf="isDecicionTableMode" (click)="exportCurrentTable()">
                         <i class="fa fa-exchange mr-05" aria-hidden="true"></i>CSV Exportieren
-                        <span class="right">(STRG + X)</span>
+                        <span class="right">(STRG + E)</span>
+                    </li>
+                    <li *ngIf="isDecicionTableMode" (click)="importCsv()">
+                        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>CSV Importieren
+                        <span class="right">(STRG + I)</span>
+                    </li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li *ngIf="isDecicionTableMode" (click)="showSettings()">
+                        <i class="fa fa-sliders mr-05" aria-hidden="true"></i>Einstellungen
+                        <span class="right">(STRG + A)</span>
                     </li>
                 </div>
             </ul>

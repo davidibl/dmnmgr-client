@@ -33,6 +33,16 @@ export interface PluginItem extends PluginMetaDescriptor {
 })
 export class AppComponent implements OnInit {
 
+    private HOTKEY_MAPPING: {[key: string]: () => void} = {
+        KeyO: () => this.openProject(),
+        KeyN: () => this.createNewProject(),
+        KeyS: () => this.saveProject(),
+        KeyH: () => this.showDocumentation(),
+        KeyE: () => this.exportCurrentTable(),
+        KeyR: () => this.toggleRecentFiles(),
+        KeyP: () => this.openFolder(),
+    };
+
     @ViewChild('unsavedChangesDialog')
     private _unsavedChangesDialog: DialogComponent;
 
@@ -299,25 +309,12 @@ export class AppComponent implements OnInit {
     @HostListener('window:keyup', ['$event'])
     public handleKeyboardEvent(event: KeyboardEvent) {
         if (!event.ctrlKey) { return; }
+        this.HOTKEY_MAPPING[event.code]();
+    }
 
-        switch (event.code) {
-            case 'KeyO':
-                this.openProject();
-                break;
-            case 'KeyN':
-                this.createNewProject();
-                break;
-            case 'KeyS':
-                this.saveProject();
-                break;
-            case 'KeyH':
-                this.showDocumentation();
-                break;
-            case 'KeyR':
-                this.fileMenuVisible = !this.fileMenuVisible;
-                this.recentFilesMenuVisible = !this.recentFilesMenuVisible;
-                break;
-        }
+    public toggleRecentFiles() {
+        this.fileMenuVisible = !this.fileMenuVisible;
+        this.recentFilesMenuVisible = !this.recentFilesMenuVisible;
     }
 
     public enablePlugin(plugin: PluginItem) {
@@ -330,6 +327,12 @@ export class AppComponent implements OnInit {
 
     public exportCurrentTable() {
         this._eventService.publishEvent(new ExportCommandEvent(ExportDataType.CSV));
+    }
+
+    public importCsv() {
+    }
+
+    public showSettings() {
     }
 
     private processError(result: FileSystemAccessResult<any>) {
