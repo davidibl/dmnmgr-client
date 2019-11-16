@@ -23,6 +23,12 @@
             [id]="tabIds.importer">
         <xn-importer></xn-importer>
     </xn-tab>
+    <xn-tab [title]="'Einstellungen'"
+            [visible]="false"
+            #settingsTab
+            [id]="tabIds.settings">
+        <xn-settings *ngIf="settingsTab.active"></xn-settings>
+    </xn-tab>
     <xn-tab [title]="'Example'"
             [visible]="pluginExampleActivated$ | async"
             [iconClass]="'fa-internet-explorer'"

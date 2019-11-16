@@ -1,0 +1,32 @@
+<div class="col-12">
+    <h4>Einstellungen</h4>
+    <div class="mb-2">
+        <xn-section-divider [label]="'Simulation'"></xn-section-divider>
+        <xn-input-form ngModel
+                    [(ngModel)]="configuration.simulatorBaseUrl"
+                    [label]="'Simulator Basis URL'"
+                    [validatable]="false"
+                    name="simulatorBaseUrl"></xn-input-form>
+    </div>
+    <div class="mb-2">
+        <xn-section-divider [label]="'Git'"></xn-section-divider>
+        <div class="flex">
+            <div class="inline-block mr-1">
+            <xn-input-form ngModel
+                [(ngModel)]="configuration.gitSignature.name"
+                [label]="'Name'"
+                [validatable]="false"
+                name="name"></xn-input-form>
+            </div>
+            <xn-input-form ngModel
+                [(ngModel)]="configuration.gitSignature.email"
+                [label]="'Email'"
+                [validatable]="false"
+                name="email"></xn-input-form>
+        </div>
+    </div>
+    <div class="mb-2">
+        <xn-button [disabled]="!isChanged()" class="mr-1" [default]="true" (clicked)="saveSettings()">Speichern</xn-button>
+        <xn-button [disabled]="!isChanged()" (clicked)="discard()">Änderungen verwerfen</xn-button>
+    </div>
+</div>

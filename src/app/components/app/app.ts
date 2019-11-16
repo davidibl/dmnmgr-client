@@ -336,6 +336,7 @@ export class AppComponent implements OnInit {
     }
 
     public showSettings() {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
     }
 
     private processError(result: FileSystemAccessResult<any>) {
