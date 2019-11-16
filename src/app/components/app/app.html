@@ -60,7 +60,7 @@
                     class="small transparent nounderline">Bearbeiten
             <ul *ngIf="menuVisible && bearbeitenMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="openSearch()">
+                    <li *ngIf="isDecicionTableMode" (click)="openSearch()">
                         <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
                         <span class="right">(STRG + F)</span>
                     </li>
@@ -72,8 +72,8 @@
                         <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>CSV Importieren
                         <span class="right">(STRG + I)</span>
                     </li>
-                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
-                    <li *ngIf="isDecicionTableMode" (click)="showSettings()">
+                    <li *ngIf="isDecicionTableMode" class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="showSettings()">
                         <i class="fa fa-sliders mr-05" aria-hidden="true"></i>Einstellungen
                         <span class="right">(STRG + A)</span>
                     </li>
