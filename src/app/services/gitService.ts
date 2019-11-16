@@ -41,7 +41,7 @@ export class GitService {
             .pipe(
                 filter(repository => !!repository),
                 switchMap(repository => toObservable('branch', repository.getCurrentBranch(), {repository: repository})),
-                switchMap(repositoryBranch => repositoryBranch.repository.getBranchCommit(repositoryBranch.branch)),
+                switchMap(repositoryBranch => repositoryBranch.repository.getMasterCommit()),
                 switchMap(branchCommit => this.getCommitHistoryFramLatest(branchCommit)),
                 switchMap(commits => zip(...commits.map(commit => this.toGitCommit(commit))))
             )
