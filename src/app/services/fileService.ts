@@ -75,7 +75,7 @@ export class FileService {
                 this._eventService.publishEvent(
                     new BaseEvent(EventType.FOLDER_CHANGED, filename));
                 this._eventService.publishEvent(
-                    new BaseEvent(EventType.OPENED_FILE_CHANGED, filepath));
+                    new BaseEvent(EventType.OPENED_FILE_CHANGED, filename));
             });
         });
     }
