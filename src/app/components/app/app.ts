@@ -309,6 +309,7 @@ export class AppComponent implements OnInit {
     @HostListener('window:keyup', ['$event'])
     public handleKeyboardEvent(event: KeyboardEvent) {
         if (!event.ctrlKey) { return; }
+        if (!this.HOTKEY_MAPPING[event.code]) { return; }
         this.HOTKEY_MAPPING[event.code]();
     }
 

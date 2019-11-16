@@ -199,8 +199,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
         this._modeller = new DmnJS({
             container: this._container.nativeElement,
-            keyboard: {
-                bindTo: window
+            common: {
+                keyboard: {
+                    bindTo: window
+                }
             }
         });
 
