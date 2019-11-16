@@ -10,8 +10,8 @@ import {
     Renderer2,
     ChangeDetectionStrategy,
 } from '@angular/core';
-import { ReplaySubject, BehaviorSubject } from 'rxjs';
-import { take, filter, map, debounceTime } from 'rxjs/operators';
+import { ReplaySubject, BehaviorSubject, } from 'rxjs';
+import { take, filter, map, debounceTime, } from 'rxjs/operators';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
 
@@ -39,6 +39,7 @@ import { ExportService } from '../../services/exportService';
 import { DmnExpressionLanguage } from '../../model/dmn/dmnExpressionLanguage';
 import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
 import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
+import { DomService } from '../../services/domService';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -101,11 +102,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private initialized = false;
     private drdListenerInited = false;
 
+    private _domService = new DomService(this.document, this._renderer);
+
     @ViewChild('canvas')
     private _container: ElementRef;
 
     private _modeller: DMNJS;
     private _searchStylesheet: any;
+    private _newHeadElement = null;
 
     private _errorNodes: any[] = [];
 
@@ -124,10 +128,12 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         private _eventService: EventService,
         @Inject(DOCUMENT) private document,
         private _dmnModelService: DmnModelService,
-        private renderer: Renderer2,
         private _exportService: ExportService,
         private _dataModelService: DataModelService,
-        private _saveStateService: SaveStateService) { }
+        private _saveStateService: SaveStateService,
+        private _elementRef: ElementRef,
+        private _renderer: Renderer2,
+    ) { }
 
     @HostListener('window:keyup', ['$event'])
     public handleKeyboardEvent(event: KeyboardEvent) {
@@ -165,11 +171,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     public ngOnInit(): void {
-        const styleElement = this.renderer.createElement('style');
-        const text = this.renderer.createText('');
-        this.renderer.appendChild(styleElement, text);
-        this.renderer.appendChild(this.document.head, styleElement);
-        this._searchStylesheet = styleElement.sheet;
+        this._searchStylesheet = this._domService.createStylesheet();
 
         this._debounceSubject.pipe( debounceTime(500) ).subscribe(func => func());
 
@@ -276,6 +278,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             if (!this.drdListenerInited) {
                 this.initDrdListeners();
             }
+
+            this.startScrollListener();
         });
         this._modeller._viewers.decisionTable.on('elements.changed', (event: DmnModdleEvent) => {
             switch (this._dmnModelService.dmnModelChangeEventType(event)) {
@@ -289,6 +293,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             this.checkAllErrors();
             this.updateResponseModel();
             this.refreshTableColumnsList();
+            this._domService.synchronizeHeaderWidth(this._newHeadElement, this._elementRef);
             this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {
@@ -320,31 +325,41 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.initDrdListeners();
     }
 
+    private startScrollListener() {
+        const scrollElement = this._elementRef.nativeElement.querySelectorAll('.tjs-container')[0];
+        if (!scrollElement) {
+            return;
+        }
+
+        this._renderer.listen(scrollElement, 'scroll', (scrollEvent) => {
+            if (scrollEvent.srcElement.scrollLeft >= 0 && !!this._newHeadElement) {
+                const newPosition = -1 * scrollEvent.srcElement.scrollLeft;
+                this._domService.scrollStaticHeaderHorizontal(this._newHeadElement, newPosition);
+            }
+            if (scrollEvent.srcElement.scrollTop > 185) {
+                if (!!this._newHeadElement) {
+                    return;
+                }
+                this._newHeadElement = this._domService.duplicateDmnTableHeader(this._elementRef);
+            } else if (this._newHeadElement) {
+                this._domService.removeStaticHead(this._elementRef, this._newHeadElement);
+                this._newHeadElement = null;
+            }
+        });
+    }
+
     private checkAllErrors() {
         this.clearErrorNodes();
         this.getAllInputClauseErrors()
             .concat(...this.getAllOutputClauseErrors())
             .forEach(columnDataId => {
-                const newErrorIcon = this.addErrorElement(`th[data-col-id="${columnDataId}"]`);
+                const newErrorIcon = this._domService.appendErrorElement(`th[data-col-id="${columnDataId}"]`);
                 this._errorNodes.push(newErrorIcon);
             });
     }
 
-    private addErrorElement(selector: string) {
-        const icon = this.renderer.createElement('i');
-        this.renderer.addClass(icon, 'fa');
-        this.renderer.addClass(icon, 'fa-exclamation-triangle');
-        this.renderer.setStyle(icon, 'float', 'right');
-        this.renderer.setStyle(icon, 'margin-top', '4px');
-        this.renderer.setStyle(icon, 'color', '#f13943');
-        this.renderer.setAttribute(icon, 'aria-hidden', 'true');
-        const host = this._container.nativeElement.querySelector(selector);
-        this.renderer.appendChild(host, icon);
-        return { host: host, child: icon};
-    }
-
     private clearErrorNodes() {
-        this._errorNodes.forEach(node => this.renderer.removeChild(node.host, node.child));
+        this._errorNodes.forEach(node => this._renderer.removeChild(node.host, node.child));
         this._errorNodes = [];
     }
 

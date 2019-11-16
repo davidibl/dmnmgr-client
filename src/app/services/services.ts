@@ -19,6 +19,7 @@ import { FileDialogService } from './fileDialogService';
 import { WorkspaceService } from './workspaceService';
 import { GitService } from './gitService';
 import { ElectronService } from './electronService';
+import { DomService } from './domService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
