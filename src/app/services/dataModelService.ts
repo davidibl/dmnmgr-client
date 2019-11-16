@@ -144,6 +144,9 @@ export class DataModelService {
     private getPropertyByPathSync(datamodel: ObjectDefinition, path: string) {
         if (!datamodel || !datamodel.properties) { return null; }
         const searchObject = Object.assign({}, datamodel);
+        if (path.indexOf('${') === 0) {
+            path = path.replace('${', '').replace('}', '');
+        }
         return path
             .split('.')
             .reduce((accumulator, nextPathPart) =>
