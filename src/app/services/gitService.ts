@@ -6,6 +6,7 @@ import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
 import { ElectronService } from './electronService';
+import { AppConfigurationService } from './appConfigurationService';
 
 function toObservable<T, F, PropertyName extends string>(
     resultFieldName: PropertyName,
@@ -32,7 +33,8 @@ export class GitService {
     private _currentCommit = new ReplaySubject<GitCommit>(1);
 
     public constructor(
-        private _electronService: ElectronService
+        private _electronService: ElectronService,
+        private _configurationService: AppConfigurationService,
     ) {
 
         this._nodegit = this._electronService.remote.getGlobal('nodegit');
@@ -216,8 +218,12 @@ export class GitService {
 
     private createSignature(): Observable<Signature> {
         const commitTime = Math.round((new Date().getTime() / 1000));
-        const signature = this._nodegit.Signature.create('David Ibl', 'david.ibl@xnoname.com', commitTime, 120);
-        return of(signature);
+        return this._configurationService
+            .getGitSignature()
+            .pipe(
+                take(1),
+                map(signature => this._nodegit.Signature.create(signature.name, signature.email, commitTime, 120))
+            );
     }
 
 }
