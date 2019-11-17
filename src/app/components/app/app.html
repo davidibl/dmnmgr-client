@@ -115,6 +115,9 @@
                     <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="commitChanges()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen commiten
                     </li>
+                    <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="resetChanges()">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen rückgängig
+                    </li>
                 </div>
             </ul>
         </xn-button>

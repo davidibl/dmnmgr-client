@@ -319,6 +319,10 @@ export class AppComponent implements OnInit {
         this._commitMessageDialog.open = true;
     }
 
+    public resetChanges() {
+        this._gitService.resetCurrentChanges();
+    }
+
     public checkoutMaster() {
         this._gitService.checkoutMasterAndDeleteDetached();
     }

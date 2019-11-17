@@ -128,6 +128,16 @@ export class GitService {
             );
     }
 
+    public resetCurrentChanges() {
+        this._currentRepository
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('branchCommit', repository.getHeadCommit(), { repository: repository })),
+                switchMap(data => toObservable('newRepository',
+                    this._nodegit.Reset(data.repository, data.branchCommit, 3), data))
+            ).subscribe(data => this._currentRepository.next(data.repository));
+    }
+
     public checkoutMasterAndDeleteDetached() {
         this._currentRepository
             .pipe(
