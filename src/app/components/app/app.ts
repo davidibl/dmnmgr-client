@@ -22,6 +22,7 @@ import { GitService } from '../../services/gitService';
 import { CommitDialogComponent } from '../commitDialog/commitDialog';
 import { ElectronService } from '../../services/electronService';
 import { TabIds } from '../../model/tabIds';
+import { MessageDialogComponent } from '../dialogs/messageDialog';
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;
@@ -49,6 +50,9 @@ export class AppComponent implements OnInit {
 
     @ViewChild('commitMessageDialog')
     private _commitMessageDialog: CommitDialogComponent;
+
+    @ViewChild('messageDialog')
+    private _messageDialog: MessageDialogComponent;
 
     @ViewChild('dontSaveButton')
     private _dontSaveButton: ButtonComponent;
@@ -225,23 +229,28 @@ export class AppComponent implements OnInit {
     }
 
     public saveProject() {
-        this.saveProjectSilent()
-            .subscribe(_ => this._saveStateService.resetChanges());
+        this.cancelActionWhenDetached()
+            .pipe(filter(result => !result))
+            .subscribe(_ => this.saveProjectSilent()
+                .subscribe(__ => this._saveStateService.resetChanges()));
     }
 
     public saveProjectAs() {
-        this._projectService
-            .getProject()
-            .subscribe(project => {
-                this._fileService
-                    .saveProject(project.xml, project.project, true)
-                    .pipe(
-                        tap(result => this.processError(result)),
-                        filter(result => result.type === FsResultType.OK),
-                        tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
-                    )
-                    .subscribe(_ => this._saveStateService.resetChanges());
-            });
+        this.cancelActionWhenDetached()
+            .pipe(filter(result => !result))
+            .subscribe(_ => this._projectService
+                .getProject()
+                .subscribe(project => {
+                    this._fileService
+                        .saveProject(project.xml, project.project, true)
+                        .pipe(
+                            tap(result => this.processError(result)),
+                            filter(result => result.type === FsResultType.OK),
+                            tap(__ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
+                        )
+                        .subscribe(___ => this._saveStateService.resetChanges());
+                })
+            );
     }
 
     public createNewProject() {
@@ -351,6 +360,25 @@ export class AppComponent implements OnInit {
 
     public showSettings() {
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
+    }
+
+    private cancelActionWhenDetached() {
+        const isNotDetached = this.isHeadDetached$
+            .pipe(
+                take(1),
+                filter(detached => !detached),
+            );
+        const isDetached = this.isHeadDetached$
+            .pipe(
+                take(1),
+                filter(detached => !!detached),
+                tap(_ => {
+                    this._messageDialog.message =
+                        'Derzeit kann nicht gespeichert werden! Ein älterer Arbeitsstand ist ausgecheckt.';
+                    this._messageDialog.open = true;
+                }),
+            );
+        return merge(isNotDetached, isDetached);
     }
 
     private processError(result: FileSystemAccessResult<any>) {

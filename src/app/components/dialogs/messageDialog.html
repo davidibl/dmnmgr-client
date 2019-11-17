@@ -1,0 +1,16 @@
+<xn-dialog [closable]="true"
+            [open]="open"
+            (openChange)="onDialogOpenChanged($event)"
+            (confirm)="onOkClicked()"
+            [hideCancelButton]="true"
+            [defaultOkButtonText]="'Ok'"
+            [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Änderungshinweis
+    </div>
+    <div class="dialog-body pb-1">
+        <p>
+            {{message}}
+        </p>
+    </div>
+</xn-dialog>
