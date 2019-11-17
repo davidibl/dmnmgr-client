@@ -73,10 +73,16 @@ export class AppComponent implements OnInit {
     public hasChanges$: Observable<boolean>;
 
     public isRepositoryConnected$ = this._gitService.isRepositoryConnected();
+    public isRepositoryNotConnected$ = this._gitService.isRepositoryConnected().pipe(map(connected => !connected));
     public isHeadDetached$ = this._gitService.isHeadDetached();
-    public isRepositoryConnectedAndClean$ =
-        zip(this.isRepositoryConnected$, this.isHeadDetached$)
-            .pipe(map(([connected, detached]) => connected && !detached));
+    public hasChangesInTree$ = this._gitService.getCurrentChangesInTree()
+        .pipe(map(changes => !!changes && changes.length > 0));
+    public connectedHasChangesAndNotDetached$ =
+        zip(this.isRepositoryConnected$, this.isHeadDetached$, this.hasChangesInTree$)
+            .pipe(map(([connected, detached, hasChanges]) => connected && !detached && hasChanges));
+    public connectedAndClean$ =
+        zip(this.isRepositoryConnected$, this.isHeadDetached$, this.hasChangesInTree$)
+            .pipe(map(([connected, detached, hasChanges]) => connected && !detached && !hasChanges));
 
 
     public showErrorDialog = false;

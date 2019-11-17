@@ -88,6 +88,21 @@
                     class="small transparent nounderline">Repository
             <ul *ngIf="menuVisible && repositoryMenuVisible" class="sub-menu">
                 <div class="sub-menu-container">
+                    <li>
+                        Status:
+                        <ng-container *ngIf="isRepositoryNotConnected$ | async">
+                            <i class="fa fa-square-o ml-05 mr-05" aria-hidden="true"></i>Nicht verbunden
+                        </ng-container>
+                        <ng-container *ngIf="connectedAndClean$ | async">
+                            <i class="fa fa-check-square-o ml-05 mr-05" aria-hidden="true"></i>Clean
+                        </ng-container>
+                        <ng-container *ngIf="connectedHasChangesAndNotDetached$ | async">
+                            <i class="fa fa-circle-o ml-05 mr-05" aria-hidden="true"></i>Lokale Änderungen
+                        </ng-container>
+                        <ng-container *ngIf="isHeadDetached$ | async">
+                            <i class="fa fa-circle ml-05 mr-05" aria-hidden="true"></i>Detached
+                        </ng-container>
+                    </li>
                     <!-- Clone not supported yet -->
                     <!--
                     <li (click)="cloneRepository()">
@@ -97,7 +112,7 @@
                     <li *ngIf="isHeadDetached$ | async" (click)="checkoutMaster()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zur letzten Änderung
                     </li>
-                    <li *ngIf="isRepositoryConnectedAndClean$ | async" (click)="commitChanges()">
+                    <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="commitChanges()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen commiten
                     </li>
                 </div>
