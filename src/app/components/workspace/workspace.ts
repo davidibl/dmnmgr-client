@@ -26,7 +26,7 @@ export class WorkspaceComponent implements OnInit {
 
     public currentFiles$ = merge(this.getFilesOfCurrentFolder(), this.getFilesOfFolderOpenedMarked());
     public currentHistory$ = this._gitService.getCurrentHistory();
-    public branchname$ = this._gitService.getCurrentBranchname().pipe(tap(name => console.log(name)));
+    public branchname$ = this._gitService.getCurrentBranchname();
 
     @Output()
     public openFileRequested = new EventEmitter<string>();
