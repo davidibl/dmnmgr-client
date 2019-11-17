@@ -207,6 +207,8 @@ export class AppComponent implements OnInit {
             const onSave = this._unsavedChangesDialog
                 .confirm
                 .pipe(
+                    switchMap(_ => this.cancelActionWhenDetached()),
+                    filter(result => !result),
                     switchMap(_ => this.saveProjectSilent().pipe(take(1), map(__ => true)))
                 );
 
