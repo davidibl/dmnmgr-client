@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
-import { Observable, merge, combineLatest } from 'rxjs';
+import { Observable, merge, combineLatest, zip } from 'rxjs';
 import { tap, filter, map, switchMap, take } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
@@ -73,6 +73,11 @@ export class AppComponent implements OnInit {
     public hasChanges$: Observable<boolean>;
 
     public isRepositoryConnected$ = this._gitService.isRepositoryConnected();
+    public isHeadDetached$ = this._gitService.isHeadDetached();
+    public isRepositoryConnectedAndClean$ =
+        zip(this.isRepositoryConnected$, this.isHeadDetached$)
+            .pipe(map(([connected, detached]) => connected && !detached);
+
 
     public showErrorDialog = false;
     public showAllTestsDialog = false;
@@ -297,6 +302,10 @@ export class AppComponent implements OnInit {
             .subscribe(_ => this._commitMessageDialog.open = false);
 
         this._commitMessageDialog.open = true;
+    }
+
+    public checkoutMaster() {
+        this._gitService.checkoutMasterAndDeleteDetached();
     }
 
     public cloneRepository() {

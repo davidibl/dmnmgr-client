@@ -23,6 +23,10 @@ function toObservable<T, F, PropertyName extends string>(
         );
 }
 
+export class BranchNames {
+    static DETACHED = 'detached';
+}
+
 @Injectable()
 export class GitService {
 
@@ -102,6 +106,11 @@ export class GitService {
         return this._currentCommit;
     }
 
+    public isHeadDetached() {
+        return this._branchnameCache
+            .pipe(map(branchname => branchname === BranchNames.DETACHED));
+    }
+
     public commitCurrentChanges(message: string): Observable<{}> {
         return this.getCurrentRepository()
             .pipe(
@@ -115,6 +124,16 @@ export class GitService {
                 switchMap(index => toObservable('addAllResultAfter', index.index.addAll('.', 1, null), index)),
                 switchMap(data => toObservable('index', data.repository.refreshIndex(), data))
             );
+    }
+
+    public checkoutMasterAndDeleteDetached() {
+        this._currentRepository
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('newReference', repository.checkoutBranch('master'), {repository: repository})),
+                switchMap(data => toObservable('detachedBranch', data.repository.getBranch(BranchNames.DETACHED), data)),
+                tap(data => this._nodegit.Branch.delete(data.detachedBranch))
+            ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
     public openRepository(repositoryRootPath: string) {
@@ -134,11 +153,10 @@ export class GitService {
         this._currentRepository
             .pipe(
                 take(1),
-                tap(repository => repository.setHeadDetached(this._nodegit.Oid.fromString(commit.id))),
-                switchMap(_ => this._currentRepository),
-                take(1)
-            )
-            .subscribe(repository => this._currentRepository.next(repository));
+                switchMap(repository => toObservable('newReference',
+                    repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), {repository: repository})),
+                switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data))
+            ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
     private getCurrentChanges(repository: Repository) {

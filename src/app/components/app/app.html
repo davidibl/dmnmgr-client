@@ -91,7 +91,10 @@
                     <li (click)="cloneRepository()">
                         <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
                     </li>
-                    <li *ngIf="isRepositoryConnected$ | async" (click)="commitChanges()">
+                    <li *ngIf="isHeadDetached$ | async" (click)="checkoutMaster()">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zur letzten Änderung
+                    </li>
+                    <li *ngIf="isRepositoryConnectedAndClean$ | async" (click)="commitChanges()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen commiten
                     </li>
                 </div>
