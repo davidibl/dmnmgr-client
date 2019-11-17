@@ -58,7 +58,8 @@ export class AppComponent implements OnInit {
     @ViewChild('dontSaveButton')
     private _dontSaveButton: ButtonComponent;
 
-    private _filesystemError: string;
+    private _error: string;
+    private _errorTitle: string;
 
     public fileMenuVisible = false;
     public testMenuVisible = false;
@@ -95,13 +96,12 @@ export class AppComponent implements OnInit {
 
     public isDecicionTableMode: boolean;
 
-    public set filesystemError(filesystemError: string) {
-        this._filesystemError = filesystemError;
-        this.showErrorDialog = true;
+    public get error() {
+        return this._error;
     }
 
-    public get filesystemError() {
-        return this._filesystemError;
+    public get errorTitle() {
+        return this._errorTitle;
     }
 
     public constructor(private _fileService: FileService,
@@ -139,6 +139,10 @@ export class AppComponent implements OnInit {
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)
             .pipe( map(ev => ev.data.isDecisionTable) )
             .subscribe(isDecisionTableMode => this.isDecicionTableMode = isDecisionTableMode);
+
+        this._eventService
+            .getEvent<BaseEvent<string>>(ev => ev.type === EventType.GITERROR)
+            .subscribe(ev => this.createError('GIT hat einen Fehler verursacht', ev.data));
     }
 
     public onMenuOutsideClick() {
@@ -293,6 +297,8 @@ export class AppComponent implements OnInit {
     public onOpenChange($event) {
         if (!open) {
             this.clearError();
+            this._error = null;
+            this._errorTitle = null;
         }
     }
 
@@ -333,6 +339,14 @@ export class AppComponent implements OnInit {
     public cloneRepository() {
     }
 
+    public pushCommits() {
+        this._gitService.pushCommits();
+    }
+
+    public pullFromRemote() {
+        this._gitService.pullFromRemote();
+    }
+
     public openAllTestsDialog() {
         this.showAllTestsDialog = true;
     }
@@ -369,6 +383,12 @@ export class AppComponent implements OnInit {
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
     }
 
+    public createError(errorTitle: string, error: string) {
+        this._error = error;
+        this._errorTitle = errorTitle;
+        this.showErrorDialog = true;
+    }
+
     private cancelActionWhenDetached() {
         const isNotDetached = this.isHeadDetached$
             .pipe(
@@ -390,7 +410,7 @@ export class AppComponent implements OnInit {
 
     private processError(result: FileSystemAccessResult<any>) {
         if (result.type === FsResultType.ERROR) {
-            this.filesystemError = result.message;
+            this.createError('Fehler', result.message);
         }
     }
 

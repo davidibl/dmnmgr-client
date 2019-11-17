@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Repository, Commit, Index, Signature, Oid } from 'nodegit';
+import { Repository, Commit, Index, Signature, Oid, PushOptions } from 'nodegit';
 import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject } from 'rxjs';
 import { map, switchMap, filter, reduce, catchError, tap, take, mergeMap } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
@@ -7,6 +7,9 @@ import { GitCommit } from '../model/git/gitCommit';
 import { GitSignature } from '../model/git/gitSignature';
 import { ElectronService } from './electronService';
 import { AppConfigurationService } from './appConfigurationService';
+import { EventService } from './eventService';
+import { BaseEvent } from '../model/event/event';
+import { EventType } from '../model/event/eventType';
 
 declare var NodeGit;
 
@@ -19,7 +22,11 @@ function toObservable<T, F, PropertyName extends string>(
     type ReturnType = {
         [K in PropertyName]: T
     };
-    return from(promise).pipe(
+    return from(promise.catch(error => {
+            if (errorFunc) {
+                errorFunc(error);
+            }
+        })).pipe(
         map(result => Object.assign({ [resultFieldName]: result } as ReturnType, args) as ReturnType & F),
         catchError(errorFunc)
     );
@@ -42,9 +49,11 @@ export class GitService {
     public constructor(
         private _electronService: ElectronService,
         private _configurationService: AppConfigurationService,
+        private _eventService: EventService,
     ) {
 
         this._nodegit = this._electronService.remote.getGlobal('nodegit');
+        (<any>window).NodeGit = this._nodegit;
 
         this._currentRepository
             .pipe(
@@ -128,6 +137,36 @@ export class GitService {
             );
     }
 
+    public pushCommits() {
+        this._currentRepository
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('remote', repository.getRemote('origin'), { repository: repository })),
+                switchMap(data => toObservable('currentBranch', data.repository.getCurrentBranch(), data)),
+                tap(data => console.log(`${data.currentBranch.toString()}, ${data.currentBranch.name()}`)),
+                tap(data => {
+                    const options = this.createPushOptions();
+                    data.remote.push([data.currentBranch.name()], options).catch(error => this.handleError(error));
+                })
+            ).subscribe(data => console.log(data));
+    }
+
+    public pullFromRemote() {
+        this._currentRepository
+            .pipe(
+                tap(repository => {
+                    const options = this.createPushOptions();
+                    repository.fetchAll(options).catch(error => this.handleError(error));
+                }),
+                switchMap(_ => this.getCurrentBranchname(),
+                    (repository, branchname) => ({ repository: repository, branchname: branchname })),
+                switchMap(data => toObservable('mergeResult',
+                    data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
+                    (error) => this.handleError(error)
+                ))
+            ).subscribe();
+    }
+
     public resetCurrentChanges() {
         this._currentRepository
             .pipe(
@@ -169,6 +208,11 @@ export class GitService {
                     repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), { repository: repository })),
                 switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data))
             ).subscribe(data => this._currentRepository.next(data.repository));
+    }
+
+    private handleError<T>(error) {
+        this._eventService.publishEvent(new BaseEvent(EventType.GITERROR, error));
+        return of(<T>null);
     }
 
     private getCurrentChanges(repository: Repository) {
@@ -267,6 +311,19 @@ export class GitService {
                 take(1),
                 map(signature => this._nodegit.Signature.create(signature.name, signature.email, commitTime, 120))
             );
+    }
+
+    private createPushOptions(): PushOptions {
+        const options: PushOptions = {
+            callbacks: {
+                certificateCheck: () => 1,
+                credentials: (url, userName) => {
+                    console.log(`Push asked for credentials for '${userName}' on ${url}`);
+                    return this._nodegit.Cred.sshKeyFromAgent(userName);
+                },
+            }
+        };
+        return options;
     }
 
 }

@@ -118,6 +118,12 @@
                     <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="resetChanges()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen rückgängig
                     </li>
+                    <li *ngIf="connectedAndClean$ | async" (click)="pushCommits()">
+                        <i class="fa fa-upload mr-05" aria-hidden="true"></i>Push zu Server
+                    </li>
+                    <li *ngIf="connectedAndClean$ | async" (click)="pullFromRemote()">
+                        <i class="fa fa-download mr-05" aria-hidden="true"></i>Pull vom Server
+                    </li>
                 </div>
             </ul>
         </xn-button>
@@ -207,11 +213,11 @@
            [hideCancelButton]="true"
            [closeOnOutsideClick]="false">
     <div class="dialog-title">
-        Fehler
+        {{errorTitle}}
     </div>
     <div class="dialog-body pb-1">
         <p>
-            {{filesystemError}}
+            {{error}}
         </p>
     </div>
 </xn-dialog>
