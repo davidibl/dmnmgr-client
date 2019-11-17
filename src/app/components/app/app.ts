@@ -76,7 +76,7 @@ export class AppComponent implements OnInit {
     public isHeadDetached$ = this._gitService.isHeadDetached();
     public isRepositoryConnectedAndClean$ =
         zip(this.isRepositoryConnected$, this.isHeadDetached$)
-            .pipe(map(([connected, detached]) => connected && !detached);
+            .pipe(map(([connected, detached]) => connected && !detached));
 
 
     public showErrorDialog = false;
