@@ -232,7 +232,8 @@ export class GitService {
             .pipe(
                 mergeMap(diff => diff.diff),
                 map(diff => Array(diff.numDeltas()).fill(0).map((e, i) => i).map(idx => diff.getDelta(idx))),
-                map(deltas => deltas.map(delta => (delta as any).newFile().path()))
+                map(deltas => deltas.map(delta => (delta as any).newFile().path())),
+                map(deltaPaths => deltaPaths.map(path => path.substring(path.lastIndexOf('/') + 1)))
             );
     }
 
