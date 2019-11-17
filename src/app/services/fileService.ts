@@ -101,6 +101,7 @@ export class FileService {
                 const directoryName = directoryNames[0];
                 this._eventService.publishEvent(
                     new BaseEvent(EventType.FOLDER_CHANGED, directoryName));
+                observer.next({ error: false, filepath: directoryName});
             });
         });
     }

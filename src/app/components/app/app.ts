@@ -309,7 +309,6 @@ export class AppComponent implements OnInit {
     }
 
     public cloneRepository() {
-
     }
 
     public openAllTestsDialog() {
