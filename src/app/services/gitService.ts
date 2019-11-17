@@ -74,7 +74,7 @@ export class GitService {
             .pipe(
                 filter(repository => !!repository),
                 switchMap(repository => from(repository.getCurrentBranch())),
-                map(branch => branch.name())
+                map(branch => branch.shorthand())
             ).subscribe(name => this._branchnameCache.next(name));
     }
 
