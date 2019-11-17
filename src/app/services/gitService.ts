@@ -8,19 +8,21 @@ import { GitSignature } from '../model/git/gitSignature';
 import { ElectronService } from './electronService';
 import { AppConfigurationService } from './appConfigurationService';
 
+declare var NodeGit;
+
 function toObservable<T, F, PropertyName extends string>(
     resultFieldName: PropertyName,
     promise: Promise<T>,
     args?: F,
-    errorFunc?: (error) => Observable<any>): Observable<{[K in PropertyName]: T} & F> {
+    errorFunc?: (error) => Observable<any>): Observable<{ [K in PropertyName]: T } & F> {
 
-        type ReturnType = {
-            [K in PropertyName]: T
-        };
-        return from(promise).pipe(
-            map(result => Object.assign({[resultFieldName]: result} as ReturnType, args) as ReturnType & F),
-            catchError(errorFunc)
-        );
+    type ReturnType = {
+        [K in PropertyName]: T
+    };
+    return from(promise).pipe(
+        map(result => Object.assign({ [resultFieldName]: result } as ReturnType, args) as ReturnType & F),
+        catchError(errorFunc)
+    );
 }
 
 export class BranchNames {
@@ -47,7 +49,7 @@ export class GitService {
         this._currentRepository
             .pipe(
                 filter(repository => !!repository),
-                switchMap(repository => toObservable('branch', repository.getCurrentBranch(), {repository: repository})),
+                switchMap(repository => toObservable('branch', repository.getCurrentBranch(), { repository: repository })),
                 switchMap(repositoryBranch => repositoryBranch.repository.getMasterCommit()),
                 switchMap(branchCommit => this.getCommitHistoryFramLatest(branchCommit)),
                 switchMap(commits => zip(...commits.map(commit => this.toGitCommit(commit))))
@@ -115,7 +117,7 @@ export class GitService {
         return this.getCurrentRepository()
             .pipe(
                 take(1),
-                switchMap(repository => toObservable('index', repository.refreshIndex(), {repository: repository})),
+                switchMap(repository => toObservable('index', repository.refreshIndex(), { repository: repository })),
                 switchMap(index => toObservable('addAllResult', index.index.addAll('.', 0, null), index)),
                 tap(index => index.index.write()),
                 switchMap(index => toObservable('oid', index.index.writeTree(), index)),
@@ -130,7 +132,7 @@ export class GitService {
         this._currentRepository
             .pipe(
                 take(1),
-                switchMap(repository => toObservable('newReference', repository.checkoutBranch('master'), {repository: repository})),
+                switchMap(repository => toObservable('newReference', repository.checkoutBranch('master'), { repository: repository })),
                 switchMap(data => toObservable('detachedBranch', data.repository.getBranch(BranchNames.DETACHED), data)),
                 tap(data => this._nodegit.Branch.delete(data.detachedBranch))
             ).subscribe(data => this._currentRepository.next(data.repository));
@@ -154,7 +156,7 @@ export class GitService {
             .pipe(
                 take(1),
                 switchMap(repository => toObservable('newReference',
-                    repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), {repository: repository})),
+                    repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), { repository: repository })),
                 switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data))
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
@@ -184,8 +186,8 @@ export class GitService {
     private getCommitHistoryFramLatest(branchCommit): Observable<Commit[]> {
         const commitWalker = branchCommit.history();
         const subject = new Subject<Commit>();
-        commitWalker.on('commit', function(commit){ subject.next(commit); });
-        commitWalker.on('end', function() { subject.complete(); });
+        commitWalker.on('commit', function (commit) { subject.next(commit); });
+        commitWalker.on('end', function () { subject.complete(); });
         commitWalker.start();
         return subject
             .pipe(
@@ -224,7 +226,7 @@ export class GitService {
             );
     }
 
-    private createCommit(data: {['repository']: Repository, ['index']: Index, ['branchCommit']: Commit, 'oid': Oid}, message: string) {
+    private createCommit(data: { ['repository']: Repository, ['index']: Index, ['branchCommit']: Commit, 'oid': Oid }, message: string) {
 
         return this.createSignature()
             .pipe(
@@ -238,10 +240,10 @@ export class GitService {
                             message,
                             data.oid,
                             [data.branchCommit]), data,
-                            (error) => {
-                                console.log(error);
-                                return of(null);
-                            });
+                        (error) => {
+                            console.log(error);
+                            return of(null);
+                        });
                 })
             );
     }
