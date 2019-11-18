@@ -24,6 +24,18 @@
                 [validatable]="false"
                 name="email"></xn-input-form>
         </div>
+        <div>
+            <xn-input-form [multiline]="true"
+                        [name]="'privateKey'"
+                        [label]="'private GIT Key'"
+                        [placeholder]="'Private Key'"
+                        [(ngModel)]="configuration.gitKey.privateKey"></xn-input-form>
+            <xn-input-form [multiline]="true"
+                        [name]="'publicKey'"
+                        [label]="'public GIT Key'"
+                        [placeholder]="'Public Key'"
+                        [(ngModel)]="configuration.gitKey.publicKey"></xn-input-form>
+        </div>
     </div>
     <div class="mb-2">
         <xn-button [disabled]="!isChanged()" class="mr-1" [default]="true" (clicked)="saveSettings()">Speichern</xn-button>

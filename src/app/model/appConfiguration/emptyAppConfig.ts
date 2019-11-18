@@ -6,5 +6,9 @@ export const DEFAULT_EMPTY_CONFIGURATION: AppConfig = {
     gitSignature: {
         name: null,
         email: null
+    },
+    gitKey: {
+        privateKey: null,
+        publicKey: null
     }
 };

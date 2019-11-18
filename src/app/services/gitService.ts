@@ -143,10 +143,9 @@ export class GitService {
                 take(1),
                 switchMap(repository => toObservable('remote', repository.getRemote('origin'), { repository: repository })),
                 switchMap(data => toObservable('currentBranch', data.repository.getCurrentBranch(), data)),
-                tap(data => console.log(`${data.currentBranch.toString()}, ${data.currentBranch.name()}`)),
+                switchMap(data => this.createAuthOptions(), (data, creds) => Object.assign(data, { creds: creds })),
                 tap(data => {
-                    const options = this.createPushOptions();
-                    data.remote.push([data.currentBranch.name()], options).catch(error => this.handleError(error));
+                    data.remote.push([data.currentBranch.name()], data.creds).catch(error => this.handleError(error));
                 })
             ).subscribe(data => console.log(data));
     }
@@ -154,12 +153,13 @@ export class GitService {
     public pullFromRemote() {
         this._currentRepository
             .pipe(
-                tap(repository => {
-                    const options = this.createPushOptions();
-                    repository.fetchAll(options).catch(error => this.handleError(error));
+                switchMap(repository => this.createAuthOptions(),
+                    (repository, creds) => ({ repository: repository, creds: creds })),
+                tap(data => {
+                    data.repository.fetchAll(data.creds).catch(error => this.handleError(error));
                 }),
                 switchMap(_ => this.getCurrentBranchname(),
-                    (repository, branchname) => ({ repository: repository, branchname: branchname })),
+                    (data, branchname) => Object.assign(data, { branchname: branchname })),
                 switchMap(data => toObservable('mergeResult',
                     data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
                     (error) => this.handleError(error)
@@ -313,17 +313,13 @@ export class GitService {
             );
     }
 
-    private createPushOptions(): PushOptions {
-        const options: PushOptions = {
-            callbacks: {
-                certificateCheck: () => 1,
-                credentials: (url, userName) => {
-                    console.log(`Push asked for credentials for '${userName}' on ${url}`);
-                    return this._nodegit.Cred.sshKeyFromAgent(userName);
-                },
-            }
-        };
-        return options;
+    private createAuthOptions(): Observable<PushOptions> {
+        return this._configurationService
+            .getGitKeys()
+            .pipe(
+                map(keys =>
+                    this._electronService.remote.getGlobal('getCredentials')(keys.privateKey, keys.publicKey))
+            );
     }
 
 }

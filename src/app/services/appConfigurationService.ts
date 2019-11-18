@@ -9,6 +9,7 @@ import { MostRecentFile } from '../model/appConfiguration/mostRecentFile';
 import { concatPath } from '@xnoname/web-components';
 import { GitSignatureIdentity } from '../model/git/gitSignatureIdentity';
 import { DEFAULT_EMPTY_CONFIGURATION } from '../model/appConfiguration/emptyAppConfig';
+import { GitKeys } from '../model/appConfiguration/gitKeys';
 
 @Injectable()
 export class AppConfigurationService {
@@ -49,6 +50,11 @@ export class AppConfigurationService {
     public getGitSignature(): Observable<GitSignatureIdentity> {
         return this._configurationCache
             .pipe( map(config => config.gitSignature ));
+    }
+
+    public getGitKeys(): Observable<GitKeys> {
+        return this._configurationCache
+            .pipe( map(config => config.gitKey ));
     }
 
     public getConfiguration(): Observable<AppConfig> {

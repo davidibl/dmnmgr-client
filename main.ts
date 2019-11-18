@@ -1,6 +1,7 @@
 import { app, BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
+import { Repository } from 'nodegit';
 
 require('v8-compile-cache');
 
@@ -10,6 +11,18 @@ serve = args.some(val => val === '--serve');
 
 const NodeGit = require('nodegit');
 (<any>global).nodegit = NodeGit;
+(<any>global).getCredentials = (privateKey: string, publicKey: string) => {
+    return {
+        callbacks: {
+            certificateCheck: () => 1,
+            credentials: (gitUrl: string, userName) => {
+                console.log(`Push asked for credentials for '${userName}' on ${url}`);
+                const cred = NodeGit.Cred.sshKeyMemoryNew('git', publicKey, privateKey, '');
+                return cred;
+            },
+        }
+    };
+};
 
 function createWindow() {
 
