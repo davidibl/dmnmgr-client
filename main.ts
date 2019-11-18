@@ -17,7 +17,7 @@ const NodeGit = require('nodegit');
             certificateCheck: () => 1,
             credentials: (gitUrl: string, userName) => {
                 console.log(`Push asked for credentials for '${userName}' on ${url}`);
-                const cred = NodeGit.Cred.sshKeyMemoryNew('git', publicKey, privateKey, '');
+                const cred = NodeGit.Cred.sshKeyMemoryNew(userName, publicKey, privateKey, '');
                 return cred;
             },
         }
