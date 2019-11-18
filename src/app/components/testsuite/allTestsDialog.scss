@@ -1,6 +1,10 @@
 @import 'variables';
 @import 'mixins';
 
+.dialog-body {
+    height: calc(100vh - 400px);
+}
+
 .testsuite-item {
     list-style-type: none;
     padding-left: 0px;
