@@ -44,6 +44,7 @@ export class AppComponent implements OnInit {
         KeyR: () => this.toggleRecentFiles(),
         KeyP: () => this.openFolder(),
         KeyK: () => this.showSettings(),
+        KeyI: () => this.showInfo(),
     };
 
     @ViewChild('unsavedChangesDialog')
