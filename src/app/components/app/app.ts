@@ -311,6 +311,15 @@ export class AppComponent implements OnInit {
     }
 
     public commitChanges() {
+        this.checkGitConfiguration()
+            .pipe(
+                take(1),
+                filter(configured => configured)
+            )
+            .subscribe(_ => this.doCommit());
+    }
+
+    private doCommit() {
         const commitObservable = this._commitMessageDialog
             .commit
             .pipe(
@@ -340,11 +349,21 @@ export class AppComponent implements OnInit {
     }
 
     public pushCommits() {
-        this._gitService.pushCommits();
+        this.checkGitConfiguration()
+            .pipe(
+                take(1),
+                filter(configured => configured)
+            )
+            .subscribe(_ => this._gitService.pushCommits());
     }
 
     public pullFromRemote() {
-        this._gitService.pullFromRemote();
+        this.checkGitConfiguration()
+            .pipe(
+                take(1),
+                filter(configured => configured)
+            )
+            .subscribe(_ => this._gitService.pullFromRemote());
     }
 
     public openAllTestsDialog() {
@@ -412,6 +431,22 @@ export class AppComponent implements OnInit {
         if (result.type === FsResultType.ERROR) {
             this.createError('Fehler', result.message);
         }
+    }
+
+    private checkGitConfiguration() {
+        const isConfigured$ = this._gitService
+            .isConfigured()
+            .pipe(
+                filter(result => result)
+            );
+        const isNotConfigured$ = this._gitService
+            .isConfigured()
+            .pipe(
+                filter(result => !result),
+                tap(_ => this.showSettings())
+            );
+
+        return merge(isConfigured$, isNotConfigured$);
     }
 
     private saveProjectSilent() {

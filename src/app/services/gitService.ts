@@ -10,6 +10,9 @@ import { AppConfigurationService } from './appConfigurationService';
 import { EventService } from './eventService';
 import { BaseEvent } from '../model/event/event';
 import { EventType } from '../model/event/eventType';
+import { isNull } from '@xnoname/web-components';
+import { GitSignatureIdentity } from '../model/git/gitSignatureIdentity';
+import { GitKeys } from '../model/appConfiguration/gitKeys';
 
 declare var NodeGit;
 
@@ -208,6 +211,25 @@ export class GitService {
                     repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), { repository: repository })),
                 switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data))
             ).subscribe(data => this._currentRepository.next(data.repository));
+    }
+
+    public isConfigured(): Observable<boolean> {
+        return zip(
+            this._configurationService.getGitSignature(),
+            this._configurationService.getGitKeys()
+        ).pipe(
+            take(1),
+            map(([signature, keys]) =>
+                this.isSignatureConfigured(signature) && this.isKeysConfigured(keys))
+        );
+    }
+
+    private isSignatureConfigured(signature: GitSignatureIdentity) {
+        return !isNull(signature.email) && !isNull(signature.name);
+    }
+
+    private isKeysConfigured(keys: GitKeys) {
+        return !isNull(keys.privateKey) && !isNull(keys.publicKey);
     }
 
     private handleError<T>(error) {
