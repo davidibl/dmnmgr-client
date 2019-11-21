@@ -156,7 +156,8 @@ export class GitService {
     public pullFromRemote() {
         return this._currentRepository
             .pipe(
-                switchMap(repository => this.createAuthOptions(),
+                take(1),
+                switchMap(_ => this.createAuthOptions(),
                     (repository, creds) => ({ repository: repository, creds: creds })),
                 tap(data => {
                     data.repository.fetchAll(data.creds).catch(error => this.handleError(error));
@@ -339,6 +340,7 @@ export class GitService {
         return this._configurationService
             .getGitKeys()
             .pipe(
+                take(1),
                 map(keys =>
                     this._electronService.remote.getGlobal('getCredentials')(keys.privateKey, keys.publicKey))
             );
