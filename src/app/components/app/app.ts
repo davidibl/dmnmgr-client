@@ -93,6 +93,7 @@ export class AppComponent implements OnInit {
 
     public showErrorDialog = false;
     public showAllTestsDialog = false;
+    public showInfoDialog = false;
 
     public isDecicionTableMode: boolean;
 
@@ -400,6 +401,10 @@ export class AppComponent implements OnInit {
 
     public showDocumentation() {
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.documentation));
+    }
+
+    public showInfo() {
+        this.showInfoDialog = true;
     }
 
     public exportCurrentTable() {

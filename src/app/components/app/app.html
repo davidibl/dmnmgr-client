@@ -188,6 +188,10 @@
                             <i class="fa mr-05 fa-question-circle" aria-hidden="true"></i>Dokumentation
                             <span class="right">(STRG + H)</span>
                         </li>
+                        <li (click)="showInfo()">
+                            <i class="fa mr-05 fa-info" aria-hidden="true"></i>Info
+                            <span class="right">(STRG + I)</span>
+                        </li>
                     </div>
                 </ul>
             </ng-container>
@@ -247,3 +251,5 @@
 <xn-all-tests-dialog *ngIf="showAllTestsDialog" [(open)]="showAllTestsDialog"></xn-all-tests-dialog>
 
 <xn-message-dialog #messageDialog></xn-message-dialog>
+
+<xn-about-dialog [open]="showInfoDialog"></xn-about-dialog>

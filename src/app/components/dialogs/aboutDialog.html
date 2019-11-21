@@ -1,0 +1,31 @@
+<xn-dialog [closable]="true"
+            [open]="open"
+            (openChange)="onDialogOpenChanged($event)"
+            (confirm)="onOkClicked()"
+            [hideCancelButton]="true"
+            [defaultOkButtonText]="'Ok'"
+            [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        LV 1871 dmnmgr
+    </div>
+    <div class="dialog-body pb-1">
+        <table class="mb-2">
+            <tr>
+                <td>Name</td>
+                <td>dmnmgr</td>
+            </tr>
+            <tr>
+                <td>Company</td>
+                <td>LV 1871</td>
+            </tr>
+            <tr>
+                <td>Copyright</td>
+                <td>David Ibl 2019</td>
+            </tr>
+            <tr>
+                <td>Version:</td>
+                <td>{{version}}</td>
+            </tr>
+        </table>
+    </div>
+</xn-dialog>

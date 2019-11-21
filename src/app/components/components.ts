@@ -19,6 +19,7 @@ import { CommitDialogComponent } from './commitDialog/commitDialog';
 import { SettingsComponent } from './settings/settings';
 import { DmnmgrDocumentationComponent } from './documentation/dmnmgrDocumentation';
 import { MessageDialogComponent } from './dialogs/messageDialog';
+import { AboutDialogComponent } from './dialogs/aboutDialog';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -42,4 +43,5 @@ export const ALL_COMPONENTS = [
     SettingsComponent,
     DmnmgrDocumentationComponent,
     MessageDialogComponent,
+    AboutDialogComponent,
 ];
