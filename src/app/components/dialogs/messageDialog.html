@@ -1,4 +1,4 @@
-<xn-dialog [closable]="true"
+<xn-dialog [closable]="isClosable"
             [open]="open"
             (openChange)="onDialogOpenChanged($event)"
             (confirm)="onOkClicked()"
@@ -9,8 +9,9 @@
         {{title}}
     </div>
     <div class="dialog-body pb-1">
-        <p>
+        <p *ngIf="!showLoadingIndicator">
             {{message}}
         </p>
+        <xn-material-spinner *ngIf="showLoadingIndicator"></xn-material-spinner>
     </div>
 </xn-dialog>

@@ -324,6 +324,7 @@ export class AppComponent implements OnInit {
             .commit
             .pipe(
                 take(1),
+                tap(_ => this.openLoadingIndicator('Commit der Änderungen...')),
                 switchMap(message => this._gitService.commitCurrentChanges(message)),
                 tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
             );
@@ -332,7 +333,7 @@ export class AppComponent implements OnInit {
 
         merge(commitObservable, cancelObservable)
             .pipe(tap(_ => this.closeCommitMessageDialog()))
-            .subscribe(_ => this.openMessageDialog('Commit', 'Änderungen sind commited.'));
+            .subscribe(_ => this.switchMessageDialogToMessage('Commit', 'Änderungen sind commited.'));
 
         this._commitMessageDialog.open = true;
     }
@@ -358,9 +359,11 @@ export class AppComponent implements OnInit {
             .pipe(
                 take(1),
                 filter(configured => configured),
+                tap(_ => this.openLoadingIndicator('Push zum Server...')),
                 switchMap(_ => this._gitService.pushCommits())
             )
-            .subscribe(_ => this.openMessageDialog('Push', 'Änderungen erfolgreich an Server übertragen.'));
+            .subscribe(_ =>
+                this.switchMessageDialogToMessage('Push', 'Änderungen erfolgreich an Server übertragen.'));
     }
 
     public pullFromRemote() {
@@ -368,9 +371,11 @@ export class AppComponent implements OnInit {
             .pipe(
                 take(1),
                 filter(configured => configured),
+                tap(_ => this.openLoadingIndicator('Pull vom Server...')),
                 switchMap(_ => this._gitService.pullFromRemote())
             )
-            .subscribe(_ => this.openMessageDialog('Pull', 'Letzte Änderungen erfolgreich abgeholt.'));
+            .subscribe(_ =>
+                this.switchMessageDialogToMessage('Pull', 'Letzte Änderungen erfolgreich abgeholt.'));
     }
 
     public openAllTestsDialog() {
@@ -436,9 +441,25 @@ export class AppComponent implements OnInit {
     }
 
     private openMessageDialog(title: string, message: string) {
+        this._messageDialog.reset();
         this._messageDialog.title = title;
         this._messageDialog.message = message;
         this._messageDialog.open = true;
+    }
+
+    private openLoadingIndicator(title: string) {
+        this._messageDialog.reset();
+        this._messageDialog.title = title;
+        this._messageDialog.showLoadingIndicator = true;
+        this._messageDialog.isClosable = false;
+        this._messageDialog.open = true;
+    }
+
+    private switchMessageDialogToMessage(title: string, message: string) {
+        this._messageDialog.title = title;
+        this._messageDialog.message = message;
+        this._messageDialog.showLoadingIndicator = false;
+        this._messageDialog.isClosable = true;
     }
 
     private processError(result: FileSystemAccessResult<any>) {

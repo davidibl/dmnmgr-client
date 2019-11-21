@@ -16,6 +16,12 @@ export class MessageDialogComponent {
     @Input()
     public open = false;
 
+    @Input()
+    public showLoadingIndicator = false;
+
+    @Input()
+    public isClosable = true;
+
     @Output()
     public openChange = new EventEmitter<boolean>();
 
@@ -29,5 +35,13 @@ export class MessageDialogComponent {
 
     public onOkClicked() {
         this.ok.emit();
+    }
+
+    public reset() {
+        this.open = false;
+        this.showLoadingIndicator = false;
+        this.message = null;
+        this.title = null;
+        this.isClosable = true;
     }
 }
