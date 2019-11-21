@@ -141,7 +141,7 @@ export class GitService {
     }
 
     public pushCommits() {
-        this._currentRepository
+        return this._currentRepository
             .pipe(
                 take(1),
                 switchMap(repository => toObservable('remote', repository.getRemote('origin'), { repository: repository })),
@@ -150,11 +150,11 @@ export class GitService {
                 tap(data => {
                     data.remote.push([data.currentBranch.name()], data.creds).catch(error => this.handleError(error));
                 })
-            ).subscribe(data => console.log(data));
+            );
     }
 
     public pullFromRemote() {
-        this._currentRepository
+        return this._currentRepository
             .pipe(
                 switchMap(repository => this.createAuthOptions(),
                     (repository, creds) => ({ repository: repository, creds: creds })),
@@ -167,7 +167,7 @@ export class GitService {
                     data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
                     (error) => this.handleError(error)
                 ))
-            ).subscribe();
+            );
     }
 
     public resetCurrentChanges() {

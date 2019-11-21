@@ -331,10 +331,15 @@ export class AppComponent implements OnInit {
         const cancelObservable = this._commitMessageDialog.cancel.pipe(take(1));
 
         merge(commitObservable, cancelObservable)
-            .pipe(tap(_ => this._commitMessageDialog.commitMessage = null))
-            .subscribe(_ => this._commitMessageDialog.open = false);
+            .pipe(tap(_ => this.closeCommitMessageDialog()))
+            .subscribe(_ => this.openMessageDialog('Commit', 'Änderungen sind commited.'));
 
         this._commitMessageDialog.open = true;
+    }
+
+    private closeCommitMessageDialog() {
+        this._commitMessageDialog.open = false;
+        this._commitMessageDialog.commitMessage = null;
     }
 
     public resetChanges() {
@@ -352,18 +357,20 @@ export class AppComponent implements OnInit {
         this.checkGitConfiguration()
             .pipe(
                 take(1),
-                filter(configured => configured)
+                filter(configured => configured),
+                switchMap(_ => this._gitService.pushCommits())
             )
-            .subscribe(_ => this._gitService.pushCommits());
+            .subscribe(_ => this.openMessageDialog('Push', 'Änderungen erfolgreich an Server übertragen.'));
     }
 
     public pullFromRemote() {
         this.checkGitConfiguration()
             .pipe(
                 take(1),
-                filter(configured => configured)
+                filter(configured => configured),
+                switchMap(_ => this._gitService.pullFromRemote())
             )
-            .subscribe(_ => this._gitService.pullFromRemote());
+            .subscribe(_ => this.openMessageDialog('Pull', 'Letzte Änderungen erfolgreich abgeholt.'));
     }
 
     public openAllTestsDialog() {
@@ -419,12 +426,19 @@ export class AppComponent implements OnInit {
                 take(1),
                 filter(detached => !!detached),
                 tap(_ => {
-                    this._messageDialog.message =
-                        'Derzeit kann nicht gespeichert werden! Ein älterer Arbeitsstand ist ausgecheckt.';
-                    this._messageDialog.open = true;
+                    this.openMessageDialog(
+                        'Änderungshinweis',
+                        'Derzeit kann nicht gespeichert werden! Ein älterer Arbeitsstand ist ausgecheckt.'
+                    );
                 }),
             );
         return merge(isNotDetached, isDetached);
+    }
+
+    private openMessageDialog(title: string, message: string) {
+        this._messageDialog.title = title;
+        this._messageDialog.message = message;
+        this._messageDialog.open = true;
     }
 
     private processError(result: FileSystemAccessResult<any>) {
