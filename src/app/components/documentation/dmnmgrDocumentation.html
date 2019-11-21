@@ -97,4 +97,34 @@
         Anpassungen an DMN Dateien direkt in Git Repositories durchzuführen.
     </p>
     <h4>Der Simulator</h4>
+    <xn-section-divider class="block mt-1 mb-2" [lineOnly]="true"></xn-section-divider>
+    <h3>GIT</h3>
+    <p>
+        GIT wird verwendet um Konfiguration zu einem Teil des Entwicklungsworkflows zu machen.
+        DMNMGR hat eine GIT Integration die es ermöglicht DMN Konfigurationen und Regeldefinitionen
+        direkt wieder in ein Code Repository zu pushen.
+    </p>
+    <h4>Einstellungen</h4>
+    <p>
+        Um GIT nutzen zu können, müssen ein paar notwendige Einstellungen vorgenommen werden.
+        Diese Einstellungen finden sich in der GIT Sektion der Einstellungen (STRG + K).
+    </p>
+    <table>
+        <tr>
+            <td>Benutzername</td>
+            <td>Der Klarname unter dem Commits vorgenommen werden.</td>
+        </tr>
+        <tr>
+            <td>Email</td>
+            <td>Die Email des verwendeten GIT Accounts.</td>
+        </tr>
+        <tr>
+            <td>Private Key</td>
+            <td>Ein SSH Schlüssel, der Authorisiert ist auf das entsprechende GIT Repository zuzugreifen.</td>
+        </tr>
+        <tr>
+            <td>Public Key</td>
+            <td>Das Public Pendant zu oben genanntem privatem SSH Schlüssel.</td>
+        </tr>
+    </table>
 </div>
