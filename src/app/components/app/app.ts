@@ -1,6 +1,6 @@
 import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
 import { Observable, merge, combineLatest, zip } from 'rxjs';
-import { tap, filter, map, switchMap, take } from 'rxjs/operators';
+import { tap, filter, map, switchMap, take, catchError } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAccessResult';
@@ -23,6 +23,7 @@ import { CommitDialogComponent } from '../commitDialog/commitDialog';
 import { ElectronService } from '../../services/electronService';
 import { TabIds } from '../../model/tabIds';
 import { MessageDialogComponent } from '../dialogs/messageDialog';
+import { CloneData } from '../../model/git/cloneData';
 
 export interface PluginItem extends PluginMetaDescriptor {
     activated: boolean;
@@ -95,6 +96,7 @@ export class AppComponent implements OnInit {
     public showErrorDialog = false;
     public showAllTestsDialog = false;
     public showInfoDialog = false;
+    public showCloneRepositoryDialog = false;
 
     public isDecicionTableMode: boolean;
 
@@ -354,6 +356,30 @@ export class AppComponent implements OnInit {
     }
 
     public cloneRepository() {
+        this.checkGitConfiguration()
+            .pipe(
+                take(1),
+                filter(configured => configured)
+            ).subscribe(_ => this.showCloneRepositoryDialog = true);
+    }
+
+    public doCloneRepository(cloneData: CloneData) {
+        this.openLoadingIndicator('Klone Repository...');
+        this.showCloneRepositoryDialog = false;
+        this._gitService
+            .cloneRepository(cloneData)
+            .pipe(
+                take(1),
+                catchError(error => {
+                    this._messageDialog.open = false;
+                    throw error;
+                }),
+                tap(_ =>
+                    this._eventService.publishEvent(
+                        new BaseEvent(EventType.FOLDER_CHANGED, cloneData.destinationPath)))
+            )
+            .subscribe(_ =>
+                this.switchMessageDialogToMessage('Klonen', 'Das Repository steht zur Verfügung.'));
     }
 
     public pushCommits() {
@@ -362,7 +388,11 @@ export class AppComponent implements OnInit {
                 take(1),
                 filter(configured => configured),
                 tap(_ => this.openLoadingIndicator('Push zum Server...')),
-                switchMap(_ => this._gitService.pushCommits())
+                switchMap(_ => this._gitService.pushCommits()),
+                catchError(error => {
+                    this._messageDialog.open = false;
+                    throw error;
+                }),
             )
             .subscribe(_ =>
                 this.switchMessageDialogToMessage('Push', 'Änderungen erfolgreich an Server übertragen.'));
@@ -374,7 +404,11 @@ export class AppComponent implements OnInit {
                 take(1),
                 filter(configured => configured),
                 tap(_ => this.openLoadingIndicator('Pull vom Server...')),
-                switchMap(_ => this._gitService.pullFromRemote())
+                switchMap(_ => this._gitService.pullFromRemote()),
+                catchError(error => {
+                    this._messageDialog.open = false;
+                    throw error;
+                }),
             )
             .subscribe(_ =>
                 this.switchMessageDialogToMessage('Pull', 'Letzte Änderungen erfolgreich abgeholt.'));

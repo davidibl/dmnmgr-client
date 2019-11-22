@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Repository, Commit, Index, Signature, Oid, PushOptions } from 'nodegit';
-import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject } from 'rxjs';
+import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject, throwError } from 'rxjs';
 import { map, switchMap, filter, reduce, catchError, tap, take, mergeMap } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
@@ -13,6 +13,7 @@ import { EventType } from '../model/event/eventType';
 import { isNull } from '@xnoname/web-components';
 import { GitSignatureIdentity } from '../model/git/gitSignatureIdentity';
 import { GitKeys } from '../model/appConfiguration/gitKeys';
+import { CloneData } from '../model/git/cloneData';
 
 declare var NodeGit;
 
@@ -214,6 +215,18 @@ export class GitService {
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
+    public cloneRepository(cloneData: CloneData) {
+        return this._currentRepository
+            .pipe(
+                take(1),
+                switchMap(_ => this.createAuthOptions(),
+                    (repository, creds) => ({ repository: repository, creds: creds })),
+                switchMap(data => toObservable('cloneResult',
+                    this._nodegit.Clone(cloneData.repositoryUrl, cloneData.destinationPath, { fetchOpts: data.creds }),
+                    data, (error) => this.handleError(error)))
+            );
+    }
+
     public isConfigured(): Observable<boolean> {
         return zip(
             this._configurationService.getGitSignature(),
@@ -233,9 +246,9 @@ export class GitService {
         return !isNull(keys.privateKey) && !isNull(keys.publicKey);
     }
 
-    private handleError<T>(error) {
-        this._eventService.publishEvent(new BaseEvent(EventType.GITERROR, error));
-        return of(<T>null);
+    private handleError<T>(error): Observable<never> {
+        this._eventService.publishEvent(new BaseEvent(EventType.GITERROR, error.message));
+        throw new Error(error.message);
     }
 
     private getCurrentChanges(repository: Repository) {

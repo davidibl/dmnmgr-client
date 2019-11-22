@@ -103,12 +103,9 @@
                             <i class="fa fa-circle ml-05 mr-05" aria-hidden="true"></i>Detached
                         </ng-container>
                     </li>
-                    <!-- Clone not supported yet -->
-                    <!--
                     <li (click)="cloneRepository()">
                         <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
                     </li>
-                    -->
                     <li *ngIf="isHeadDetached$ | async" (click)="checkoutMaster()">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zur letzten Änderung
                     </li>
@@ -253,3 +250,5 @@
 <xn-message-dialog #messageDialog></xn-message-dialog>
 
 <xn-about-dialog [(open)]="showInfoDialog"></xn-about-dialog>
+
+<xn-clone-repository-dialog [(open)]="showCloneRepositoryDialog" (cloneDataComplete)="doCloneRepository($event)"></xn-clone-repository-dialog>

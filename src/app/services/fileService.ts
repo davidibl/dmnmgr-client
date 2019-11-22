@@ -106,6 +106,30 @@ export class FileService {
         });
     }
 
+    public chooseFolder(): Observable<FileSystemAccessResult<string>> {
+        const dialog = this._electronService.remote.dialog;
+        const window = this._electronService.remote.getCurrentWindow();
+
+        const openOptions = <OpenDialogOptions>{
+            title: 'Zielordner wählen',
+            properties: ['openDirectory']
+        };
+
+        return Observable.create(observer => {
+            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+                const directoryNames = openDialogReturnValue.filePaths;
+                if (directoryNames === undefined || directoryNames.length < 1) {
+                    observer.next({ error: false, type: FsResultType.NOTHING_SELECTED });
+                    observer.complete();
+                    return;
+                }
+
+                const directoryName = directoryNames[0];
+                observer.next({ error: false, filepath: directoryName, type: FsResultType.OK });
+            });
+        });
+    }
+
     public findFiles(folderPath: string): Observable<string[]> {
         if (!folderPath) {
             return of([]);

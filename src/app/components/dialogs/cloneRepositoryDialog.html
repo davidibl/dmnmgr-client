@@ -1,0 +1,46 @@
+<xn-dialog [closable]="true"
+            [open]="open"
+            (openChange)="onDialogOpenChanged($event)"
+            [hideCancelButton]="true"
+            [hideOkButton]="true"
+            [hideButtonBar]="true"
+            [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Repository klonen
+    </div>
+    <div class="dialog-body pb-1">
+        <xn-workflow (workflowStateChange)="onWorkflowStateChanged($event)">
+            <xn-accordion [preventStepWhenInvalid]="true">
+                <xn-accordion-element [title]="'GIT Repository'">
+                    <p>
+                        Zunächst muss eine gültige Repository URL im SSH Format angegeben werden.
+                    </p>
+                    <form #chooseSourceForm="ngForm">
+                        <xn-input-form [label]="'Repository URL'"
+                                    [iconClass]="'fa-database'"
+                                    [name]="'repositoryPath'"
+                                    xnRequired
+                                    xnNotEmpty
+                                    [(ngModel)]="cloneData.repositoryUrl"></xn-input-form>
+                    </form>
+                </xn-accordion-element>
+                <xn-accordion-element [title]="'Ziel-Ordner'">
+                    <p>
+                        Nun noch einen Zielordner auf der Festplatte wählen. Dort wird das Repository lokal
+                        zur Bearbeitung angelegt.
+                    </p>
+                    <form #chooseObjectForm="ngForm">
+                        <xn-input-form [label]="'Repository URL'"
+                            [iconAfterClass]="'fa-folder-open-o'"
+                            (iconAfterClick)="onChooseFile()"
+                            [name]="'destinationPath'"
+                            [readonly]="true"
+                            xnRequired
+                            xnNotEmpty
+                            [(ngModel)]="cloneData.destinationPath"></xn-input-form>
+                    </form>
+                </xn-accordion-element>
+            </xn-accordion>
+        </xn-workflow>
+    </div>
+</xn-dialog>
