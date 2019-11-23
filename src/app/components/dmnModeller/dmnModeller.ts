@@ -40,6 +40,7 @@ import { DmnExpressionLanguage } from '../../model/dmn/dmnExpressionLanguage';
 import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
 import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
 import { DomService } from '../../services/domService';
+import { isNull } from '@xnoname/web-components';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -122,6 +123,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     public searchOpen = new BehaviorSubject(false);
     public searchValue: string;
     public searchColumn: string = null;
+    public replaceOpen$ = new BehaviorSubject(false);
+    public replaceWhat: string;
+    public replaceWith: string;
+    public replaceColumn: string = null;
     public currentColumns: DmnColumn[] = [];
 
     public constructor(private _dmnXmlService: DmnXmlService,
@@ -150,13 +155,24 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     this.searchOpen.next(searchOpen);
                     if (!searchOpen) {
                         this.clearSearch();
+                        this.toggleReplace(false);
                     }
                 });
         }
     }
 
+    public toggleReplace(open?: boolean) {
+        this.replaceOpen$
+            .pipe(take(1))
+            .subscribe(replaceOpen => {
+                replaceOpen = isNull(open) ? !replaceOpen : open;
+                this.replaceOpen$.next(replaceOpen);
+            });
+    }
+
     public closeAndClearSearch() {
         this.searchOpen.next(false);
+        this.toggleReplace(false);
         this.clearSearch();
     }
 
