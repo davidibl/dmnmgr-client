@@ -311,6 +311,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             this.checkAllErrors();
             this.updateResponseModel();
             this.refreshTableColumnsList();
+            if (!!event.elements && !!event.elements[0] && !!event.elements[0].businessObject &&
+                event.elements[0].businessObject.$type === 'dmn:DecisionTable') {
+                return;
+            }
             this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
         this._modeller._viewers.decisionTable.on('element.updateId', (event) => {

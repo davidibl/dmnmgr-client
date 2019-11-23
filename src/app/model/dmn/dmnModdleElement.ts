@@ -1,6 +1,7 @@
 import { DmnModdleTable } from './dmnModdleTable';
 import { MyDmnModdle } from './dmnModdle';
 import { DmnModdleRule } from './dmnModdleRule';
+import { DmnBusinessObject } from './dmnBusinessObject';
 
 export interface DmnModdleElement {
     $type: string;
@@ -17,4 +18,5 @@ export interface DmnModdleElement {
     $model: MyDmnModdle;
     typeRef: string;
     $parent: DmnModdleRule;
+    businessObject: DmnBusinessObject;
 }
