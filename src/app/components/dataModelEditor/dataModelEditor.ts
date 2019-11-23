@@ -6,6 +6,7 @@ import { DataModelService } from '../../services/dataModelService';
 import { EventService } from '../../services/eventService';
 import { DataChangedEvent } from '../../model/event/dataChangedEvent';
 import { DataChangeType } from '../../model/event/dataChangedType';
+import { filter, take } from 'rxjs/operators';
 
 @Component({
     selector: 'xn-data-model-editor',
@@ -42,7 +43,14 @@ export class DataModelEditorComponent implements OnInit {
     }
 
     public onExistingModelSelected(existingModel: string) {
-        this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
-        this._dataModelService.setCurrentDataModelReference(existingModel);
+        this.requestModelReferenced$
+            .pipe(
+                take(1),
+                filter(referencedModel => referencedModel !== existingModel)
+            )
+            .subscribe(_ => {
+                this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
+                this._dataModelService.setCurrentDataModelReference(existingModel);
+            });
     }
 }
