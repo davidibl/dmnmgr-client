@@ -1,4 +1,4 @@
-import { BaseEvent } from "./event";
+import { BaseEvent } from './event';
 import { EventType } from './eventType';
 
 export class DecisionDeleteEvent extends BaseEvent<string> {
