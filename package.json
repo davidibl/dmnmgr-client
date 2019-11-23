@@ -1,6 +1,6 @@
 {
     "name": "dmnmgr-client",
-    "version": "0.0.18-beta",
+    "version": "0.0.18",
     "license": "MIT",
     "author": "David Ibl@xnoname",
     "description": "dmnmgr - A toolkit to work with dmn",
@@ -24,6 +24,7 @@
         "electron:linux": "npm run build-prod && electron-builder build --linux",
         "electron:windows": "npm run build-prod && electron-builder build --windows",
         "electron:mac": "npm run build-prod && electron-builder build --mac",
+        "release": "npm run electron:windows && npm version minor",
         "test": "ng test",
         "lint": "ng lint",
         "e2e": "ng e2e"
