@@ -14,9 +14,9 @@ import { GitCommit } from '../../model/git/gitCommit';
 })
 export class WorkspaceComponent implements OnInit {
 
-    public filetreeViewmode = 'FILETREE';
-    public historyViewmode = 'HISTORY';
-    public initialViewmode = this.filetreeViewmode;
+    public readonly filetreeViewmode = 'FILETREE';
+    public readonly historyViewmode = 'HISTORY';
+    public readonly initialViewmode = this.filetreeViewmode;
 
     public viewmode = new BehaviorSubject<string>(this.initialViewmode);
     public isInFiletreeMode$ = this.viewmode
