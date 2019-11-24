@@ -41,6 +41,8 @@ import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
 import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
 import { DomService } from '../../services/domService';
 import { isNull } from '@xnoname/web-components';
+import { DmnBusinessObject } from '../../model/dmn/dmnBusinessObject';
+import { BaseEvent } from '../../model/event/event';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -56,10 +58,28 @@ declare interface DMNJS {
     on(eventname: string, eventCallback: (event) => void);
     _updateViews(): void;
     _switchView(tableId: string);
+    getActiveViewer(): DmnModelerView;
 }
+
+export interface Modeling {
+    editAllowedValues(businessObject: DmnBusinessObject, restrictionSet: string[]);
+    editAnnotation(rule: DmnModdleRule, value: string);
+    editCell(cell: any, value: string);
+    editDecisionTableId(newId: string);
+    editDecisionTableName(newName);
+    editExpressionLanguage(element: DmnModdleElement, language: string);
+    editHitPolicy(hitPolicy: string, aggregation: string);
+    editInputExpression(inputExpression: unknown, value);
+    editInputExpressionTypeRef(inputExpression: unknown, typeRef: string);
+    editOutputName(output: DmnModdleElement, newName: string);
+    editOutputTypeRef(output: DmnModdleElement, typeRef: string);
+}
+
+export type DmnModelingType = 'modeling';
 
 export interface DmnModelerView {
     element: DmnModdleElement;
+    get(value: DmnModelingType): Modeling;
 }
 
 export interface ShapeEvent {
@@ -263,6 +283,15 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((event) => event.type === EventType.IMPORT_DATA)
             .subscribe(importEvent => this.importData(importEvent as ImportDataEvent));
+    }
+
+    public searchAndReplace(): void {
+        const replaceCount = this.searchRulesByCurrentFilter(false, this.searchColumn, this.searchValue)
+            .reduce((count, filteredRow) => {
+                count += this.replaceByCurrentReplaceSettings(filteredRow);
+                return count;
+            }, 0);
+        this._eventService.publishEvent(new BaseEvent(EventType.TEXT_REPLACED, replaceCount));
     }
 
     private refreshTableColumnsList() {
@@ -570,49 +599,100 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private searchRows(): void {
         this.clearSearchStyles();
 
-        const searchValue = (!!this.searchValue) ? this.searchValue.toLowerCase().trim() : null;
-
-        if (!searchValue ||
-            !this._modeller._activeView.element.decisionTable ||
-            !this._modeller._activeView.element.decisionTable.rule) {
-                return;
-        }
-
-        const column = this.currentColumns.find(col => col.id === this.searchColumn);
-
-        const columnFilter = (!this.searchColumn) ?
-            (_: number) => true : (index: number, type?: string) => index === column.index && type === column.type;
-
-        this._modeller
-            ._activeView
-            .element
-            .decisionTable
-            .rule
-            .filter(rule => this.filterRule(rule, searchValue, columnFilter))
+        this.searchRulesByCurrentFilter(true, this.searchColumn, this.searchValue)
             .forEach(filteredRule => {
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] + td { display: none; }`);
             });
     }
 
+    private replaceByCurrentReplaceSettings(rule: DmnModdleRule) {
+        const columnFilter = this.getColumnFilter(this.replaceColumn);
+        const foundElements = this.filterRuleGetFoundElements(rule, this.replaceWhat, columnFilter);
+        const searchMask = new RegExp(this.replaceWhat, 'ig');
+        if (foundElements.annotationFound) {
+            const newVal = rule.description.replace(searchMask, this.replaceWith);
+            this._modeller.getActiveViewer().get('modeling').editAnnotation(rule, newVal);
+        }
+        if (foundElements.inputEntries) {
+            foundElements.inputEntries.forEach(element => {
+                const newValue = element.text.replace(searchMask, this.replaceWith);
+                this._modeller.getActiveViewer().get('modeling').editCell(element, newValue);
+            });
+        }
+        if (foundElements.outputEntries) {
+            foundElements.outputEntries.forEach(element => {
+                const newValue = element.text.replace(searchMask, this.replaceWith);
+                this._modeller.getActiveViewer().get('modeling').editCell(element, newValue);
+            });
+        }
+        return foundElements.inputEntries.length +
+            foundElements.outputEntries.length +
+            (foundElements.annotationFound ? 1 : 0);
+    }
+
+    private searchRulesByCurrentFilter(negate: boolean, searchColumn: string, searchValue: string): DmnModdleRule[] {
+        searchValue = (!!searchValue) ? searchValue.toLowerCase().trim() : null;
+
+        if (!this._modeller._activeView.element.decisionTable ||
+            !this._modeller._activeView.element.decisionTable.rule) {
+                return [];
+        }
+
+        if (!searchValue) {
+            return (negate) ? [] :
+                this._modeller
+                    ._activeView
+                    .element
+                    .decisionTable
+                    .rule;
+        }
+
+        const columnFilter = this.getColumnFilter(searchColumn);
+
+        return this._modeller
+            ._activeView
+            .element
+            .decisionTable
+            .rule
+            .filter(rule => (negate) ?
+                !this.filterRule(rule, searchValue, columnFilter) :
+                this.filterRule(rule, searchValue, columnFilter));
+    }
+
     private filterRule(rule: DmnModdleRule, searchValue: string, columnFilter: (index, type?) => boolean) {
         if (!this.searchValue || !this.searchValue.trim()) { return false; }
 
+        const found = this.filterRuleGetFoundElements(rule, searchValue, columnFilter);
+
+        return (found.inputEntries.length + found.outputEntries.length) > 0 || found.annotationFound;
+    }
+
+    private getColumnFilter(searchColumn: string) {
+        const column = this.currentColumns.find(col => col.id === searchColumn);
+        return (!searchColumn) ?
+            (_: number) => true : (index: number, type?: string) => index === column.index && type === column.type;
+    }
+
+    private filterRuleGetFoundElements(rule: DmnModdleRule, searchValue: string, columnFilter: (index, type?) => boolean) {
         const inputEntriesFound = (!!rule.inputEntry) ?
             rule.inputEntry.filter((input, index) =>
-                columnFilter(index, 'INPUT') && this.contains(input.text, searchValue)).length : 0;
-        const outputEnriesFound = (!!rule.outputEntry) ?
+                columnFilter(index, 'INPUT') && this.contains(input.text, searchValue)) : [];
+        const outputEntriesFound = (!!rule.outputEntry) ?
             rule.outputEntry.filter((output, index) =>
-                columnFilter(index, 'OUTPUT') && this.contains(output.text, searchValue)).length : 0;
+                columnFilter(index, 'OUTPUT') && this.contains(output.text, searchValue)) : [];
         const annotationFound = columnFilter(null, 'ANNOTATION') ? this.contains(rule.description, searchValue) : false;
-
-        return (inputEntriesFound + outputEnriesFound) < 1 && !annotationFound;
+        return {
+            inputEntries: inputEntriesFound,
+            outputEntries: outputEntriesFound,
+            annotationFound: annotationFound,
+        };
     }
 
     private contains(text: string, searchString: string) {
         if (!text && !searchString) { return true; }
         if (!text) { return false; }
-        return text.toLowerCase().indexOf(searchString) > -1;
+        return text.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
     }
 
     private clearSearch() {

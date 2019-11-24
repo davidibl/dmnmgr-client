@@ -73,8 +73,8 @@
                             [nomargin]="true"
                             [label]="'Spalte wählen'"
                             [items]="currentColumns"
-                            [ngModel]="replaceColumn"></xn-dropdown>
-                <xn-button (click)="closeAndClearSearch()" style="padding-top: 4px;" class="ml-1 small">
+                            [(ngModel)]="replaceColumn"></xn-dropdown>
+                <xn-button (click)="searchAndReplace()" style="padding-top: 4px;" class="ml-1 small">
                     Start!
                 </xn-button>
             </td>

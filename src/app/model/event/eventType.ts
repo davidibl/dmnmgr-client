@@ -13,4 +13,5 @@ export class EventType {
     static REFRESH_WORKSPACE = 'refreshWorkspace';
     static JUMP_TO_TAB = 'jumpToTab';
     static GITERROR = 'giterror';
+    static TEXT_REPLACED = 'textReplaced';
 }
