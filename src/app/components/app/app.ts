@@ -147,6 +147,15 @@ export class AppComponent implements OnInit {
         this._eventService
             .getEvent<BaseEvent<string>>(ev => ev.type === EventType.GITERROR)
             .subscribe(ev => this.createError('GIT hat einen Fehler verursacht', ev.data));
+
+        this._eventService
+            .getEvent(ev => ev.type === EventType.TEXT_REPLACED)
+            .subscribe(ev => {
+                this.openMessageDialog(
+                    'Ersetzen',
+                    `Insgesamt wurden ${ev.data} Stellen ersetzt.`
+                );
+            });
     }
 
     public onMenuOutsideClick() {
