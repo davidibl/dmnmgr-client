@@ -187,6 +187,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .subscribe(replaceOpen => {
                 replaceOpen = isNull(open) ? !replaceOpen : open;
                 this.replaceOpen$.next(replaceOpen);
+                if (!replaceOpen) {
+                    this.clearReplace();
+                }
             });
     }
 
@@ -700,6 +703,12 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.searchOpen.next(false);
         this.searchColumn = null;
         this.searchValue = null;
+    }
+
+    private clearReplace() {
+        this.replaceColumn = null;
+        this.replaceWhat = null;
+        this.replaceWith = null;
     }
 
     private clearSearchStyles() {
