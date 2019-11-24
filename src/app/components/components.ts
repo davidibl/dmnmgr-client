@@ -21,6 +21,7 @@ import { DmnmgrDocumentationComponent } from './documentation/dmnmgrDocumentatio
 import { MessageDialogComponent } from './dialogs/messageDialog';
 import { AboutDialogComponent } from './dialogs/aboutDialog';
 import { CloneRepositoryDialogComponent } from './dialogs/cloneRepositoryDialog';
+import { MainMenuComponent } from './app/mainMenu';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -46,4 +47,5 @@ export const ALL_COMPONENTS = [
     MessageDialogComponent,
     AboutDialogComponent,
     CloneRepositoryDialogComponent,
+    MainMenuComponent,
 ];

@@ -1,0 +1,79 @@
+@import 'variables';
+@import 'mixins';
+
+xn-menu-header {
+    padding: 0;
+}
+
+:host::ng-deep {
+    xn-menu-header {
+        border-top: 1px solid #E3E5E6;
+        border-bottom: 1px solid #E3E5E6;
+    }
+    xn-menu-header .nav {
+        padding: 0;
+
+        ul {
+            float: left;
+
+            li {
+                margin-right: 3px;
+            }
+        }
+
+        .brand-bar {
+            float: right;
+            padding-right: 6px;
+            padding-top: 0px;
+
+            img {
+                margin-top: 3px;
+            }
+        }
+    }
+}
+
+.sub-menu {
+    position: absolute;
+    top: 29px;
+    left: -1px;
+    display: block;
+    float: none;
+    background-color: #333;
+    z-index: 2006;
+
+    .sub-menu-container {
+        @include shadow(0px 3px 5px 1px rgba(68, 68, 68, 0.45));
+    }
+
+    li {
+        width: 200px;
+        position: relative;
+        padding: 10px;
+        list-style: none;
+        margin: 0;
+        background-color: #f9f9f9;
+    }
+
+    li.section-divider {
+        padding-top: 0;
+        padding-bottom: 0;
+        z-index: -1;
+        margin-top: -10px;
+    }
+
+    li:not(.section-divider):hover {
+        background-color: $brand-teritiary;
+    }
+
+    li:last-child {
+        border-bottom: none;
+    }
+}
+
+.sub-sub-menu {
+    position: absolute;
+    top: 0px;
+    left: 100%;
+    z-index: -1;
+}

@@ -1,0 +1,195 @@
+<xn-menu-header [brandName]="'dmnmgr'" [brandLogoSource]="'assets/logo.png'" (outsideClick)="onMenuOutsideClick()">
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                   (mouseenter)="openMenu('fileMenuVisible')"
+                   [selected]="(menuVisible$ | async) && (fileMenuVisible$ | async)"
+                   class="small transparent nounderline">
+                   Projekt<ng-container *ngIf="hasChanges$ | async">*</ng-container>
+            <ul *ngIf="(menuVisible$ | async) && (fileMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('createNewProject')">
+                        <i class="fa fa-file-o mr-05" aria-hidden="true"></i>Neu
+                        <span class="right">(STRG + N)</span>
+                    </li>
+                    <li (click)="dispatchCommand('openProject')">
+                        <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Öffnen
+                        <span class="right">(STRG + O)</span>
+                    </li>
+                    <li (click)="dispatchCommand('openFolder')">
+                        <i class="fa fa-folder-open-o mr-05" aria-hidden="true"></i>Ordner öffnen
+                        <span class="right">(STRG + P)</span>
+                    </li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="dispatchCommand('saveProject')">
+                        <i class="fa fa-floppy-o mr-05" aria-hidden="true"></i>Speichern
+                        <span class="right">(STRG + S)</span>
+                    </li>
+                    <li (click)="dispatchCommand('saveProjectAs')">Speichern unter</li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="dispatchCommand('importExistingDmn')">
+                        <i class="fa fa-upload mr-05" aria-hidden="true"></i>Dmn Datei importieren
+                    </li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (mouseenter)="openInnerMenu('recentFilesMenuVisible')"
+                        (mouseleave)="closeMenu('recentFilesMenuVisible')">
+                        <i class="fa fa-clock-o mr-05" aria-hidden="true"></i>Zuletzt geöffnet
+                        <span class="right"><i class="fa fa-arrow-right mr-05" aria-hidden="true"></i></span>
+                        <ul *ngIf="(recentFilesMenuVisible$ | async)" class="sub-sub-menu">
+                            <div class="sub-menu-container">
+                            <ng-container *ngIf="mostRecentFiles$ | async as mostRecentFiles">
+                                <li *ngFor="let mostRecentFile of mostRecentFiles"
+                                    (click)="dispatchCommand('openRecentFile', [mostRecentFile.path])">
+                                    {{mostRecentFile.name}}
+                                </li>
+                            </ng-container>
+                            </div>
+                        </ul>
+                    </li>
+                    <li class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="dispatchCommand('quit')">
+                        <i class="fa fa-sign-out mr-05" aria-hidden="true"></i>Beenden
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                    (mouseenter)="openMenu('bearbeitenMenuVisible')"
+                    [selected]="(menuVisible$ | async) && (bearbeitenMenuVisible$ | async)"
+                    class="small transparent nounderline">Bearbeiten
+            <ul *ngIf="(menuVisible$ | async) && (bearbeitenMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li *ngIf="(isDecicionTableMode$ | async)" (click)="dispatchCommand('openSearch')">
+                        <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
+                        <span class="right">(STRG + F)</span>
+                    </li>
+                    <li *ngIf="(isDecicionTableMode$ | async)" (click)="dispatchCommand('exportCurrentTable')">
+                        <i class="fa fa-exchange mr-05" aria-hidden="true"></i>CSV Exportieren
+                        <span class="right">(STRG + E)</span>
+                    </li>
+                    <li *ngIf="(isDecicionTableMode$ | async)" (click)="dispatchCommand('importCsv')">
+                        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>CSV Importieren
+                        <span class="right">(STRG + I)</span>
+                    </li>
+                    <li *ngIf="(isDecicionTableMode$ | async)" class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li (click)="dispatchCommand('showSettings')">
+                        <i class="fa fa-sliders mr-05" aria-hidden="true"></i>Einstellungen
+                        <span class="right">(STRG + K)</span>
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                    (mouseenter)="openMenu('repositoryMenuVisible')"
+                    [selected]="(menuVisible$ | async) && (repositoryMenuVisible$ | async)"
+                    class="small transparent nounderline">Repository
+            <ul *ngIf="(menuVisible$ | async) && (repositoryMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li>
+                        Status:
+                        <ng-container *ngIf="isRepositoryNotConnected$ | async">
+                            <i class="fa fa-square-o ml-05 mr-05" aria-hidden="true"></i>Nicht verbunden
+                        </ng-container>
+                        <ng-container *ngIf="connectedAndClean$ | async">
+                            <i class="fa fa-check-square-o ml-05 mr-05" aria-hidden="true"></i>Clean
+                        </ng-container>
+                        <ng-container *ngIf="connectedHasChangesAndNotDetached$ | async">
+                            <i class="fa fa-circle-o ml-05 mr-05" aria-hidden="true"></i>Lokale Änderungen
+                        </ng-container>
+                        <ng-container *ngIf="isHeadDetached$ | async">
+                            <i class="fa fa-circle ml-05 mr-05" aria-hidden="true"></i>Detached
+                        </ng-container>
+                    </li>
+                    <li (click)="dispatchCommand('cloneRepository')">
+                        <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
+                    </li>
+                    <li *ngIf="isHeadDetached$ | async" (click)="dispatchCommand('checkoutMaster')">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zur letzten Änderung
+                    </li>
+                    <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="dispatchCommand('commitChanges')">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen commiten
+                    </li>
+                    <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="dispatchCommand('resetChanges')">
+                        <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Änderungen rückgängig
+                    </li>
+                    <li *ngIf="connectedAndClean$ | async" (click)="dispatchCommand('pushCommits')">
+                        <i class="fa fa-upload mr-05" aria-hidden="true"></i>Push zu Server
+                    </li>
+                    <li *ngIf="connectedAndClean$ | async" (click)="dispatchCommand('pullFromRemote')">
+                        <i class="fa fa-download mr-05" aria-hidden="true"></i>Pull vom Server
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                   (mouseenter)="openMenu('testMenuVisible')"
+                   [selected]="(menuVisible$ | async) && (testMenuVisible$ | async)"
+                   class="small transparent nounderline">Tests
+            <ul *ngIf="(menuVisible$ | async) && (testMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('openAllTestsDialog')">
+                        <i class="fa fa-cogs mr-05" aria-hidden="true"></i>Alle ausführen
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                   (mouseenter)="openMenu('engineMenuVisible')"
+                   [selected]="(menuVisible$ | async) && (engineMenuVisible$ | async)"
+                   class="small transparent nounderline">Engine
+            <ul *ngIf="(menuVisible$ | async) && (engineMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('clearDeployments')">
+                        <i class="fa fa-trash-o mr-05" aria-hidden="true"></i>Deployments löschen
+                    </li>
+                    <li (click)="dispatchCommand('deploy')">
+                        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>DRD bereitstellen
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                    (mouseenter)="openMenu('pluginMenuVisible')"
+                    [selected]="(menuVisible$ | async) && (pluginMenuVisible$ | async)"
+                    class="small transparent nounderline">Plugins
+            <ng-container *ngIf="pluginsMerged$ | async as plugins">
+                <ul *ngIf="(menuVisible$ | async) && (pluginMenuVisible$ | async)" class="sub-menu">
+                    <div class="sub-menu-container">
+                        <li *ngFor="let plugin of plugins" (click)="dispatchCommand('enablePlugin', [plugin])">
+                            <i class="fa mr-05" [ngClass]="plugin.icon" aria-hidden="true"></i>{{plugin.label}}
+                            <i class="fa fa-check right" *ngIf="plugin.activated" aria-hidden="true"></i>
+                        </li>
+                    </div>
+                </ul>
+            </ng-container>
+        </xn-button>
+    </li>
+    <li class="menu">
+        <xn-button (click)="toggleMenuVisible()"
+                    (mouseenter)="openMenu('helpMenuVisible')"
+                    [selected]="(menuVisible$ | async) && (helpMenuVisible$ | async)"
+                    class="small transparent nounderline">Hilfe
+            <ul *ngIf="(menuVisible$ | async) && (helpMenuVisible$ | async)" class="sub-menu">
+                <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('showDocumentation')">
+                        <i class="fa mr-05 fa-question-circle" aria-hidden="true"></i>Dokumentation
+                        <span class="right">(STRG + H)</span>
+                    </li>
+                    <li (click)="dispatchCommand('showInfo')">
+                        <i class="fa mr-05 fa-info" aria-hidden="true"></i>Info
+                        <span class="right">(STRG + I)</span>
+                    </li>
+                </div>
+            </ul>
+        </xn-button>
+    </li>
+</xn-menu-header>
