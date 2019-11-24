@@ -561,7 +561,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     map(type => this.getDmnByJsonType(type)),
                     filter(type => !!type)
                 )
-                .subscribe(value => column.inputExpression.typeRef = value);
+                .subscribe(value => {
+                    if (column.inputExpression.typeRef === value) { return; }
+                    this._modeller
+                        .getActiveViewer()
+                        .get('modeling')
+                        .editInputExpressionTypeRef(column, value);
+                });
         });
         this._modeller._updateViews();
     }
@@ -577,13 +583,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private setInputValueRestriction(inputClause: DmnModdleElement, values: string[]) {
         if (!inputClause) { return; }
-        if (!inputClause.inputValues) {
-            const newElem = inputClause
-                .$model
-                .create(DmnType.UNARY_TEST);
-            inputClause.inputValues = newElem;
+        if (!!inputClause.inputValues && inputClause.inputValues.text === `"${values.join('","')}"`) {
+            return;
         }
-        inputClause.inputValues.text = `"${values.join('","')}"`;
+        this._modeller
+            .getActiveViewer()
+            .get('modeling')
+            .editAllowedValues(inputClause, values.map(value => `"${value}"`));
     }
 
     private getDmnByJsonType(jsonType: JsonDatatypes) {
