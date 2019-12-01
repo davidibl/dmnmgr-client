@@ -1,7 +1,7 @@
 import { app, BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
-import { Repository } from 'nodegit';
+import * as NodeGit from 'nodegit';
 
 require('v8-compile-cache');
 
@@ -9,7 +9,7 @@ let win, serve;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 
-const NodeGit = require('nodegit');
+// const NodeGit = require('nodegit');
 (<any>global).nodegit = NodeGit;
 (<any>global).getCredentials = (privateKey: string, publicKey: string) => {
     return {
