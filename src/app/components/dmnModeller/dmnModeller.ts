@@ -43,6 +43,8 @@ import { DomService } from '../../services/domService';
 import { isNull } from '@xnoname/web-components';
 import { DmnBusinessObject } from '../../model/dmn/dmnBusinessObject';
 import { BaseEvent } from '../../model/event/event';
+import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
+import { CsvExportService } from '../../services/csvExportService';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -73,6 +75,8 @@ export interface Modeling {
     editInputExpressionTypeRef(inputExpression: unknown, typeRef: string);
     editOutputName(output: DmnModdleElement, newName: string);
     editOutputTypeRef(output: DmnModdleElement, typeRef: string);
+
+    addRow(ruleConfig: Object): { cells: DmnBusinessObject[] };
 }
 
 export type DmnModelingType = 'modeling';
@@ -158,6 +162,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         private _saveStateService: SaveStateService,
         private _elementRef: ElementRef,
         private _renderer: Renderer2,
+        private _clipboardService: DmnClipboardService,
+        private _csvService: CsvExportService,
     ) { }
 
     @HostListener('window:keyup', ['$event'])
@@ -226,6 +232,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
             .subscribe((ev) => this.selectTable(ev.data));
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.COPY_RULES)
+            .subscribe(_ => this.copyRulesInSearch());
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.PASTE_RULES)
+            .subscribe(_ => this.pasteRules());
     }
 
     public ngAfterViewInit(): void {
@@ -702,6 +716,43 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         if (!text && !searchString) { return true; }
         if (!text) { return false; }
         return text.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+    }
+
+    private copyRulesInSearch(): void {
+        const foundRules = this.searchRulesByCurrentFilter(false, this.searchColumn, this.searchValue);
+        this._clipboardService.copyData(
+            ClipBoardDataType.DMN_RULES,
+            this._csvService.exportRules(foundRules)
+        );
+    }
+
+    private pasteRules(): void {
+        this._clipboardService
+            .getData()
+            .pipe(
+                filter(data => !!data && data.type === ClipBoardDataType.DMN_RULES),
+                take(1)
+            )
+            .subscribe(data => {
+                this.addRulesByCSV(data.data);
+            });
+    }
+
+    private addRulesByCSV(csvData: string) {
+        const modeling = this._modeller.getActiveViewer().get('modeling');
+        console.log(modeling);
+        csvData.split(CsvExportService.ROW_DELIMITER)
+            .filter(line => !!line && line.length > 0)
+            .forEach(line => {
+                const csvCells = line.split(CsvExportService.FIELD_DELIMITER);
+                const rule = modeling.addRow({ type: DmnType.RULE });
+                const { cells } = rule;
+                cells.forEach((cell, index) => {
+                    if (csvCells.length > index) {
+                        modeling.editCell(cell, csvCells[index]);
+                    }
+                });
+            });
     }
 
     private clearSearch() {

@@ -12,6 +12,7 @@ import { PluginDescriptor } from '../../model/plugin/pluginDescriptor';
 import { GitService } from '../../services/gitService';
 import { AppConfigurationService } from '../../services/appConfigurationService';
 import { Command } from '../../model/command';
+import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
 
 @Component({
     selector: 'xn-main-menu',
@@ -70,7 +71,13 @@ export class MainMenuComponent {
         zip(this.isRepositoryConnected$, this.isHeadDetached$, this.hasChangesInTree$)
             .pipe(map(([connected, detached, hasChanges]) => connected && !detached && !hasChanges));
 
+    public hasDmnDataInClipboard$ = this._clipboardService.getData()
+        .pipe(map(data => !!data && data.type === ClipBoardDataType.DMN_RULES));
+
     public isDecicionTableMode$ = new ReplaySubject<boolean>(1);
+
+    public pasteRulesSupported$ = combineLatest(this.hasDmnDataInClipboard$, this.isDecicionTableMode$)
+        .pipe(map(([hasData, isDecisionTable]) => hasData && isDecisionTable));
 
     public constructor(
         private _saveStateService: SaveStateService,
@@ -79,6 +86,7 @@ export class MainMenuComponent {
         private _projectService: DmnProjectService,
         private _gitService: GitService,
         private _appConfiguration: AppConfigurationService,
+        private _clipboardService: DmnClipboardService,
     ) {
         this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)

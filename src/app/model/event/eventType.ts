@@ -14,4 +14,6 @@ export class EventType {
     static JUMP_TO_TAB = 'jumpToTab';
     static GITERROR = 'giterror';
     static TEXT_REPLACED = 'textReplaced';
+    static COPY_RULES = 'copyRules';
+    static PASTE_RULES = 'pasteRules';
 }

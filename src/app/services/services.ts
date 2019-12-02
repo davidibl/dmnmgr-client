@@ -20,6 +20,7 @@ import { WorkspaceService } from './workspaceService';
 import { GitService } from './gitService';
 import { ElectronService } from './electronService';
 import { DomService } from './domService';
+import { DmnClipboardService } from './dmnClipboardService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -43,4 +44,5 @@ export const ALL_SERVICES = [
     WorkspaceService,
     GitService,
     ElectronService,
+    DmnClipboardService,
 ];

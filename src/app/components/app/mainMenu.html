@@ -73,6 +73,13 @@
                         <span class="right">(STRG + I)</span>
                     </li>
                     <li *ngIf="(isDecicionTableMode$ | async)" class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
+                    <li *ngIf="(isDecicionTableMode$ | async)" (click)="dispatchCommand('copyRules')">
+                        <i class="fa fa-files-o mr-05" aria-hidden="true"></i>Aktuelle Zeilen kopieren
+                    </li>
+                    <li *ngIf="(pasteRulesSupported$ | async)" (click)="dispatchCommand('pasteRules')">
+                        <i class="fa fa-clipboard mr-05" aria-hidden="true"></i>Zeilen einfügen
+                    </li>
+                    <li *ngIf="(isDecicionTableMode$ | async)" class="section-divider"><xn-section-divider [lineOnly]="true"></xn-section-divider></li>
                     <li (click)="dispatchCommand('showSettings')">
                         <i class="fa fa-sliders mr-05" aria-hidden="true"></i>Einstellungen
                         <span class="right">(STRG + K)</span>

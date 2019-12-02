@@ -6,12 +6,16 @@ import { DmnModdleElement } from '../model/dmn/dmnModdleElement';
 @Injectable()
 export class CsvExportService {
 
-    private static FIELD_DELIMITER = ';';
-    private static ROW_DELIMITER = '\r\n';
+    public static FIELD_DELIMITER = ';';
+    public static ROW_DELIMITER = '\r\n';
 
     public exportTable(dmnTable: DmnModdleTable): string {
+        return this.exportRules(dmnTable.rule);
+    }
+
+    public exportRules(rules: DmnModdleRule[]): string {
         let data = '';
-        dmnTable.rule.forEach(rule => {
+        rules.forEach(rule => {
             data += this.createRow(rule);
         });
         return data;

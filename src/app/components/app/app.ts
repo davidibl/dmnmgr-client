@@ -200,6 +200,14 @@ export class AppComponent implements OnInit {
         });
     }
 
+    public copyRules() {
+        this._eventService.publishEvent(new BaseEvent(EventType.COPY_RULES));
+    }
+
+    public pasteRules() {
+        this._eventService.publishEvent(new BaseEvent(EventType.PASTE_RULES));
+    }
+
     public importExistingDmn() {
         this._fileService
             .importExistingDmn()
