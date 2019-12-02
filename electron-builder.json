@@ -22,7 +22,7 @@
     "win": {
       "icon": "dist",
       "target": [
-        "portable"
+        "zip"
       ]
     },
     "mac": {
