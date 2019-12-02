@@ -29,6 +29,11 @@ import { Command } from '../../model/command';
 })
 export class AppComponent implements OnInit {
 
+    private commanEventMap: { [key: string]: string} = {
+        pasteRules: EventType.PASTE_RULES,
+        copyRules:  EventType.COPY_RULES,
+    };
+
     @ViewChild('unsavedChangesDialog')
     private _unsavedChangesDialog: DialogComponent;
 
@@ -87,6 +92,11 @@ export class AppComponent implements OnInit {
 
     public onCommandDispatched(command: Command) {
         if (!command) { return; }
+        if (this.commanEventMap[command.command]) {
+            const eventType = this.commanEventMap[command.command];
+            this._eventService.publishEvent(new BaseEvent(eventType));
+            return;
+        }
         this[command.command](...command.args);
     }
 
@@ -198,14 +208,6 @@ export class AppComponent implements OnInit {
             this._eventService.publishEvent(
                 new BaseEvent(EventType.FOLDER_CHANGED, null));
         });
-    }
-
-    public copyRules() {
-        this._eventService.publishEvent(new BaseEvent(EventType.COPY_RULES));
-    }
-
-    public pasteRules() {
-        this._eventService.publishEvent(new BaseEvent(EventType.PASTE_RULES));
     }
 
     public importExistingDmn() {
