@@ -12,7 +12,8 @@
     "experimentalDecorators": true,
     "paths": {
         "rxjs": ["node_modules/rxjs"],
-        "rxjs/*": ["node_modules/rxjs/*"]
+        "rxjs/*": ["node_modules/rxjs/*"],
+        "@xnoname/*": ["node_modules/@xnoname/*"],
     },
     "target": "es5",
     "typeRoots": [
