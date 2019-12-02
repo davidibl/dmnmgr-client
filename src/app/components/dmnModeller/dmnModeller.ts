@@ -566,7 +566,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     this._modeller
                         .getActiveViewer()
                         .get('modeling')
-                        .editInputExpressionTypeRef(column, value);
+                        .editInputExpressionTypeRef(column.inputExpression, value);
                 });
         });
         this._modeller._updateViews();
