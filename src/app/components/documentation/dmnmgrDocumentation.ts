@@ -5,7 +5,6 @@ import {
     ViewChild,
     ViewContainerRef,
     ComponentRef,
-    AfterViewInit
 } from '@angular/core';
 import { DocumentationComponent } from './documentationComponent';
 import { ALL_DOCUMENTATION_COMPONENTS } from './documentationComponents';
@@ -16,32 +15,31 @@ import { ALL_DOCUMENTATION_COMPONENTS } from './documentationComponents';
     styleUrls: ['dmnmgrDocumentation.scss'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DmnmgrDocumentationComponent implements AfterViewInit {
+export class DmnmgrDocumentationComponent {
 
-    @ViewChild('dynamic', { read: ViewContainerRef })
+    @ViewChild('contentContainer', { read: ViewContainerRef })
     private viewContainerRef: ViewContainerRef;
     private factoryResolver: ComponentFactoryResolver;
     private currentComponentRef: ComponentRef<any>;
 
-    public views: DocumentationComponent[] = ALL_DOCUMENTATION_COMPONENTS;
+    public views: {title: string, component: DocumentationComponent}[] = ALL_DOCUMENTATION_COMPONENTS
+        .map(component => ({title: component.title, component: component}));
+    public currentView = this.views[0].title;
 
     constructor(factoryResolver: ComponentFactoryResolver) {
         this.factoryResolver = factoryResolver;
     }
 
-    public ngAfterViewInit() {
-        this.open(this.views[0].title);
-    }
-
-    public open(title: string) {
+    public open(nextTitle: string) {
         if (this.currentComponentRef) {
             this.currentComponentRef.destroy();
         }
-        const view = this.views.find(v => v.title === title);
+        const view = this.views.find(v => v.title === nextTitle).component;
         const factory = this.factoryResolver
             .resolveComponentFactory(view as any);
         this.currentComponentRef = factory.create(this.viewContainerRef.parentInjector);
         this.viewContainerRef.insert(this.currentComponentRef.hostView);
+        this.currentView = nextTitle;
     }
 }
 

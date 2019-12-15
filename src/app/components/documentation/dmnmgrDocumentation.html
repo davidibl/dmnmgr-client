@@ -1,9 +1,12 @@
 <div class="col-12">
-    <h2>Manual</h2>
-    <h4>Inhalt</h4>
-    <ul class="documentation-content">
-        <li *ngFor="let documentationComponent of views" (click)="open(documentationComponent.title)">
-            {{documentationComponent.title}}</li>
-    </ul>
-    <ng-template #dynamic></ng-template>
+    <h2>Anleitung</h2>
+    <xn-dropdown
+        [items]="views"
+        [label]="'Inhalt'"
+        (ngModelChange)="open($event)"
+        [ngModel]="currentView"
+        [displayPropertyPath]="'title'"
+        [idPropertyPath]="'title'"
+    ></xn-dropdown>
+    <ng-template #contentContainer></ng-template>
 </div>
