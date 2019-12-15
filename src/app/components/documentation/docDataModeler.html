@@ -1,0 +1,93 @@
+<h3>{{title}}</h3>
+<p>
+    Im ersten Tab findet sich der <i>Data-Modeler</i>. Mit diesem Tool kann das Datenmodell auf dem die Decision
+    basiert entworfen werden.
+</p>
+<table class="mb-2">
+    <tr>
+        <td>
+            <img src="assets/img/screen_newdata_button.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Einfach ein neues Modell anlegen</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="assets/img/screen_newprop_button.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Und Eigenschaften hinzufügen</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="assets/img/screen_datatype.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>
+                Neben den Eigenschaften kann der Datentyp definiert werden. Mit dem Button rechts neben dem Datentyp
+                können
+                einzelne Eigenschaften wieder entfernt werden.
+            </p>
+        </td>
+    </tr>
+</table>
+<p><b>Datentypen:</b></p>
+<table class="mb-2">
+    <tr>
+        <td>String</td>
+        <td>Eine einfache Zeichenkette</td>
+    </tr>
+    <tr>
+        <td>Integer</td>
+        <td>Eine Ganzzahl (z.B. 1)</td>
+    </tr>
+    <tr>
+        <td>Number</td>
+        <td>Eine Gleitkommazahl (z.B. 1,234)</td>
+    </tr>
+    <tr>
+        <td>Enumeration</td>
+        <td>
+            Ein Wertbereich. Identisch zu String jedoch können bestimmte Werte vorgegeben werden.
+            Die vorgegebenen Werte werden auch in die DMN übernommen und stehen dort zur Auswahl wenn
+            ein entsprechendes Attribut verwendet wird.
+        </td>
+    </tr>
+    <tr>
+        <td>date</td>
+        <td>Ein Datum in ISO Notation (z.B. 2019-04-01)</td>
+    </tr>
+    <tr>
+        <td>Datetime</td>
+        <td>Ein Datum mit Zeitangabe in ISO Notation (z.B. 2019-04-01T12:12:12.000Z)</td>
+    </tr>
+    <tr>
+        <td>boolean</td>
+        <td>True oder False</td>
+    </tr>
+    <tr>
+        <td>array</td>
+        <td>Eine Liste beliebiger Elemente. Kann alle Datentypen erneut enthalten.</td>
+    </tr>
+    <tr>
+        <td>Object</td>
+        <td>
+            Eine Datenstruktur die die Verschachtelung ermöglicht. Enthält beliebige weitere Eigenschaften
+            mit beliebigen Datentypen in einer neuen tieferen Ebene.
+        </td>
+    </tr>
+</table>
+<img src="assets/img/screen_datamodel.png" style="height: 100px" class="left mr-1" />
+<p>
+    Mit dem Data-Modeler können beliebige Baumförmige Datenstrukturen definiert werden. Diese sollten immer
+    dem Format entsprechen, in dem Daten für die Decision erwartet werden. Die Baumstruktur hilft Datenbeziehungen
+    darzustellen und gewährleistet Übersicht.
+</p>
+<div class="clear mb-2"></div>
+<h4>Und wozu?</h4>
+<p>
+    Das Eingabedatenmodell wird benötigt um eine strukturierte Oberfläche zur Simulation komplexer Eingabedaten
+    zu erzeugen. Dieses Datenmodell wird zur Angabe von Simulations- oder Testdaten verwendet.
+</p>

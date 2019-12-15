@@ -19,6 +19,7 @@ import {
 } from '@xnoname/web-components';
 import { ALL_COMPONENTS } from './components/components';
 import { ALL_PIPES } from './pipes/pipes';
+import { ALL_DOCUMENTATION_COMPONENTS } from './components/documentation/documentationComponents';
 
 export function startupServiceFactory(startupService: StartupService): Function {
     return () => startupService.load(environment.configuration);
@@ -52,6 +53,9 @@ export function startupServiceFactory(startupService: StartupService): Function 
             multi: true
         },
         ALL_SERVICES,
+    ],
+    entryComponents: [
+        ...ALL_DOCUMENTATION_COMPONENTS,
     ],
     bootstrap: [AppComponent]
 })
