@@ -25,6 +25,7 @@
         "electron:windows": "npm run build-prod && electron-builder build --windows",
         "electron:mac": "npm run build-prod && electron-builder build --mac",
         "release": "npm run electron:windows && npm version minor",
+        "release-path": "npm run electron:windows && npm version patch",
         "test": "ng test",
         "lint": "ng lint",
         "e2e": "ng e2e"
