@@ -4,6 +4,7 @@ import { DocumentationComponent } from './documentationComponent';
 @Component({
     selector: 'xn-doc-git',
     templateUrl: 'docGit.html',
+    styleUrls: ['documentationComponent.scss'],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocGitComponent extends DocumentationComponent {

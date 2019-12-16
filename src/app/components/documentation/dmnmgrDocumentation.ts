@@ -38,6 +38,7 @@ export class DmnmgrDocumentationComponent {
         const factory = this.factoryResolver
             .resolveComponentFactory(view as any);
         this.currentComponentRef = factory.create(this.viewContainerRef.parentInjector);
+        this.currentComponentRef.instance.changeView.subscribe(nextView => this.open(nextView));
         this.viewContainerRef.insert(this.currentComponentRef.hostView);
         this.currentView = nextTitle;
     }
