@@ -22,7 +22,7 @@ export class DmnmgrDocumentationComponent {
     private factoryResolver: ComponentFactoryResolver;
     private currentComponentRef: ComponentRef<any>;
 
-    public views: {title: string, component: DocumentationComponent}[] = ALL_DOCUMENTATION_COMPONENTS
+    public views: {title: string, component: typeof DocumentationComponent}[] = ALL_DOCUMENTATION_COMPONENTS
         .map(component => ({title: component.title, component: component}));
     public currentView = this.views[0].title;
 
