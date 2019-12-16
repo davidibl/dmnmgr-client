@@ -1,6 +1,6 @@
 {
     "name": "dmnmgr-client",
-    "version": "0.0.20",
+    "version": "0.0.21",
     "license": "MIT",
     "author": "David Ibl@xnoname",
     "description": "dmnmgr - A toolkit to work with dmn",
