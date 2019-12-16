@@ -1,1 +1,89 @@
 <h3>{{title}}</h3>
+<p>
+    Die Simulation kann genutzt werden um Entscheidungen oder Entscheidungsbäume zu testen. Um eine
+    Entscheidung zu testen muss stets ein Eingabedatenmodell definiert sein.
+</p>
+<p>
+    Um eine Simulation durchzuführen muss ein Simulationsservice erreichbar und konfiguriert sein.
+    Der Simulationsservice ist ein REST Webservice, über den eine DMN basierte Entscheidung ausgeführt werden
+    kann.
+</p>
+<h4>Einstellungen</h4>
+<table class="mb-1">
+    <tr>
+        <td>
+            <img src="assets/img/screen_simulation_setting.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>
+                Das Einstellungsmenü kann über <b>Bearbeiten -> Einstellungen (STRG + K)</b> erreicht werden.
+                Unter Simulator Basis Url muss die gültige URL eines Simulations Service angegeben sein.
+            </p>
+        </td>
+    </tr>
+</table>
+<h4>Simulation</h4>
+<p>Das Simulationsmenü findet sich in der Ansicht <b>Dein Modell</b>.</p>
+<table class="mb-1">
+    <tr>
+        <td>
+            <img src="assets/img/screen_simulate_button.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Simulationsmenü öffnen</p>
+        </td>
+    </tr>
+</table>
+<p>
+    Wurde ein Datenmodell definiert <span (click)="dispatch('Der Data Modeler')">(siehe Der Data Modeler)</span>,
+    können nun in diesem Schema in einer Baumansicht Eingabedaten angegeben werden, auf deren Basis die
+    Entscheidungstabelle ausgeführt wird.
+</p>
+<p>
+    Enthält die DMN Datei Fehler, wird der Fehler unterhalb der Eingabedaten angezeigt. Treffer werden in der
+    Tabelle grün hinterlegt.
+</p>
+<p>
+    Wird keine zu den Eingabedaten korrespondierende Regel gefunden, wird eine entsprechende Nachricht ausgegeben.
+</p>
+<p>
+    Alle gefundenen Regeldatensätze werden unterhalb der Eingabedaten angezeigt. Alle Regeln die den Eingabedaten
+    entsprechen, werden grün hinterlegt.
+</p>
+<table>
+    <tr>
+        <td>
+            <img src="assets/img/screen_simulation_data.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Eingabedaten definieren</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="assets/img/screen_simulation_error.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Fehler bei der Ausführung</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="assets/img/screen_simulation_noresult.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>Kein Treffer bei der Ausführung</p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <img src="assets/img/screen_rule_hit.png" style="height: 30px" />
+        </td>
+        <td>
+            <p>
+                Anzeige der gefundenen Zeilen bei der Ausführung. Unterhalb der Eingabedaten finden sich die
+                Ausgabedaten.
+            </p>
+        </td>
+    </tr>
+</table>
