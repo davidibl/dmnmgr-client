@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Repository, Commit, Index, Signature, Oid, PushOptions } from 'nodegit';
-import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject, throwError } from 'rxjs';
+import { Observable, from, BehaviorSubject, ReplaySubject, of, zip, Subject, throwError, merge } from 'rxjs';
 import { map, switchMap, filter, reduce, catchError, tap, take, mergeMap } from 'rxjs/operators';
 import { FileStatus } from '../model/git/fileStatus';
 import { GitCommit } from '../model/git/gitCommit';
@@ -202,6 +202,7 @@ export class GitService {
 
     public resetRepository() {
         this._currentChangesInTree.next([]);
+        this._branchnameCache.next(null);
         this._currentHistory.next(null);
     }
 
