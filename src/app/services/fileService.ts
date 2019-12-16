@@ -256,7 +256,7 @@ export class FileService {
             if (!this._currentPath || chooseLocation) {
                 dialog.showSaveDialog(window, saveOptions).then((saveDialogReturnValue: SaveDialogReturnValue) => {
                     const filename = saveDialogReturnValue.filePath;
-                    if (isNull(filename)) {
+                    if (isNull(filename) || filename.length < 1) {
                         observer.next({ type: FsResultType.NOTHING_SELECTED });
                         return;
                     }
