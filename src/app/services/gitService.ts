@@ -147,10 +147,10 @@ export class GitService {
                 take(1),
                 switchMap(repository => toObservable('remote', repository.getRemote('origin'), { repository: repository })),
                 switchMap(data => toObservable('currentBranch', data.repository.getCurrentBranch(), data)),
-                switchMap(data => this.createAuthOptions(), (data, creds) => Object.assign(data, { creds: creds })),
-                tap(data => {
-                    data.remote.push([data.currentBranch.name()], data.creds).catch(error => this.handleError(error));
-                })
+                switchMap(_ => this.createAuthOptions(), (data, creds) => Object.assign(data, { creds: creds })),
+                switchMap(data => toObservable('pushResult', data.remote.push([data.currentBranch.name()], data.creds), data,
+                    (error) => this.handleError(error)
+                ))
             );
     }
 
