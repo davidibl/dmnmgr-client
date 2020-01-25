@@ -10,12 +10,12 @@ export class DeploymentService {
     public constructor(private _http: HttpClient,
                        private _xmlService: DmnXmlService) {}
 
-    public deployXml(url: string): Observable<any> {
+    public deployXml(url: string, deloymentName: string): Observable<any> {
         return this._xmlService
             .getXmlModels('editor')
             .pipe(
                 take(1),
-                switchMap(modelXml => this._http.post(url, { xml: modelXml }))
+                switchMap(modelXml => this._http.post(url, { xml: modelXml, deloymentName: deloymentName }))
             );
     }
 }

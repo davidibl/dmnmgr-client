@@ -5,6 +5,7 @@ import { take } from 'rxjs/operators';
 import { DmnProjectService } from '../../../services/dmnProjectService';
 import { catchError } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
+import { FileService } from '../../../services/fileService';
 
 @Component({
     selector: 'xn-iframe-tab',
@@ -41,6 +42,7 @@ export class IframeTabComponent implements OnInit {
 
     public constructor(private _deploymentService: DeploymentService,
                        private _projectService: DmnProjectService,
+                       private _fileService: FileService,
                        private sanitizer: DomSanitizer) {}
 
     public ngOnInit() {
@@ -54,7 +56,7 @@ export class IframeTabComponent implements OnInit {
 
     public deployDmn() {
         this._deploymentService
-            .deployXml(this.deploymentUrl)
+            .deployXml(this.deploymentUrl, this._fileService.getCurrentFilename())
             .pipe( catchError(response => {
                 this.errorDeployment = response.error.message;
                 this.showErrorDialog = true;

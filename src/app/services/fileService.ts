@@ -43,6 +43,10 @@ export class FileService {
         return this._electronService.remote.app.getPath('userData');
     }
 
+    public getCurrentFilename() {
+        return (!!this._currentPath) ? this.getFilename(this._currentPath) : null;
+    }
+
     public openProject(filepath?: string): Observable<FileSystemAccessResult<{ xml?: string, project?: DmnProject }>> {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
