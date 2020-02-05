@@ -165,8 +165,9 @@ export class GitService {
                 }),
                 switchMap(_ => this.getCurrentBranchname(),
                     (data, branchname) => Object.assign(data, { branchname: branchname })),
+                switchMap(_ => this.createSignature(), (data, signature) => Object.assign(data, {signature: signature})),
                 switchMap(data => toObservable('mergeResult',
-                    data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
+                    data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`, data.signature, 1), data,
                     (error) => this.handleError(error)
                 ))
             );
