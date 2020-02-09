@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/platform-browser';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
@@ -49,16 +49,21 @@ export class DmnManagerComponent implements OnInit {
             .getPlugin('example')
             .pipe( map(plugin => (plugin) ? plugin.activated : false) );
 
-        this._testDecisionService
-            .getResult()
-            .subscribe(result => {
-                this.clearStyleRules();
-                if (result && result.resultRuleIds && result.resultRuleIds.length > 0) {
-                    result.resultRuleIds.forEach(rule => {
-                        this.stylesheet.insertRule(`td[data-row-id="${rule}"] { background-color: #def1c3; }`);
-                    });
+        combineLatest(
+            this._testDecisionService.getResult(),
+            this._testDecisionService.getShowHitsOnly()
+        )
+        .subscribe(([result, showHitsOnly]) => {
+            this.clearStyleRules();
+            if (result && result.resultRuleIds && result.resultRuleIds.length > 0) {
+                result.resultRuleIds.forEach(rule => {
+                    this.stylesheet.insertRule(`td[data-row-id="${rule}"] { display: table-cell; background-color: #def1c3; }`);
+                });
+                if (showHitsOnly) {
+                    this.stylesheet.insertRule(`td[data-row-id] { display: none; }`);
                 }
-            });
+            }
+        });
 
         this.isDecicionTableMode$ = this._eventService
             .getEvent<NewViewEvent>((event) => event.type === EventType.NEW_VIEW)

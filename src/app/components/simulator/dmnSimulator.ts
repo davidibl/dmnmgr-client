@@ -24,6 +24,8 @@ export class DmnSimulatorComponent implements OnInit {
 
     public currentlyTesting = false;
 
+    public showHitsOnly$ = this._testDecisionService.getShowHitsOnly();
+
     @Input()
     public isVisisble = false;
     public simulatorVisisble = false;
@@ -56,6 +58,15 @@ export class DmnSimulatorComponent implements OnInit {
 
         this.currentlyTesting = true;
         this._testDecisionService.simulateDecision(this.valueObject);
+    }
+
+    public reset() {
+        this._testDecisionService.resetTest();
+        this.valueObject = {};
+    }
+
+    public setShowHitsOnly(showHitsOnly: boolean) {
+        this._testDecisionService.setShowHitsOnly(showHitsOnly);
     }
 
     public openSimulator() {

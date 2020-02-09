@@ -4,7 +4,7 @@ import { DmnXmlService } from './dmnXmlService';
 import { map, switchMap, take } from 'rxjs/operators';
 import { IDecisionSimulationResponse } from '../model/decisionSimulationResponse';
 import { DecisionSimulationResult } from '../model/decisionSimulationResult';
-import { ReplaySubject, Observable } from 'rxjs';
+import { ReplaySubject, Observable, BehaviorSubject } from 'rxjs';
 import { Test } from '../model/test';
 import { EventService } from './eventService';
 import { NewViewEvent } from '../model/event/newViewEvent';
@@ -23,6 +23,7 @@ export class TestDecisionService {
     private _currentArtefactId: string;
 
     private _resultSubject = new ReplaySubject<DecisionSimulationResult>(1);
+    private _hitsOnlySubject = new BehaviorSubject<boolean>(false);
 
     public constructor(private _http: HttpClient,
                        private dmnXmlService: DmnXmlService,
@@ -105,6 +106,14 @@ export class TestDecisionService {
 
     public getResult() {
         return this._resultSubject.asObservable();
+    }
+
+    public getShowHitsOnly() {
+        return this._hitsOnlySubject.asObservable();
+    }
+
+    public setShowHitsOnly(showHitsOnly: boolean) {
+        this._hitsOnlySubject.next(showHitsOnly);
     }
 
     public resetTest() {

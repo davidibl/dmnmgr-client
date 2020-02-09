@@ -1,5 +1,14 @@
 <xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble">
     <div class="wrapper">
+        <div>
+            <xn-checkbox
+                class="small mr-1"
+                (ngModelChange)="setShowHitsOnly($event)"
+                [ngModel]="showHitsOnly$ | async">Nur Treffer anzeigen</xn-checkbox>
+            <xn-button class="small mt-1"
+                [class.disabled]="!simulationResult$ | async"
+                (click)="reset()">Zurücksetzen</xn-button>
+        </div>
         <xn-json-editor [type]="editorTypes.VALUE"
                         [requestModel]="dataModel$ | async"
                         class="ml-05"
@@ -12,9 +21,11 @@
                                     [result]="simulationResult.result"
                                     [datamodelResult]="responseModel$ | async"></xn-dmn-result-view>
             </div>
-            <xn-button class="small mt-1"
-                       [class.disabled]="!simulationResult"
-                       (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
+            <div>
+                <xn-button class="small mt-1"
+                        [class.disabled]="!simulationResult"
+                        (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
+            </div>
         </ng-container>
     </div>
 </xn-flyin>
