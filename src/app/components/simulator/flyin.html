@@ -1,4 +1,4 @@
-<div class="flyin-panel flex flex-column full-height" *ngIf="visible" [@slideInOut]>
+<div class="flyin-panel flex flex-column full-height" *ngIf="visible" [@slideInOut] [@wideFlyin]="wideFlyin">
     <div class="full-width text-right button-bar">
         <xn-button (click)="closeFlyout()" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button>
     </div>
