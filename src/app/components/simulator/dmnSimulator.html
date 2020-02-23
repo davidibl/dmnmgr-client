@@ -1,4 +1,4 @@
-<xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble">
+<xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble" [wideFlyin]="false">
     <div class="wrapper">
         <div>
             <xn-checkbox
@@ -22,7 +22,7 @@
                                     [datamodelResult]="responseModel$ | async"></xn-dmn-result-view>
             </div>
             <div>
-                <xn-button class="small mt-1"
+                <xn-button class="small mt-1 mr-1"
                         [class.disabled]="!simulationResult"
                         (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
             </div>

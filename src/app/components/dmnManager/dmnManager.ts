@@ -51,14 +51,28 @@ export class DmnManagerComponent implements OnInit {
 
         combineLatest(
             this._testDecisionService.getResult(),
-            this._testDecisionService.getShowHitsOnly()
+            this._testDecisionService.getShowHitsOnly(),
+            this._eventService.getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
         )
-        .subscribe(([result, showHitsOnly]) => {
+        .subscribe(([result, showHitsOnly, event]) => {
             this.clearStyleRules();
             if (result && result.resultRuleIds && result.resultRuleIds.length > 0) {
-                result.resultRuleIds.forEach(rule => {
-                    this.stylesheet.insertRule(`td[data-row-id="${rule}"] { display: table-cell; background-color: #def1c3; }`);
-                });
+
+                const currentArtefact = event.data.artefactId;
+                Object.keys(result.resultTableRuleIds)
+                    .forEach(key => {
+                        this.stylesheet.insertRule(`g[data-element-id="${key}"] rect:first-child {
+                            stroke-opacity: 1 !important;
+                            stroke: orange !important;
+                            stroke-width: 2px !important;
+                        }`);
+                        if (key === currentArtefact) {
+                            result.resultTableRuleIds[key].forEach(rule => {
+                                this.stylesheet.insertRule(
+                                    `td[data-row-id="${rule}"] { display: table-cell; background-color: #def1c3; }`);
+                            });
+                        }
+                    });
                 if (showHitsOnly) {
                     this.stylesheet.insertRule(`td[data-row-id] { display: none; }`);
                 }

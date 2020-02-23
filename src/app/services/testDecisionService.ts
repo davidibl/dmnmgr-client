@@ -34,7 +34,6 @@ export class TestDecisionService {
             .getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
             .subscribe(event => {
                 this._currentArtefactId = event.data.artefactId;
-                this._resultSubject.next(null);
             });
 
         this._eventService
@@ -60,7 +59,7 @@ export class TestDecisionService {
                 switchMap(({url, request}) => this._http
                     .post<IDecisionSimulationResponse>(url, request)),
                 map((response: IDecisionSimulationResponse) =>
-                    new DecisionSimulationResult(response.result, response.message, response.resultRuleIds))
+                    new DecisionSimulationResult(response.result, response.message, response.resultRuleIds, response.resultTableRuleIds))
             ).subscribe(response => this._resultSubject.next(response));
     }
 

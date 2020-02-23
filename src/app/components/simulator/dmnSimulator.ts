@@ -41,7 +41,7 @@ export class DmnSimulatorComponent implements OnInit {
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
         this._sessionDataService
-            .getValue('tempObject')
+            .getValue('tempObject', {})
             .pipe(
                 take(1)
             )

@@ -5,6 +5,8 @@ xn-json-editor {
 
 .wrapper {
     padding-bottom: 80px;
+    min-width: 350px;
+    max-width: 458px;
 }
 
 .simulator-button {
@@ -12,4 +14,8 @@ xn-json-editor {
     bottom: 30px;
     right: 20px;
     z-index: 1090;
+}
+
+.flex-grow {
+    flex-grow: 1;
 }
