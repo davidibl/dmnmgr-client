@@ -1,5 +1,5 @@
 /*!
- * dmn-js - dmn-modeler v7.2.0
+ * dmn-js - dmn-modeler v7.4.3
  *
  * Copyright (c) 2014-present, camunda Services GmbH
  *
@@ -8,7 +8,7 @@
  *
  * Source Code: https://github.com/bpmn-io/dmn-js
  *
- * Date: 2019-11-22
+ * Date: 2020-02-13
  */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -10672,7 +10672,7 @@
   }
   GraphicsFactory.$inject = ['eventBus', 'elementRegistry'];
 
-  GraphicsFactory.prototype._getChildren = function (element) {
+  GraphicsFactory.prototype._getChildrenContainer = function (element) {
     var gfx = this._elementRegistry.getGraphics(element);
 
     var childrenGfx; // root element
@@ -10758,7 +10758,7 @@
   };
 
   GraphicsFactory.prototype.create = function (type, element, parentIndex) {
-    var childrenGfx = this._getChildren(element.parent);
+    var childrenGfx = this._getChildrenContainer(element.parent);
 
     return this._createContainer(type, childrenGfx, parentIndex, isFrameElement(element));
   };
@@ -10783,11 +10783,11 @@
         return;
       }
 
-      var childGfx = self._getChildren(parent);
+      var childrenGfx = self._getChildrenContainer(parent);
 
-      forEach(children.slice().reverse(), function (c) {
-        var gfx = elementRegistry.getGraphics(c);
-        prependTo(gfx.parentNode, childGfx);
+      forEach(children.slice().reverse(), function (child) {
+        var childGfx = elementRegistry.getGraphics(child);
+        prependTo(childGfx.parentNode, childrenGfx);
       });
     });
   };
@@ -12251,7 +12251,7 @@
     });
   }
 
-  var DiagramTranslate = {
+  var TranslateModule = {
     translate: ['value', translate$1]
   };
 
@@ -14219,7 +14219,7 @@
 
     parentNode.removeChild(container);
   };
-  Viewer.prototype._modules = [CoreModule$1, DiagramTranslate, SelectionModule, OverlaysModule, DefinitionPropertiesViewer, DrillDownModule];
+  Viewer.prototype._modules = [CoreModule$1, TranslateModule, SelectionModule, OverlaysModule, DefinitionPropertiesViewer, DrillDownModule];
   /**
    * Adds the project logo to the diagram container as
    * required by the bpmn.io license.
@@ -17545,6 +17545,163 @@
   NavigatedViewer.prototype._navigationModules = [ZoomScroll$1, MoveCanvas$1, TouchModule$1];
   NavigatedViewer.prototype._modules = [].concat(NavigatedViewer.prototype._modules, NavigatedViewer.prototype._navigationModules);
 
+  function last(arr) {
+    return arr && arr[arr.length - 1];
+  }
+
+  function sortTopOrMiddle(element) {
+    return element.y;
+  }
+
+  function sortLeftOrCenter(element) {
+    return element.x;
+  }
+  /**
+   * Sorting functions for different types of alignment
+   *
+   * @type {Object}
+   *
+   * @return {Function}
+   */
+
+
+  var ALIGNMENT_SORTING = {
+    left: sortLeftOrCenter,
+    center: sortLeftOrCenter,
+    right: function right(element) {
+      return element.x + element.width;
+    },
+    top: sortTopOrMiddle,
+    middle: sortTopOrMiddle,
+    bottom: function bottom(element) {
+      return element.y + element.height;
+    }
+  };
+  function AlignElements(modeling) {
+    this._modeling = modeling;
+  }
+  AlignElements.$inject = ['modeling'];
+  /**
+   * Get the relevant "axis" and "dimension" related to the current type of alignment
+   *
+   * @param  {String} type left|right|center|top|bottom|middle
+   *
+   * @return {Object} { axis, dimension }
+   */
+
+  AlignElements.prototype._getOrientationDetails = function (type) {
+    var vertical = ['top', 'bottom', 'middle'],
+        axis = 'x',
+        dimension = 'width';
+
+    if (vertical.indexOf(type) !== -1) {
+      axis = 'y';
+      dimension = 'height';
+    }
+
+    return {
+      axis: axis,
+      dimension: dimension
+    };
+  };
+
+  AlignElements.prototype._isType = function (type, types) {
+    return types.indexOf(type) !== -1;
+  };
+  /**
+   * Get a point on the relevant axis where elements should align to
+   *
+   * @param  {String} type left|right|center|top|bottom|middle
+   * @param  {Array} sortedElements
+   *
+   * @return {Object}
+   */
+
+
+  AlignElements.prototype._alignmentPosition = function (type, sortedElements) {
+    var orientation = this._getOrientationDetails(type),
+        axis = orientation.axis,
+        dimension = orientation.dimension,
+        alignment = {},
+        centers = {},
+        hasSharedCenters = false,
+        centeredElements,
+        firstElement,
+        lastElement;
+
+    function getMiddleOrTop(first, last) {
+      return Math.round((first[axis] + last[axis] + last[dimension]) / 2);
+    }
+
+    if (this._isType(type, ['left', 'top'])) {
+      alignment[type] = sortedElements[0][axis];
+    } else if (this._isType(type, ['right', 'bottom'])) {
+      lastElement = last(sortedElements);
+      alignment[type] = lastElement[axis] + lastElement[dimension];
+    } else if (this._isType(type, ['center', 'middle'])) {
+      // check if there is a center shared by more than one shape
+      // if not, just take the middle of the range
+      forEach(sortedElements, function (element) {
+        var center = element[axis] + Math.round(element[dimension] / 2);
+
+        if (centers[center]) {
+          centers[center].elements.push(element);
+        } else {
+          centers[center] = {
+            elements: [element],
+            center: center
+          };
+        }
+      });
+      centeredElements = sortBy(centers, function (center) {
+        if (center.elements.length > 1) {
+          hasSharedCenters = true;
+        }
+
+        return center.elements.length;
+      });
+
+      if (hasSharedCenters) {
+        alignment[type] = last(centeredElements).center;
+        return alignment;
+      }
+
+      firstElement = sortedElements[0];
+      sortedElements = sortBy(sortedElements, function (element) {
+        return element[axis] + element[dimension];
+      });
+      lastElement = last(sortedElements);
+      alignment[type] = getMiddleOrTop(firstElement, lastElement);
+    }
+
+    return alignment;
+  };
+  /**
+   * Executes the alignment of a selection of elements
+   *
+   * @param  {Array} elements [description]
+   * @param  {String} type left|right|center|top|bottom|middle
+   */
+
+
+  AlignElements.prototype.trigger = function (elements, type) {
+    var modeling = this._modeling;
+    var filteredElements = filter(elements, function (element) {
+      return !(element.waypoints || element.host || element.labelTarget);
+    });
+    var sortFn = ALIGNMENT_SORTING[type];
+    var sortedElements = sortBy(filteredElements, sortFn);
+
+    var alignment = this._alignmentPosition(type, sortedElements);
+
+    modeling.alignElements(sortedElements, alignment);
+  };
+
+  var AlignElementsModule = {
+    __init__: ['alignElements'],
+    alignElements: ['type', AlignElements]
+  };
+
   /* global TouchEvent */
   var round$1 = Math.round;
   var DRAG_ACTIVE_CLS = 'djs-drag-active';
@@ -18148,6 +18305,131 @@
   };
 
   /**
+   * Initiates canvas scrolling if current cursor point is close to a border.
+   * Cancelled when current point moves back inside the scrolling borders
+   * or cancelled manually.
+   *
+   * Default options :
+   *   scrollThresholdIn: [ 20, 20, 20, 20 ],
+   *   scrollThresholdOut: [ 0, 0, 0, 0 ],
+   *   scrollRepeatTimeout: 15,
+   *   scrollStep: 10
+   *
+   * Threshold order:
+   *   [ left, top, right, bottom ]
+   */
+
+  function AutoScroll(config, eventBus, canvas) {
+    this._canvas = canvas;
+    this._opts = assign({
+      scrollThresholdIn: [20, 20, 20, 20],
+      scrollThresholdOut: [0, 0, 0, 0],
+      scrollRepeatTimeout: 15,
+      scrollStep: 10
+    }, config);
+    var self = this;
+    eventBus.on('drag.move', function (e) {
+      var point = self._toBorderPoint(e);
+
+      self.startScroll(point);
+    });
+    eventBus.on(['drag.cleanup'], function () {
+      self.stopScroll();
+    });
+  }
+  AutoScroll.$inject = ['config.autoScroll', 'eventBus', 'canvas'];
+  /**
+   * Starts scrolling loop.
+   * Point is given in global scale in canvas container box plane.
+   *
+   * @param  {Object} point { x: X, y: Y }
+   */
+
+  AutoScroll.prototype.startScroll = function (point) {
+    var canvas = this._canvas;
+    var opts = this._opts;
+    var self = this;
+    var clientRect = canvas.getContainer().getBoundingClientRect();
+    var diff = [point.x, point.y, clientRect.width - point.x, clientRect.height - point.y];
+    this.stopScroll();
+    var dx = 0,
+        dy = 0;
+
+    for (var i = 0; i < 4; i++) {
+      if (between(diff[i], opts.scrollThresholdOut[i], opts.scrollThresholdIn[i])) {
+        if (i === 0) {
+          dx = opts.scrollStep;
+        } else if (i == 1) {
+          dy = opts.scrollStep;
+        } else if (i == 2) {
+          dx = -opts.scrollStep;
+        } else if (i == 3) {
+          dy = -opts.scrollStep;
+        }
+      }
+    }
+
+    if (dx !== 0 || dy !== 0) {
+      canvas.scroll({
+        dx: dx,
+        dy: dy
+      });
+      this._scrolling = setTimeout(function () {
+        self.startScroll(point);
+      }, opts.scrollRepeatTimeout);
+    }
+  };
+
+  function between(val, start, end) {
+    if (start < val && val < end) {
+      return true;
+    }
+
+    return false;
+  }
+  /**
+   * Stops scrolling loop.
+   */
+
+
+  AutoScroll.prototype.stopScroll = function () {
+    clearTimeout(this._scrolling);
+  };
+  /**
+   * Overrides defaults options.
+   *
+   * @param  {Object} options
+   */
+
+
+  AutoScroll.prototype.setOptions = function (options) {
+    this._opts = assign({}, this._opts, options);
+  };
+  /**
+   * Converts event to a point in canvas container plane in global scale.
+   *
+   * @param  {Event} event
+   * @return {Point}
+   */
+
+
+  AutoScroll.prototype._toBorderPoint = function (event) {
+    var clientRect = this._canvas._container.getBoundingClientRect();
+
+    var globalPosition = toPoint(event.originalEvent);
+    return {
+      x: globalPosition.x - clientRect.left,
+      y: globalPosition.y - clientRect.top
+    };
+  };
+
+  var AutoScrollModule = {
+    __depends__: [DraggingModule],
+    __init__: ['autoScroll'],
+    autoScroll: ['type', AutoScroll]
+  };
+
+  /**
    * A service that provides rules for certain diagram actions.
    *
    * The default implementation will hook into the {@link CommandStack}
@@ -18310,8 +18592,15 @@
     };
   }
 
-  var has$1 = 'hasOwnProperty',
-      p2s = /,?([a-z]),?/gi,
+  /**
+   * This file contains source code adapted from Snap.svg (licensed Apache-2.0).
+   *
+   * @see https://github.com/adobe-webplatform/Snap.svg/blob/master/src/path.js
+   */
+
+  /* eslint no-fallthrough: "off" */
+
+  var p2s = /,?([a-z]),?/gi,
       toFloat = parseFloat,
       math = Math,
       PI = math.PI,
@@ -18322,18 +18611,12 @@
       pathCommand = /([a-z])[\s,]*((-?\d*\.?\d*(?:e[-+]?\d+)?[\s]*,?[\s]*)+)/ig,
       pathValues = /(-?\d*\.?\d*(?:e[-+]?\\d+)?)[\s]*,?[\s]*/ig;
 
-  function is$1(o, type) {
-    type = String.prototype.toLowerCase.call(type);
+  var isArray$2 = Array.isArray || function (o) {
+    return o instanceof Array;
+  };
 
-    if (type == 'finite') {
-      return isFinite(o);
-    }
-
-    if (type == 'array' && (o instanceof Array || Array.isArray && Array.isArray(o))) {
-      return true;
-    }
-
-    return type == 'null' && o === null || type == _typeof(o) && o !== null || type == 'object' && o === Object(o) || Object.prototype.toString.call(o).slice(8, -1).toLowerCase() == type;
+  function hasProperty(obj, property) {
+    return Object.prototype.hasOwnProperty.call(obj, property);
   }
 
   function clone$1(obj) {
@@ -18344,7 +18627,7 @@
     var res = new obj.constructor();
 
     for (var key in obj) {
-      if (obj[has$1](key)) {
+      if (hasProperty(obj, key)) {
         res[key] = clone$1(obj[key]);
       }
     }
@@ -18360,22 +18643,22 @@
     }
   }
 
-  function cacher(f, scope, postprocessor) {
+  function cacher(f) {
     function newf() {
       var arg = Array.prototype.slice.call(arguments, 0),
           args = arg.join("\u2400"),
           cache = newf.cache = newf.cache || {},
           count = newf.count = newf.count || [];
 
-      if (cache[has$1](args)) {
+      if (hasProperty(cache, args)) {
         repush(count, args);
-        return postprocessor ? postprocessor(cache[args]) : cache[args];
+        return cache[args];
       }
 
       count.length >= 1e3 && delete cache[count.shift()];
       count.push(args);
-      cache[args] = f.apply(scope, arg);
-      return postprocessor ? postprocessor(cache[args]) : cache[args];
+      cache[args] = f.apply(0, arg);
+      return cache[args];
     }
 
     return newf;
@@ -18395,21 +18678,18 @@
     var paramCounts = {
       a: 7,
       c: 6,
-      o: 2,
       h: 1,
       l: 2,
       m: 2,
-      r: 4,
       q: 4,
       s: 4,
       t: 2,
       v: 1,
-      u: 3,
       z: 0
     },
         data = [];
 
-    if (is$1(pathString, 'array') && is$1(pathString[0], 'array')) {
+    if (isArray$2(pathString) && isArray$2(pathString[0])) {
       // rough assumption
       data = clone$1(pathString);
     }
@@ -18428,13 +18708,7 @@
           b = b == 'm' ? 'l' : 'L';
         }
 
-        if (name == 'o' && params.length == 1) {
-          data.push([b, params[0]]);
-        }
-
-        if (name == 'r') {
-          data.push([b].concat(params));
-        } else while (params.length >= paramCounts[name]) {
+        while (params.length >= paramCounts[name]) {
           data.push([b].concat(params.splice(0, paramCounts[name])));
 
           if (!paramCounts[name]) {
@@ -18462,7 +18736,7 @@
 
     setTimeout(function () {
       for (var key in p) {
-        if (p[has$1](key) && key != ps) {
+        if (hasProperty(p, key) && key != ps) {
           p[key].sleep--;
           !p[key].sleep && delete p[key];
         }
@@ -18471,12 +18745,8 @@
     return p[ps];
   }
 
-  function box(x, y, width, height) {
-    if (x == null) {
-      x = y = width = height = 0;
-    }
-
-    if (y == null) {
+  function rectBBox(x, y, width, height) {
+    if (arguments.length === 1) {
       y = x.y;
       width = x.width;
       height = x.height;
@@ -18487,18 +18757,9 @@
       x: x,
       y: y,
       width: width,
-      w: width,
       height: height,
-      h: height,
       x2: x + width,
-      y2: y + height,
-      cx: x + width / 2,
-      cy: y + height / 2,
-      r1: math.min(width, height) / 2,
-      r2: math.max(width, height) / 2,
-      r0: math.sqrt(width * width + height * height) / 2,
-      path: rectPath(x, y, width, height),
-      vb: [x, y, width, height].join(' ')
+      y2: y + height
     };
   }
 
@@ -18519,46 +18780,16 @@
         t2 = t * t,
         t3 = t2 * t,
         x = t13 * p1x + t12 * 3 * t * c1x + t1 * 3 * t * t * c2x + t3 * p2x,
-        y = t13 * p1y + t12 * 3 * t * c1y + t1 * 3 * t * t * c2y + t3 * p2y,
-        mx = p1x + 2 * t * (c1x - p1x) + t2 * (c2x - 2 * c1x + p1x),
-        my = p1y + 2 * t * (c1y - p1y) + t2 * (c2y - 2 * c1y + p1y),
-        nx = c1x + 2 * t * (c2x - c1x) + t2 * (p2x - 2 * c2x + c1x),
-        ny = c1y + 2 * t * (c2y - c1y) + t2 * (p2y - 2 * c2y + c1y),
-        ax = t1 * p1x + t * c1x,
-        ay = t1 * p1y + t * c1y,
-        cx = t1 * c2x + t * p2x,
-        cy = t1 * c2y + t * p2y,
-        alpha = 90 - math.atan2(mx - nx, my - ny) * 180 / PI;
+        y = t13 * p1y + t12 * 3 * t * c1y + t1 * 3 * t * t * c2y + t3 * p2y;
     return {
-      x: x,
-      y: y,
-      m: {
-        x: mx,
-        y: my
-      },
-      n: {
-        x: nx,
-        y: ny
-      },
-      start: {
-        x: ax,
-        y: ay
-      },
-      end: {
-        x: cx,
-        y: cy
-      },
-      alpha: alpha
+      x: fixError(x),
+      y: fixError(y)
     };
   }
 
-  function bezierBBox(p1x, p1y, c1x, c1y, c2x, c2y, p2x, p2y) {
-    if (!is$1(p1x, 'array')) {
-      p1x = [p1x, p1y, c1x, c1y, c2x, c2y, p2x, p2y];
-    }
-
-    var bbox = curveBBox.apply(null, p1x);
-    return box(bbox.min.x, bbox.min.y, bbox.max.x - bbox.min.x, bbox.max.y - bbox.min.y);
+  function bezierBBox(points) {
+    var bbox = curveBBox.apply(null, points);
+    return rectBBox(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
   }
 
   function isPointInsideBBox(bbox, x, y) {
@@ -18566,8 +18797,8 @@
   }
 
   function isBBoxIntersect(bbox1, bbox2) {
-    bbox1 = box(bbox1);
-    bbox2 = box(bbox2);
+    bbox1 = rectBBox(bbox1);
+    bbox2 = rectBBox(bbox2);
     return isPointInsideBBox(bbox2, bbox1.x, bbox1.y) || isPointInsideBBox(bbox2, bbox1.x2, bbox1.y) || isPointInsideBBox(bbox2, bbox1.x, bbox1.y2) || isPointInsideBBox(bbox2, bbox1.x2, bbox1.y2) || isPointInsideBBox(bbox1, bbox2.x, bbox2.y) || isPointInsideBBox(bbox1, bbox2.x2, bbox2.y) || isPointInsideBBox(bbox1, bbox2.x, bbox2.y2) || isPointInsideBBox(bbox1, bbox2.x2, bbox2.y2) || (bbox1.x < bbox2.x2 && bbox1.x > bbox2.x || bbox2.x < bbox1.x2 && bbox2.x > bbox1.x) && (bbox1.y < bbox2.y2 && bbox1.y > bbox2.y || bbox2.y < bbox1.y2 && bbox2.y > bbox1.y);
   }
 
@@ -18613,8 +18844,8 @@
       return;
     }
 
-    var px = nx / denominator,
-        py = ny / denominator,
+    var px = fixError(nx / denominator),
+        py = fixError(ny / denominator),
         px2 = +px.toFixed(2),
         py2 = +py.toFixed(2);
 
@@ -18628,18 +18859,23 @@
     };
   }
 
+  function fixError(number) {
+    return Math.round(number * 100000000000) / 100000000000;
+  }
+
   function findBezierIntersections(bez1, bez2, justCount) {
     var bbox1 = bezierBBox(bez1),
         bbox2 = bezierBBox(bez2);
 
     if (!isBBoxIntersect(bbox1, bbox2)) {
       return justCount ? 0 : [];
-    }
+    } // As an optimization, lines will have only 1 segment
+
 
     var l1 = bezlen.apply(0, bez1),
         l2 = bezlen.apply(0, bez2),
-        n1 = ~~(l1 / 5),
-        n2 = ~~(l2 / 5),
+        n1 = isLine(bez1) ? 1 : ~~(l1 / 5) || 1,
+        n2 = isLine(bez2) ? 1 : ~~(l2 / 5) || 1,
         dots1 = [],
         dots2 = [],
         xy = {},
@@ -18671,14 +18907,17 @@
             dj1 = dots2[j + 1],
             ci = abs(di1.x - di.x) < .01 ? 'y' : 'x',
             cj = abs(dj1.x - dj.x) < .01 ? 'y' : 'x',
-            is = intersectLines(di.x, di.y, di1.x, di1.y, dj.x, dj.y, dj1.x, dj1.y);
+            is = intersectLines(di.x, di.y, di1.x, di1.y, dj.x, dj.y, dj1.x, dj1.y),
+            key;
 
         if (is) {
-          if (xy[is.x.toFixed(0)] == is.y.toFixed(0)) {
+          key = is.x.toFixed(9) + '#' + is.y.toFixed(9);
+
+          if (xy[key]) {
             continue;
           }
 
-          xy[is.x.toFixed(0)] = is.y.toFixed(0);
+          xy[key] = true;
           var t1 = di.t + abs((is[ci] - di[ci]) / (di1[ci] - di[ci])) * (di1.t - di.t),
               t2 = dj.t + abs((is[cj] - dj[cj]) / (dj1[cj] - dj[cj])) * (dj1.t - dj.t);
 
@@ -18722,7 +18961,7 @@
    *
    * // intersections = [
    * //   { x: 50, y: 50, segment1: 1, segment2: 1, t1: 0.5, t2: 0.5 }
-   * //
+   * // ]
    *
    * @param {String|Array<PathDef>} path1
    * @param {String|Array<PathDef>} path2
@@ -18803,41 +19042,6 @@
     return res;
   }
 
-  function rectPath(x, y, w, h, r) {
-    if (r) {
-      return [['M', +x + +r, y], ['l', w - r * 2, 0], ['a', r, r, 0, 0, 1, r, r], ['l', 0, h - r * 2], ['a', r, r, 0, 0, 1, -r, r], ['l', r * 2 - w, 0], ['a', r, r, 0, 0, 1, -r, -r], ['l', 0, r * 2 - h], ['a', r, r, 0, 0, 1, r, -r], ['z']];
-    }
-
-    var res = [['M', x, y], ['l', w, 0], ['l', 0, h], ['l', -w, 0], ['z']];
-    res.toString = pathToString;
-    return res;
-  }
-
-  function ellipsePath(x, y, rx, ry, a) {
-    if (a == null && ry == null) {
-      ry = rx;
-    }
-
-    x = +x;
-    y = +y;
-    rx = +rx;
-    ry = +ry;
-
-    if (a != null) {
-      var rad = Math.PI / 180,
-          x1 = x + rx * Math.cos(-ry * rad),
-          x2 = x + rx * Math.cos(-a * rad),
-          y1 = y + rx * Math.sin(-ry * rad),
-          y2 = y + rx * Math.sin(-a * rad),
-          res = [['M', x1, y1], ['A', rx, rx, 0, +(a - ry > 180), 0, x2, y2]];
-    } else {
-      res = [['M', x, y], ['m', 0, -ry], ['a', rx, ry, 0, 1, 1, 0, 2 * ry], ['a', rx, ry, 0, 1, 1, 0, -2 * ry], ['z']];
-    }
-
-    res.toString = pathToString;
-    return res;
-  }
-
   function pathToAbsolute(pathArray) {
     var pth = paths(pathArray);
 
@@ -18845,7 +19049,7 @@
       return pathClone(pth.abs);
     }
 
-    if (!is$1(pathArray, 'array') || !is$1(pathArray && pathArray[0], 'array')) {
+    if (!isArray$2(pathArray) || !isArray$2(pathArray && pathArray[0])) {
       // rough assumption
       pathArray = parsePathString(pathArray);
     }
@@ -18870,8 +19074,6 @@
       start++;
       res[0] = ['M', x, y];
     }
-
-    var crz = pathArray.length == 3 && pathArray[0][0] == 'M' && pathArray[1][0].toUpperCase() == 'R' && pathArray[2][0].toUpperCase() == 'Z';
 
     for (var r, pa, i = start, ii = pathArray.length; i < ii; i++) {
       res.push(r = []);
@@ -18900,55 +19102,16 @@
             r[1] = +pa[1] + x;
             break;
 
-          case 'R':
-            var dots = [x, y].concat(pa.slice(1));
-
-            for (var j = 2, jj = dots.length; j < jj; j++) {
-              dots[j] = +dots[j] + x;
-              dots[++j] = +dots[j] + y;
-            }
-
-            res.pop();
-            res = res.concat(catmulRomToBezier(dots, crz));
-            break;
-
-          case 'O':
-            res.pop();
-            dots = ellipsePath(x, y, pa[1], pa[2]);
-            dots.push(dots[0]);
-            res = res.concat(dots);
-            break;
-
-          case 'U':
-            res.pop();
-            res = res.concat(ellipsePath(x, y, pa[1], pa[2], pa[3]));
-            r = ['U'].concat(res[res.length - 1].slice(-2));
-            break;
-
           case 'M':
             mx = +pa[1] + x;
             my = +pa[2] + y;
 
           default:
-            for (j = 1, jj = pa.length; j < jj; j++) {
+            for (var j = 1, jj = pa.length; j < jj; j++) {
               r[j] = +pa[j] + (j % 2 ? x : y);
             }
 
         }
-      } else if (pa0 == 'R') {
-        dots = [x, y].concat(pa.slice(1));
-        res.pop();
-        res = res.concat(catmulRomToBezier(dots, crz));
-        r = ['R'].concat(pa.slice(-2));
-      } else if (pa0 == 'O') {
-        res.pop();
-        dots = ellipsePath(x, y, pa[1], pa[2]);
-        dots.push(dots[0]);
-        res = res.concat(dots);
-      } else if (pa0 == 'U') {
-        res.pop();
-        res = res.concat(ellipsePath(x, y, pa[1], pa[2], pa[3]));
-        r = ['U'].concat(res[res.length - 1].slice(-2));
       } else {
         for (var k = 0, kk = pa.length; k < kk; k++) {
           r[k] = pa[k];
@@ -18957,35 +19120,37 @@
 
       pa0 = pa0.toUpperCase();
 
-      if (pa0 != 'O') {
-        switch (r[0]) {
-          case 'Z':
-            x = +mx;
-            y = +my;
-            break;
+      switch (r[0]) {
+        case 'Z':
+          x = +mx;
+          y = +my;
+          break;
 
-          case 'H':
-            x = r[1];
-            break;
+        case 'H':
+          x = r[1];
+          break;
 
-          case 'V':
-            y = r[1];
-            break;
+        case 'V':
+          y = r[1];
+          break;
 
-          case 'M':
-            mx = r[r.length - 2];
-            my = r[r.length - 1];
+        case 'M':
+          mx = r[r.length - 2];
+          my = r[r.length - 1];
 
-          default:
-            x = r[r.length - 2];
-            y = r[r.length - 1];
-        }
+        default:
+          x = r[r.length - 2];
+          y = r[r.length - 1];
       }
     }
 
     res.toString = pathToString;
     pth.abs = pathClone(res);
     return res;
+  }
+
+  function isLine(bez) {
+    return bez[0] === bez[2] && bez[1] === bez[3] && bez[4] === bez[6] && bez[5] === bez[7];
   }
 
   function lineToCurve(x1, y1, x2, y2) {
@@ -19097,63 +19262,6 @@
 
       return newres;
     }
-  } // http://schepers.cc/getting-to-the-point
-
-
-  function catmulRomToBezier(crp, z) {
-    var d = [];
-
-    for (var i = 0, iLen = crp.length; iLen - 2 * !z > i; i += 2) {
-      var p = [{
-        x: +crp[i - 2],
-        y: +crp[i - 1]
-      }, {
-        x: +crp[i],
-        y: +crp[i + 1]
-      }, {
-        x: +crp[i + 2],
-        y: +crp[i + 3]
-      }, {
-        x: +crp[i + 4],
-        y: +crp[i + 5]
-      }];
-
-      if (z) {
-        if (!i) {
-          p[0] = {
-            x: +crp[iLen - 2],
-            y: +crp[iLen - 1]
-          };
-        } else if (iLen - 4 == i) {
-          p[3] = {
-            x: +crp[0],
-            y: +crp[1]
-          };
-        } else if (iLen - 2 == i) {
-          p[2] = {
-            x: +crp[0],
-            y: +crp[1]
-          };
-          p[3] = {
-            x: +crp[2],
-            y: +crp[3]
-          };
-        }
-      } else {
-        if (iLen - 4 == i) {
-          p[3] = p[2];
-        } else if (!i) {
-          p[0] = {
-            x: +crp[i],
-            y: +crp[i + 1]
-          };
-        }
-      }
-
-      d.push(['C', (-p[0].x + 6 * p[1].x + p[2].x) / 6, (-p[0].y + 6 * p[1].y + p[2].y) / 6, (p[1].x + 6 * p[2].x - p[3].x) / 6, (p[1].y + 6 * p[2].y - p[3].y) / 6, p[2].x, p[2].y]);
-    }
-
-    return d;
   } // Returns bounding box of cubic bezier curve.
   // Source: http://blog.hackers-cafe.net/2009/06/how-to-calculate-bezier-curves-bounding.html
   // Original version: NISHIO Hirokazu
@@ -19234,26 +19342,21 @@
     bounds[1][jlen + 1] = y3;
     bounds[0].length = bounds[1].length = jlen + 2;
     return {
-      min: {
-        x: mmin.apply(0, bounds[0]),
-        y: mmin.apply(0, bounds[1])
-      },
-      max: {
-        x: mmax.apply(0, bounds[0]),
-        y: mmax.apply(0, bounds[1])
-      }
+      x0: mmin.apply(0, bounds[0]),
+      y0: mmin.apply(0, bounds[1]),
+      x1: mmax.apply(0, bounds[0]),
+      y1: mmax.apply(0, bounds[1])
     };
   }
 
-  function pathToCurve(path, path2) {
-    var pth = !path2 && paths(path);
+  function pathToCurve(path) {
+    var pth = paths(path); // return cached curve, if existing
 
-    if (!path2 && pth.curve) {
+    if (pth.curve) {
       return pathClone(pth.curve);
     }
 
-    var p = pathToAbsolute(path),
-        p2 = path2 && pathToAbsolute(path2),
+    var curvedPath = pathToAbsolute(path),
         attrs = {
       x: 0,
       y: 0,
@@ -19264,17 +19367,7 @@
       qx: null,
       qy: null
     },
-        attrs2 = {
-      x: 0,
-      y: 0,
-      bx: 0,
-      by: 0,
-      X: 0,
-      Y: 0,
-      qx: null,
-      qy: null
-    },
-        processPath = function processPath(path, d, pcom) {
+        processPath = function processPath(path, d, pathCommand) {
       var nx, ny;
 
       if (!path) {
@@ -19297,7 +19390,7 @@
           break;
 
         case 'S':
-          if (pcom == 'C' || pcom == 'S') {
+          if (pathCommand == 'C' || pathCommand == 'S') {
             // In 'S' case we have to take into account, if the previous command is C/S.
             nx = d.x * 2 - d.bx; // And reflect the previous
 
@@ -19312,7 +19405,7 @@
           break;
 
         case 'T':
-          if (pcom == 'Q' || pcom == 'T') {
+          if (pathCommand == 'Q' || pathCommand == 'T') {
             // In 'T' case we have to take into account, if the previous command is Q/T.
             d.qx = d.x * 2 - d.qx; // And make a reflection similar
 
@@ -19357,93 +19450,51 @@
         var pi = pp[i];
 
         while (pi.length) {
-          pcoms1[i] = 'A'; // if created multiple C:s, their original seg is saved
-
-          p2 && (pcoms2[i] = 'A'); // the same as above
+          pathCommands[i] = 'A'; // if created multiple C:s, their original seg is saved
 
           pp.splice(i++, 0, ['C'].concat(pi.splice(0, 6)));
         }
 
         pp.splice(i, 1);
-        ii = mmax(p.length, p2 && p2.length || 0);
+        ii = curvedPath.length;
       }
     },
-        fixM = function fixM(path1, path2, a1, a2, i) {
-      if (path1 && path2 && path1[i][0] == 'M' && path2[i][0] != 'M') {
-        path2.splice(i, 0, ['M', a2.x, a2.y]);
-        a1.bx = 0;
-        a1.by = 0;
-        a1.x = path1[i][1];
-        a1.y = path1[i][2];
-        ii = mmax(p.length, p2 && p2.length || 0);
-      }
-    },
-        pcoms1 = [],
+        pathCommands = [],
         // path commands of original path p
-    pcoms2 = [],
-        // path commands of original path p2
     pfirst = '',
         // temporary holder for original path command
-    pcom = ''; // holder for previous path command of original path
+    pathCommand = ''; // holder for previous path command of original path
 
 
-    for (var i = 0, ii = mmax(p.length, p2 && p2.length || 0); i < ii; i++) {
-      p[i] && (pfirst = p[i][0]); // save current path command
+    for (var i = 0, ii = curvedPath.length; i < ii; i++) {
+      curvedPath[i] && (pfirst = curvedPath[i][0]); // save current path command
 
       if (pfirst != 'C') // C is not saved yet, because it may be result of conversion
         {
-          pcoms1[i] = pfirst; // Save current path command
+          pathCommands[i] = pfirst; // Save current path command
 
-          i && (pcom = pcoms1[i - 1]); // Get previous path command pcom
+          i && (pathCommand = pathCommands[i - 1]); // Get previous path command pathCommand
         }
 
-      p[i] = processPath(p[i], attrs, pcom); // Previous path command is inputted to processPath
+      curvedPath[i] = processPath(curvedPath[i], attrs, pathCommand); // Previous path command is inputted to processPath
 
-      if (pcoms1[i] != 'A' && pfirst == 'C') pcoms1[i] = 'C'; // A is the only command
+      if (pathCommands[i] != 'A' && pfirst == 'C') pathCommands[i] = 'C'; // A is the only command
       // which may produce multiple C:s
       // so we have to make sure that C is also C in original path
 
-      fixArc(p, i); // fixArc adds also the right amount of A:s to pcoms1
+      fixArc(curvedPath, i); // fixArc adds also the right amount of A:s to pathCommands
 
-      if (p2) {
-        // the same procedures is done to p2
-        p2[i] && (pfirst = p2[i][0]);
-
-        if (pfirst != 'C') {
-          pcoms2[i] = pfirst;
-          i && (pcom = pcoms2[i - 1]);
-        }
-
-        p2[i] = processPath(p2[i], attrs2, pcom);
-
-        if (pcoms2[i] != 'A' && pfirst == 'C') {
-          pcoms2[i] = 'C';
-        }
-
-        fixArc(p2, i);
-      }
-
-      fixM(p, p2, attrs, attrs2, i);
-      fixM(p2, p, attrs2, attrs, i);
-      var seg = p[i],
-          seg2 = p2 && p2[i],
-          seglen = seg.length,
-          seg2len = p2 && seg2.length;
+      var seg = curvedPath[i],
+          seglen = seg.length;
       attrs.x = seg[seglen - 2];
       attrs.y = seg[seglen - 1];
       attrs.bx = toFloat(seg[seglen - 4]) || attrs.x;
       attrs.by = toFloat(seg[seglen - 3]) || attrs.y;
-      attrs2.bx = p2 && (toFloat(seg2[seg2len - 4]) || attrs2.x);
-      attrs2.by = p2 && (toFloat(seg2[seg2len - 3]) || attrs2.y);
-      attrs2.x = p2 && seg2[seg2len - 2];
-      attrs2.y = p2 && seg2[seg2len - 1];
-    }
+    } // cache curve
 
-    if (!p2) {
-      pth.curve = pathClone(p);
-    }
 
-    return p2 ? [p, p2] : p;
+    pth.curve = pathClone(curvedPath);
+    return curvedPath;
   }
 
   var intersect = findPathIntersections;
@@ -20366,11 +20417,6 @@
             hints.docking = 'source';
             hints.newWaypoints = newWaypoints.reverse();
           }
-        } // do NOT reconnect if both source and target haven't changed
-
-
-        if (source === connection.source && target === connection.target) {
-          return;
         }
 
         modeling.reconnect(connection, source, target, docking, hints);
@@ -20889,6 +20935,75 @@
   }
   ConnectionSegmentMove.$inject = ['injector', 'eventBus', 'canvas', 'dragging', 'graphicsFactory', 'modeling'];
 
+  var abs$1 = Math.abs,
+      round$4 = Math.round;
+  /**
+   * Snap value to a collection of reference values.
+   *
+   * @param  {Number} value
+   * @param  {Array<Number>} values
+   * @param  {Number} [tolerance=10]
+   *
+   * @return {Number} the value we snapped to or null, if none snapped
+   */
+
+  function snapTo(value, values, tolerance) {
+    tolerance = tolerance === undefined ? 10 : tolerance;
+    var idx, snapValue;
+
+    for (idx = 0; idx < values.length; idx++) {
+      snapValue = values[idx];
+
+      if (abs$1(snapValue - value) <= tolerance) {
+        return snapValue;
+      }
+    }
+  }
+  function topLeft(bounds) {
+    return {
+      x: bounds.x,
+      y: bounds.y
+    };
+  }
+  function bottomRight(bounds) {
+    return {
+      x: bounds.x + bounds.width,
+      y: bounds.y + bounds.height
+    };
+  }
+  function mid(bounds, defaultValue) {
+    if (!bounds || isNaN(bounds.x) || isNaN(bounds.y)) {
+      return defaultValue;
+    }
+
+    return {
+      x: round$4(bounds.x + bounds.width / 2),
+      y: round$4(bounds.y + bounds.height / 2)
+    };
+  }
+  /**
+   * Retrieve the snap state of the given event.
+   *
+   * @param  {Event} event
+   * @param  {String} axis
+   *
+   * @return {Boolean} the snapped state
+   *
+   */
+
+  function isSnapped(event, axis) {
+    var snapped = event.snapped;
+
+    if (!snapped) {
+      return false;
+    }
+
+    if (typeof axis === 'string') {
+      return snapped[axis];
+    }
+
+    return snapped.x && snapped.y;
+  }
   /**
    * Set the given event as snapped.
    *
@@ -20926,9 +21041,20 @@
 
     return previousValue;
   }
+  /**
+   * Get children of a shape.
+   *
+   * @param {djs.model.Shape} parent
+   *
+   * @returns {Array<djs.model.Shape|djs.model.Connection>}
+   */
 
-  var abs$1 = Math.abs,
-      round$4 = Math.round;
+  function getChildren$1(parent) {
+    return parent.children || [];
+  }
+
+  var abs$2 = Math.abs,
+      round$5 = Math.round;
   var TOLERANCE = 10;
   function BendpointSnapping(eventBus) {
     function snapTo(values, value) {
@@ -20936,7 +21062,7 @@
         var i = values.length;
 
         while (i--) {
-          if (abs$1(values[i] - value) <= TOLERANCE) {
+          if (abs$2(values[i] - value) <= TOLERANCE) {
             return values[i];
           }
         }
@@ -20959,8 +21085,8 @@
     function mid(element) {
       if (element.width) {
         return {
-          x: round$4(element.width / 2 + element.x),
-          y: round$4(element.height / 2 + element.y)
+          x: round$5(element.width / 2 + element.x),
+          y: round$5(element.height / 2 + element.y)
         };
       }
     } // connection segment snapping //////////////////////
@@ -22721,7 +22847,7 @@
     popupMenu: ['type', PopupMenu]
   };
 
-  var round$5 = Math.round;
+  var round$6 = Math.round;
   /**
    * Service that allow replacing of elements.
    */
@@ -22732,7 +22858,8 @@
   Replace.$inject = ['modeling'];
   /**
    * @param {Element} oldElement - Element to be replaced
-   * @param {Object}  newElementData - Containing information about the new Element, for example height, width, type.
+   * @param {Object}  newElementData - Containing information about the new element,
+   *                                   for example the new bounds and type.
    * @param {Object}  options - Custom options that will be attached to the context. It can be used to inject data
    *                            that is needed in the command chain. For example it could be used in
    *                            eventbus.on('commandStack.shape.replace.postExecute') to change shape attributes after
@@ -22740,18 +22867,26 @@
    */
 
   Replace.prototype.replaceElement = function (oldElement, newElementData, options) {
-    var modeling = this._modeling;
-    var newElement = null;
-
-    if (oldElement.waypoints) ; else {
-      // set center of element for modeling API
-      // if no new width / height is given use old elements size
-      newElementData.x = round$5(oldElement.x + (newElementData.width || oldElement.width) / 2);
-      newElementData.y = round$5(oldElement.y + (newElementData.height || oldElement.height) / 2);
-      newElement = modeling.replaceShape(oldElement, newElementData, options);
+    if (oldElement.waypoints) {
+      // TODO(nikku): we do not replace connections, yet
+      return null;
     }
 
-    return newElement;
+    var modeling = this._modeling;
+    var width = newElementData.width || oldElement.width,
+        height = newElementData.height || oldElement.height,
+        x = newElementData.x || oldElement.x,
+        y = newElementData.y || oldElement.y,
+        centerX = round$6(x + width / 2),
+        centerY = round$6(y + height / 2); // modeling API requires center coordinates,
+    // account for that when handling shape bounds
+
+    return modeling.replaceShape(oldElement, assign({}, newElementData, {
+      x: centerX,
+      y: centerY,
+      width: width,
+      height: height
+    }), options);
   };
 
   var DiagramReplace = {
@@ -22959,7 +23094,7 @@
   };
 
   var PopupMenu$1 = {
-    __depends__: [DiagramTranslate, DiagramPopupMenu, Replace$1],
+    __depends__: [TranslateModule, DiagramPopupMenu, Replace$1],
     __init__: ['replaceMenuProvider'],
     replaceMenuProvider: ['type', ReplaceMenuProvider]
   };
@@ -23059,7 +23194,9 @@
         var shape = elementFactory.createShape(assign({
           type: type
         }, options));
-        create.start(event, shape, element);
+        create.start(event, shape, {
+          source: element
+        });
       }
 
       return {
@@ -23161,7 +23298,7 @@
   };
 
   var ContextPadModule = {
-    __depends__: [DiagramTranslate, DiagramContextPad, SelectionModule, DiagramConnect, DiagramCreate, PopupMenu$1],
+    __depends__: [TranslateModule, DiagramContextPad, SelectionModule, DiagramConnect, DiagramCreate, PopupMenu$1],
     __init__: ['contextPadProvider'],
     contextPadProvider: ['type', ContextPadProvider]
   };
@@ -23470,6 +23607,226 @@
     definitionPropertiesPaletteAdapter: ['type', PaletteAdapter]
   };
 
+  var AXIS_DIMENSIONS = {
+    horizontal: ['x', 'width'],
+    vertical: ['y', 'height']
+  };
+  var THRESHOLD$1 = 5;
+  /**
+   * Groups and filters elements and then trigger even distribution.
+   */
+
+  function DistributeElements(modeling) {
+    this._modeling = modeling;
+    this._filters = []; // register filter for filtering big elements
+
+    this.registerFilter(function (elements, axis, dimension) {
+      var elementsSize = 0,
+          numOfShapes = 0,
+          avgDimension;
+      forEach(elements, function (element) {
+        if (element.waypoints || element.labelTarget) {
+          return;
+        }
+
+        elementsSize += element[dimension];
+        numOfShapes += 1;
+      });
+      avgDimension = Math.round(elementsSize / numOfShapes);
+      return filter(elements, function (element) {
+        return element[dimension] < avgDimension + 50;
+      });
+    });
+  }
+  DistributeElements.$inject = ['modeling'];
+  /**
+   * Registers filter functions that allow external parties to filter
+   * out certain elements.
+   *
+   * @param  {Function} filterFn
+   */
+
+  DistributeElements.prototype.registerFilter = function (filterFn) {
+    if (typeof filterFn !== 'function') {
+      throw new Error('the filter has to be a function');
+    }
+
+    this._filters.push(filterFn);
+  };
+  /**
+   * Distributes the elements with a given orientation
+   *
+   * @param  {Array} elements    [description]
+   * @param  {String} orientation [description]
+   */
+
+
+  DistributeElements.prototype.trigger = function (elements, orientation) {
+    var modeling = this._modeling;
+    var groups, distributableElements;
+
+    if (elements.length < 3) {
+      return;
+    }
+
+    this._setOrientation(orientation);
+
+    distributableElements = this._filterElements(elements);
+    groups = this._createGroups(distributableElements); // nothing to distribute
+
+    if (groups.length <= 2) {
+      return;
+    }
+
+    modeling.distributeElements(groups, this._axis, this._dimension);
+    return groups;
+  };
+  /**
+   * Filters the elements with provided filters by external parties
+   *
+   * @param  {Array[Elements]} elements
+   *
+   * @return {Array[Elements]}
+   */
+
+
+  DistributeElements.prototype._filterElements = function (elements) {
+    var filters = this._filters,
+        axis = this._axis,
+        dimension = this._dimension,
+        distributableElements = [].concat(elements);
+
+    if (!filters.length) {
+      return elements;
+    }
+
+    forEach(filters, function (filterFn) {
+      distributableElements = filterFn(distributableElements, axis, dimension);
+    });
+    return distributableElements;
+  };
+  /**
+   * Create range (min, max) groups. Also tries to group elements
+   * together that share the same range.
+   *
+   * @example
+   * 	var distributableElements = [
+   * 		{
+   * 			range: {
+   * 				min: 100,
+   * 				max: 200
+   * 			},
+   * 			elements: [ { id: 'shape1', .. }]
+   * 		}
+   * 	]
+   *
+   * @param  {Array} elements
+   *
+   * @return {Array[Objects]}
+   */
+
+
+  DistributeElements.prototype._createGroups = function (elements) {
+    var rangeGroups = [],
+        self = this,
+        axis = this._axis,
+        dimension = this._dimension;
+
+    if (!axis) {
+      throw new Error('must have a defined "axis" and "dimension"');
+    } // sort by 'left->right' or 'top->bottom'
+
+
+    var sortedElements = sortBy(elements, axis);
+    forEach(sortedElements, function (element, idx) {
+      var elementRange = self._findRange(element, axis, dimension),
+          range;
+
+      var previous = rangeGroups[rangeGroups.length - 1];
+
+      if (previous && self._hasIntersection(previous.range, elementRange)) {
+        rangeGroups[rangeGroups.length - 1].elements.push(element);
+      } else {
+        range = {
+          range: elementRange,
+          elements: [element]
+        };
+        rangeGroups.push(range);
+      }
+    });
+    return rangeGroups;
+  };
+  /**
+   * Maps a direction to the according axis and dimension
+   *
+   * @param  {String} direction 'horizontal' or 'vertical'
+   */
+
+
+  DistributeElements.prototype._setOrientation = function (direction) {
+    var orientation = AXIS_DIMENSIONS[direction];
+    this._axis = orientation[0];
+    this._dimension = orientation[1];
+  };
+  /**
+   * Checks if the two ranges intercept each other
+   *
+   * @param  {Object} rangeA {min, max}
+   * @param  {Object} rangeB {min, max}
+   *
+   * @return {Boolean}
+   */
+
+
+  DistributeElements.prototype._hasIntersection = function (rangeA, rangeB) {
+    return Math.max(rangeA.min, rangeA.max) >= Math.min(rangeB.min, rangeB.max) && Math.min(rangeA.min, rangeA.max) <= Math.max(rangeB.min, rangeB.max);
+  };
+  /**
+   * Returns the min and max values for an element
+   *
+   * @param  {[type]} element   [description]
+   * @param  {[type]} axis      [description]
+   * @param  {[type]} dimension [description]
+   *
+   * @return {[type]}           [description]
+   */
+
+
+  DistributeElements.prototype._findRange = function (element) {
+    var axis = element[this._axis],
+        dimension = element[this._dimension];
+    return {
+      min: axis + THRESHOLD$1,
+      max: axis + dimension - THRESHOLD$1
+    };
+  };
+
+  var DistributeElementsModule = {
+    __init__: ['distributeElements'],
+    distributeElements: ['type', DistributeElements]
+  };
+
+  /**
+   * Registers element exclude filters for elements that
+   * currently do not support distribution.
+   */
+
+  function DrdDistributeElements(distributeElements) {
+    distributeElements.registerFilter(function (elements) {
+      return filter(elements, function (element) {
+        var cannotDistribute = isAny(element, ['dmn:AuthorityRequirement', 'dmn:InformationRequirement', 'dmn:KnowledgeRequirement', 'dmn:Association', 'dmn:TextAnnotation']);
+        return !(element.labelTarget || cannotDistribute);
+      });
+    });
+  }
+  DrdDistributeElements.$inject = ['distributeElements'];
+
+  var DistributeElementsModule$1 = {
+    __depends__: [DistributeElementsModule],
+    __init__: ['drdDistributeElements'],
+    drdDistributeElements: ['type', DrdDistributeElements]
+  };
+
   var NOT_REGISTERED_ERROR = 'is not a registered action',
       IS_REGISTERED_ERROR = 'is already registered';
   /**
@@ -23734,7 +24091,9 @@
     var elementRegistry = injector.get('elementRegistry', false);
     var selection = injector.get('selection', false);
     var lassoTool = injector.get('lassoTool', false);
-    var directEditing = injector.get('directEditing', false); // (2) check components and register actions
+    var directEditing = injector.get('directEditing', false);
+    var distributeElements = injector.get('distributeElements', false);
+    var alignElements = injector.get('alignElements', false); // (2) check components and register actions
 
     if (canvas && elementRegistry && selection) {
       this._registerAction('selectElements', function () {
@@ -23746,6 +24105,28 @@
         });
         selection.select(elements);
         return elements;
+      });
+    }
+
+    if (selection && distributeElements) {
+      this._registerAction('distributeElements', function (opts) {
+        var currentSelection = selection.get(),
+            type = opts.type;
+
+        if (currentSelection.length > 2) {
+          distributeElements.trigger(currentSelection, type);
+        }
+      });
+    }
+
+    if (selection && alignElements) {
+      this._registerAction('alignElements', function (opts) {
+        var currentSelection = selection.get(),
+            type = opts.type;
+
+        if (currentSelection.length > 1) {
+          alignElements.trigger(currentSelection, type);
+        }
       });
     }
 
@@ -23883,9 +24264,617 @@
     return event.shiftKey;
   }
 
+  var SPACING = 10;
+  function quantize(value, quantum, fn) {
+    if (!fn) {
+      fn = 'round';
+    }
+
+    return Math[fn](value / quantum) * quantum;
+  }
+
+  var LOWER_PRIORITY = 1200;
+  var LOW_PRIORITY$5 = 800;
+  /**
+   * Basic grid snapping that covers connecting, creating, moving, resizing shapes, moving bendpoints
+   * and connection segments.
+   */
+
+  function GridSnapping(elementRegistry, eventBus, config) {
+    var active = !config || config.active !== false;
+    this._eventBus = eventBus;
+    var self = this;
+    eventBus.on('diagram.init', LOW_PRIORITY$5, function () {
+      self.setActive(active);
+    });
+    eventBus.on(['create.move', 'create.end', 'bendpoint.move.move', 'bendpoint.move.end', 'connect.move', 'connect.end', 'connectionSegment.move.move', 'connectionSegment.move.end', 'resize.move', 'resize.end', 'shape.move.move', 'shape.move.end'], LOWER_PRIORITY, function (event) {
+      var originalEvent = event.originalEvent;
+
+      if (!self.active || originalEvent && isCmd(originalEvent)) {
+        return;
+      }
+
+      var context = event.context,
+          gridSnappingContext = context.gridSnappingContext;
+
+      if (!gridSnappingContext) {
+        gridSnappingContext = context.gridSnappingContext = {};
+      }
+
+      ['x', 'y'].forEach(function (axis) {
+        var options = {}; // allow snapping with offset
+
+        var snapOffset = getSnapOffset(event, axis, elementRegistry);
+
+        if (snapOffset) {
+          options.offset = snapOffset;
+        } // allow snapping with min and max
+
+
+        var snapConstraints = getSnapConstraints(event, axis);
+
+        if (snapConstraints) {
+          assign(options, snapConstraints);
+        }
+
+        if (!isSnapped(event, axis)) {
+          self.snapEvent(event, axis, options);
+        }
+      });
+    });
+  }
+  /**
+   * Snap an events x or y with optional min, max and offset.
+   *
+   * @param {Object} event
+   * @param {string} axis
+   * @param {number} [options.min]
+   * @param {number} [options.max]
+   * @param {number} [options.offset]
+   */
+
+  GridSnapping.prototype.snapEvent = function (event, axis, options) {
+    var snappedValue = this.snapValue(event[axis], options);
+    setSnapped(event, axis, snappedValue);
+  };
+  /**
+   * Expose grid spacing for third parties (i.e. extensions).
+   *
+   * @return {Number} spacing of grid dots
+   */
+
+
+  GridSnapping.prototype.getGridSpacing = function () {
+    return SPACING;
+  };
+  /**
+   * Snap value with optional min, max and offset.
+   *
+   * @param {number} value
+   * @param {Object} options
+   * @param {number} [options.min]
+   * @param {number} [options.max]
+   * @param {number} [options.offset]
+   */
+
+
+  GridSnapping.prototype.snapValue = function (value, options) {
+    var offset = 0;
+
+    if (options && options.offset) {
+      offset = options.offset;
+    }
+
+    value += offset;
+    value = quantize(value, SPACING);
+    var min, max;
+
+    if (options && options.min) {
+      min = options.min;
+
+      if (isNumber(min)) {
+        min = quantize(min + offset, SPACING, 'ceil');
+        value = Math.max(value, min);
+      }
+    }
+
+    if (options && options.max) {
+      max = options.max;
+
+      if (isNumber(max)) {
+        max = quantize(max + offset, SPACING, 'floor');
+        value = Math.min(value, max);
+      }
+    }
+
+    value -= offset;
+    return value;
+  };
+
+  GridSnapping.prototype.isActive = function () {
+    return this.active;
+  };
+
+  GridSnapping.prototype.setActive = function (active) {
+    this.active = active;
+
+    this._eventBus.fire('gridSnapping.toggle', {
+      active: active
+    });
+  };
+
+  GridSnapping.prototype.toggleActive = function () {
+    this.setActive(!this.active);
+  };
+
+  GridSnapping.$inject = ['elementRegistry', 'eventBus', 'config.gridSnapping']; // helpers //////////
+
+  /**
+   * Get minimum and maximum snap constraints.
+   * Constraints are cached.
+   *
+   * @param {Object} event
+   * @param {Object} event.context
+   * @param {string} axis
+   *
+   * @returns {boolean|Object}
+   */
+
+  function getSnapConstraints(event, axis) {
+    var context = event.context,
+        createConstraints = context.createConstraints,
+        resizeConstraints = context.resizeConstraints || {},
+        gridSnappingContext = context.gridSnappingContext,
+        snapConstraints = gridSnappingContext.snapConstraints; // cache snap constraints
+
+    if (snapConstraints && snapConstraints[axis]) {
+      return snapConstraints[axis];
+    }
+
+    if (!snapConstraints) {
+      snapConstraints = gridSnappingContext.snapConstraints = {};
+    }
+
+    if (!snapConstraints[axis]) {
+      snapConstraints[axis] = {};
+    }
+
+    var direction = context.direction; // create
+
+    if (createConstraints) {
+      if (isHorizontal(axis)) {
+        snapConstraints.x.min = createConstraints.left;
+        snapConstraints.x.max = createConstraints.right;
+      } else {
+        snapConstraints.y.min = createConstraints.top;
+        snapConstraints.y.max = createConstraints.bottom;
+      }
+    } // resize
+
+
+    var minResizeConstraints = resizeConstraints.min,
+        maxResizeConstraints = resizeConstraints.max;
+
+    if (minResizeConstraints) {
+      if (isHorizontal(axis)) {
+        if (isWest(direction)) {
+          snapConstraints.x.max = minResizeConstraints.left;
+        } else {
+          snapConstraints.x.min = minResizeConstraints.right;
+        }
+      } else {
+        if (isNorth(direction)) {
+          snapConstraints.y.max = minResizeConstraints.top;
+        } else {
+          snapConstraints.y.min = minResizeConstraints.bottom;
+        }
+      }
+    }
+
+    if (maxResizeConstraints) {
+      if (isHorizontal(axis)) {
+        if (isWest(direction)) {
+          snapConstraints.x.min = maxResizeConstraints.left;
+        } else {
+          snapConstraints.x.max = maxResizeConstraints.right;
+        }
+      } else {
+        if (isNorth(direction)) {
+          snapConstraints.y.min = maxResizeConstraints.top;
+        } else {
+          snapConstraints.y.max = maxResizeConstraints.bottom;
+        }
+      }
+    }
+
+    return snapConstraints[axis];
+  }
+  /**
+   * Get snap offset.
+   * Offset is cached.
+   *
+   * @param {Object} event
+   * @param {string} axis
+   * @param {ElementRegistry} elementRegistry
+   *
+   * @returns {number}
+   */
+
+
+  function getSnapOffset(event, axis, elementRegistry) {
+    var context = event.context,
+        shape = event.shape,
+        gridSnappingContext = context.gridSnappingContext,
+        snapLocation = gridSnappingContext.snapLocation,
+        snapOffset = gridSnappingContext.snapOffset; // cache snap offset
+
+    if (snapOffset && isNumber(snapOffset[axis])) {
+      return snapOffset[axis];
+    }
+
+    if (!snapOffset) {
+      snapOffset = gridSnappingContext.snapOffset = {};
+    }
+
+    if (!isNumber(snapOffset[axis])) {
+      snapOffset[axis] = 0;
+    }
+
+    if (!shape) {
+      return snapOffset[axis];
+    }
+
+    if (!elementRegistry.get(shape.id)) {
+      if (isHorizontal(axis)) {
+        snapOffset[axis] += shape[axis] + shape.width / 2;
+      } else {
+        snapOffset[axis] += shape[axis] + shape.height / 2;
+      }
+    }
+
+    if (!snapLocation) {
+      return snapOffset[axis];
+    }
+
+    if (axis === 'x') {
+      if (/left/.test(snapLocation)) {
+        snapOffset[axis] -= shape.width / 2;
+      } else if (/right/.test(snapLocation)) {
+        snapOffset[axis] += shape.width / 2;
+      }
+    } else {
+      if (/top/.test(snapLocation)) {
+        snapOffset[axis] -= shape.height / 2;
+      } else if (/bottom/.test(snapLocation)) {
+        snapOffset[axis] += shape.height / 2;
+      }
+    }
+
+    return snapOffset[axis];
+  }
+
+  function isHorizontal(axis) {
+    return axis === 'x';
+  }
+
+  function isNorth(direction) {
+    return direction.indexOf('n') !== -1;
+  }
+
+  function isWest(direction) {
+    return direction.indexOf('w') !== -1;
+  }
+
+  var DEFAULT_PRIORITY$3 = 1000;
+  /**
+   * A utility that can be used to plug-in into the command execution for
+   * extension and/or validation.
+   *
+   * @param {EventBus} eventBus
+   *
+   * @example
+   *
+   * import inherits from 'inherits';
+   *
+   * import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
+   *
+   * function CommandLogger(eventBus) {
+   *   CommandInterceptor.call(this, eventBus);
+   *
+   *   this.preExecute(function(event) {
+   *     console.log('command pre-execute', event);
+   *   });
+   * }
+   *
+   * inherits(CommandLogger, CommandInterceptor);
+   *
+   */
+
+  function CommandInterceptor(eventBus) {
+    this._eventBus = eventBus;
+  }
+  CommandInterceptor.$inject = ['eventBus'];
+
+  function unwrapEvent(fn, that) {
+    return function (event) {
+      return fn.call(that || null, event.context, event.command, event);
+    };
+  }
+  /**
+   * Register an interceptor for a command execution
+   *
+   * @param {String|Array<String>} [events] list of commands to register on
+   * @param {String} [hook] command hook, i.e. preExecute, executed to listen on
+   * @param {Number} [priority] the priority on which to hook into the execution
+   * @param {Function} handlerFn interceptor to be invoked with (event)
+   * @param {Boolean} unwrap if true, unwrap the event and pass (context, command, event) to the
+   *                          listener instead
+   * @param {Object} [that] Pass context (`this`) to the handler function
+   */
+
+
+  CommandInterceptor.prototype.on = function (events, hook, priority, handlerFn, unwrap, that) {
+    if (isFunction(hook) || isNumber(hook)) {
+      that = unwrap;
+      unwrap = handlerFn;
+      handlerFn = priority;
+      priority = hook;
+      hook = null;
+    }
+
+    if (isFunction(priority)) {
+      that = unwrap;
+      unwrap = handlerFn;
+      handlerFn = priority;
+      priority = DEFAULT_PRIORITY$3;
+    }
+
+    if (isObject(unwrap)) {
+      that = unwrap;
+      unwrap = false;
+    }
+
+    if (!isFunction(handlerFn)) {
+      throw new Error('handlerFn must be a function');
+    }
+
+    if (!isArray(events)) {
+      events = [events];
+    }
+
+    var eventBus = this._eventBus;
+    forEach(events, function (event) {
+      // concat commandStack(.event)?(.hook)?
+      var fullEvent = ['commandStack', event, hook].filter(function (e) {
+        return e;
+      }).join('.');
+      eventBus.on(fullEvent, priority, unwrap ? unwrapEvent(handlerFn, that) : handlerFn, that);
+    });
+  };
+
+  var hooks = ['canExecute', 'preExecute', 'preExecuted', 'execute', 'executed', 'postExecute', 'postExecuted', 'revert', 'reverted'];
+  /*
+   * Install hook shortcuts
+   *
+   * This will generate the CommandInterceptor#(preExecute|...|reverted) methods
+   * which will in term forward to CommandInterceptor#on.
+   */
+
+  forEach(hooks, function (hook) {
+    /**
+     * {canExecute|preExecute|preExecuted|execute|executed|postExecute|postExecuted|revert|reverted}
+     *
+     * A named hook for plugging into the command execution
+     *
+     * @param {String|Array<String>} [events] list of commands to register on
+     * @param {Number} [priority] the priority on which to hook into the execution
+     * @param {Function} handlerFn interceptor to be invoked with (event)
+     * @param {Boolean} [unwrap=false] if true, unwrap the event and pass (context, command, event) to the
+     *                          listener instead
+     * @param {Object} [that] Pass context (`this`) to the handler function
+     */
+    CommandInterceptor.prototype[hook] = function (events, priority, handlerFn, unwrap, that) {
+      if (isFunction(events) || isNumber(events)) {
+        that = unwrap;
+        unwrap = handlerFn;
+        handlerFn = priority;
+        priority = events;
+        events = null;
+      }
+
+      this.on(events, hook, priority, handlerFn, unwrap, that);
+    };
+  });
+
+  /**
+   * Integrates resizing with grid snapping.
+   */
+
+  function ResizeBehavior(eventBus, gridSnapping) {
+    CommandInterceptor.call(this, eventBus);
+    this._gridSnapping = gridSnapping;
+    var self = this;
+    this.preExecute('shape.resize', function (event) {
+      var context = event.context,
+          hints = context.hints || {},
+          autoResize = hints.autoResize;
+
+      if (!autoResize) {
+        return;
+      }
+
+      var shape = context.shape,
+          newBounds = context.newBounds;
+
+      if (isString(autoResize)) {
+        context.newBounds = self.snapComplex(newBounds, autoResize);
+      } else {
+        context.newBounds = self.snapSimple(shape, newBounds);
+      }
+    });
+  }
+  ResizeBehavior.$inject = ['eventBus', 'gridSnapping', 'modeling'];
+  inherits_browser(ResizeBehavior, CommandInterceptor);
+  /**
+   * Snap width and height in relation to center.
+   *
+   * @param {djs.model.shape} shape
+   * @param {Bounds} newBounds
+   *
+   * @returns {Bounds} Snapped bounds.
+   */
+
+  ResizeBehavior.prototype.snapSimple = function (shape, newBounds) {
+    var gridSnapping = this._gridSnapping;
+    newBounds.width = gridSnapping.snapValue(newBounds.width, {
+      min: newBounds.width
+    });
+    newBounds.height = gridSnapping.snapValue(newBounds.height, {
+      min: newBounds.height
+    });
+    newBounds.x = shape.x + shape.width / 2 - newBounds.width / 2;
+    newBounds.y = shape.y + shape.height / 2 - newBounds.height / 2;
+    return newBounds;
+  };
+  /**
+   * Snap x, y, width and height according to given directions.
+   *
+   * @param {Bounds} newBounds
+   * @param {string} directions - Directions as {n|w|s|e}.
+   *
+   * @returns {Bounds} Snapped bounds.
+   */
+
+
+  ResizeBehavior.prototype.snapComplex = function (newBounds, directions) {
+    if (/w|e/.test(directions)) {
+      newBounds = this.snapHorizontally(newBounds, directions);
+    }
+
+    if (/n|s/.test(directions)) {
+      newBounds = this.snapVertically(newBounds, directions);
+    }
+
+    return newBounds;
+  };
+  /**
+   * Snap in one or both directions horizontally.
+   *
+   * @param {Bounds} newBounds
+   * @param {string} directions - Directions as {n|w|s|e}.
+   *
+   * @returns {Bounds} Snapped bounds.
+   */
+
+
+  ResizeBehavior.prototype.snapHorizontally = function (newBounds, directions) {
+    var gridSnapping = this._gridSnapping,
+        west = /w/.test(directions),
+        east = /e/.test(directions);
+    var snappedNewBounds = {};
+    snappedNewBounds.width = gridSnapping.snapValue(newBounds.width, {
+      min: newBounds.width
+    });
+
+    if (east) {
+      // handle <we>
+      if (west) {
+        snappedNewBounds.x = gridSnapping.snapValue(newBounds.x, {
+          max: newBounds.x
+        });
+        snappedNewBounds.width += gridSnapping.snapValue(newBounds.x - snappedNewBounds.x, {
+          min: newBounds.x - snappedNewBounds.x
+        });
+      } // handle <e>
+      else {
+          newBounds.x = newBounds.x + newBounds.width - snappedNewBounds.width;
+        }
+    } // assign snapped x and width
+
+
+    assign(newBounds, snappedNewBounds);
+    return newBounds;
+  };
+  /**
+   * Snap in one or both directions vertically.
+   *
+   * @param {Bounds} newBounds
+   * @param {string} directions - Directions as {n|w|s|e}.
+   *
+   * @returns {Bounds} Snapped bounds.
+   */
+
+
+  ResizeBehavior.prototype.snapVertically = function (newBounds, directions) {
+    var gridSnapping = this._gridSnapping,
+        north = /n/.test(directions),
+        south = /s/.test(directions);
+    var snappedNewBounds = {};
+    snappedNewBounds.height = gridSnapping.snapValue(newBounds.height, {
+      min: newBounds.height
+    });
+
+    if (north) {
+      // handle <ns>
+      if (south) {
+        snappedNewBounds.y = gridSnapping.snapValue(newBounds.y, {
+          max: newBounds.y
+        });
+        snappedNewBounds.height += gridSnapping.snapValue(newBounds.y - snappedNewBounds.y, {
+          min: newBounds.y - snappedNewBounds.y
+        });
+      } // handle <n>
+      else {
+          newBounds.y = newBounds.y + newBounds.height - snappedNewBounds.height;
+        }
+    } // assign snapped y and height
+
+
+    assign(newBounds, snappedNewBounds);
+    return newBounds;
+  };
+
+  var HIGH_PRIORITY$4 = 2000;
+  /**
+   * Integrates space tool with grid snapping.
+   */
+
+  function SpaceToolBehavior(eventBus, gridSnapping) {
+    eventBus.on(['spaceTool.move', 'spaceTool.end'], HIGH_PRIORITY$4, function (event) {
+      var context = event.context;
+
+      if (!context.initialized) {
+        return;
+      }
+
+      var axis = context.axis;
+
+      if (axis === 'x') {
+        // snap delta x to multiple of 10
+        event.dx = gridSnapping.snapValue(event.dx);
+      } else {
+        // snap delta y to multiple of 10
+        event.dy = gridSnapping.snapValue(event.dy);
+      }
+    });
+  }
+  SpaceToolBehavior.$inject = ['eventBus', 'gridSnapping'];
+
+  var GridSnappingBehaviorModule = {
+    __init__: ['gridSnappingResizeBehavior', 'gridSnappingSpaceToolBehavior'],
+    gridSnappingResizeBehavior: ['type', ResizeBehavior],
+    gridSnappingSpaceToolBehavior: ['type', SpaceToolBehavior]
+  };
+
+  var GridSnappingModule = {
+    __depends__: [GridSnappingBehaviorModule],
+    __init__: ['gridSnapping'],
+    gridSnapping: ['type', GridSnapping]
+  };
+
   var KEYDOWN_EVENT = 'keyboard.keydown',
       KEYUP_EVENT = 'keyboard.keyup';
-  var DEFAULT_PRIORITY$3 = 1000;
+  var DEFAULT_PRIORITY$4 = 1000;
   /**
    * A keyboard abstraction that may be activated and
    * deactivated by users at will, consuming key events
@@ -24012,7 +25001,7 @@
     if (isFunction(priority)) {
       type = listener;
       listener = priority;
-      priority = DEFAULT_PRIORITY$3;
+      priority = DEFAULT_PRIORITY$4;
     }
 
     this._eventBus.on(type || KEYDOWN_EVENT, priority, listener);
@@ -24031,7 +25020,7 @@
     return target && (matchesSelector$1(target, 'input, textarea') || target.contentEditable === 'true');
   }
 
-  var LOW_PRIORITY$5 = 500;
+  var LOW_PRIORITY$6 = 500;
   /**
    * Adds default keyboard bindings.
    *
@@ -24044,7 +25033,7 @@
 
   function KeyboardBindings(eventBus, keyboard) {
     var self = this;
-    eventBus.on('editorActions.init', LOW_PRIORITY$5, function (event) {
+    eventBus.on('editorActions.init', LOW_PRIORITY$6, function (event) {
       var editorActions = event.editorActions;
       self.registerBindings(keyboard, editorActions);
     });
@@ -25699,127 +26688,6 @@
     labelEditingProvider: ['type', LabelEditingProvider]
   };
 
-  var DEFAULT_PRIORITY$4 = 1000;
-  /**
-   * A utility that can be used to plug-in into the command execution for
-   * extension and/or validation.
-   *
-   * @param {EventBus} eventBus
-   *
-   * @example
-   *
-   * import inherits from 'inherits';
-   *
-   * import CommandInterceptor from 'diagram-js/lib/command/CommandInterceptor';
-   *
-   * function CommandLogger(eventBus) {
-   *   CommandInterceptor.call(this, eventBus);
-   *
-   *   this.preExecute(function(event) {
-   *     console.log('command pre-execute', event);
-   *   });
-   * }
-   *
-   * inherits(CommandLogger, CommandInterceptor);
-   *
-   */
-
-  function CommandInterceptor(eventBus) {
-    this._eventBus = eventBus;
-  }
-  CommandInterceptor.$inject = ['eventBus'];
-
-  function unwrapEvent(fn, that) {
-    return function (event) {
-      return fn.call(that || null, event.context, event.command, event);
-    };
-  }
-  /**
-   * Register an interceptor for a command execution
-   *
-   * @param {String|Array<String>} [events] list of commands to register on
-   * @param {String} [hook] command hook, i.e. preExecute, executed to listen on
-   * @param {Number} [priority] the priority on which to hook into the execution
-   * @param {Function} handlerFn interceptor to be invoked with (event)
-   * @param {Boolean} unwrap if true, unwrap the event and pass (context, command, event) to the
-   *                          listener instead
-   * @param {Object} [that] Pass context (`this`) to the handler function
-   */
-
-
-  CommandInterceptor.prototype.on = function (events, hook, priority, handlerFn, unwrap, that) {
-    if (isFunction(hook) || isNumber(hook)) {
-      that = unwrap;
-      unwrap = handlerFn;
-      handlerFn = priority;
-      priority = hook;
-      hook = null;
-    }
-
-    if (isFunction(priority)) {
-      that = unwrap;
-      unwrap = handlerFn;
-      handlerFn = priority;
-      priority = DEFAULT_PRIORITY$4;
-    }
-
-    if (isObject(unwrap)) {
-      that = unwrap;
-      unwrap = false;
-    }
-
-    if (!isFunction(handlerFn)) {
-      throw new Error('handlerFn must be a function');
-    }
-
-    if (!isArray(events)) {
-      events = [events];
-    }
-
-    var eventBus = this._eventBus;
-    forEach(events, function (event) {
-      // concat commandStack(.event)?(.hook)?
-      var fullEvent = ['commandStack', event, hook].filter(function (e) {
-        return e;
-      }).join('.');
-      eventBus.on(fullEvent, priority, unwrap ? unwrapEvent(handlerFn, that) : handlerFn, that);
-    });
-  };
-
-  var hooks = ['canExecute', 'preExecute', 'preExecuted', 'execute', 'executed', 'postExecute', 'postExecuted', 'revert', 'reverted'];
-  /*
-   * Install hook shortcuts
-   *
-   * This will generate the CommandInterceptor#(preExecute|...|reverted) methods
-   * which will in term forward to CommandInterceptor#on.
-   */
-
-  forEach(hooks, function (hook) {
-    /**
-     * {canExecute|preExecute|preExecuted|execute|executed|postExecute|postExecuted|revert|reverted}
-     *
-     * A named hook for plugging into the command execution
-     *
-     * @param {String|Array<String>} [events] list of commands to register on
-     * @param {Number} [priority] the priority on which to hook into the execution
-     * @param {Function} handlerFn interceptor to be invoked with (event)
-     * @param {Boolean} [unwrap=false] if true, unwrap the event and pass (context, command, event) to the
-     *                          listener instead
-     * @param {Object} [that] Pass context (`this`) to the handler function
-     */
-    CommandInterceptor.prototype[hook] = function (events, priority, handlerFn, unwrap, that) {
-      if (isFunction(events) || isNumber(events)) {
-        that = unwrap;
-        unwrap = handlerFn;
-        handlerFn = priority;
-        priority = events;
-        events = null;
-      }
-
-      this.on(events, hook, priority, handlerFn, unwrap, that);
-    };
-  });
-
   /**
    * Create DI for new connections.
    *
@@ -25876,6 +26744,33 @@
     }
   }
 
+  function ReplaceConnectionBehavior(injector, modeling, rules) {
+    injector.invoke(CommandInterceptor, this);
+    this.preExecute('connection.reconnect', function (context) {
+      var connection = context.connection,
+          source = context.newSource || connection.source,
+          target = context.newTarget || connection.target,
+          waypoints = connection.waypoints.slice();
+      var allowed = rules.allowed('connection.reconnect', {
+        connection: connection,
+        source: source,
+        target: target
+      });
+
+      if (!allowed || allowed.type === connection.type) {
+        return;
+      }
+
+      context.connection = modeling.connect(source, target, {
+        type: allowed.type,
+        waypoints: waypoints
+      });
+      modeling.removeConnection(connection);
+    }, true);
+  }
+  inherits_browser(ReplaceConnectionBehavior, CommandInterceptor);
+  ReplaceConnectionBehavior.$inject = ['injector', 'modeling', 'rules'];
+
   /**
    * Defines the behaviour of what happens to the elements inside a container
    * that morphs into another DRD element
@@ -25920,9 +26815,227 @@
   inherits_browser(ReplaceElementBehaviour, CommandInterceptor);
   ReplaceElementBehaviour.$inject = ['eventBus', 'modeling'];
 
+  function _typeof$4(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$4 = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$4 = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$4(obj);
+  }
+
+  function _classCallCheck$4(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$4(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$4(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$4(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$4(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$2(self, call) {
+    if (call && (_typeof$4(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$2(self);
+  }
+
+  function _getPrototypeOf$2(o) {
+    _getPrototypeOf$2 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$2(o);
+  }
+
+  function _assertThisInitialized$2(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$2(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$2(subClass, superClass);
+  }
+
+  function _setPrototypeOf$2(o, p) {
+    _setPrototypeOf$2 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$2(o, p);
+  }
+  var ID = 'id';
+
+  var IdChangeBehavior =
+  /*#__PURE__*/
+  function (_CommandInterceptor) {
+    _inherits$2(IdChangeBehavior, _CommandInterceptor);
+
+    function IdChangeBehavior(eventBus) {
+      var _this;
+
+      _classCallCheck$4(this, IdChangeBehavior);
+
+      _this = _possibleConstructorReturn$2(this, _getPrototypeOf$2(IdChangeBehavior).call(this, eventBus));
+
+      _this.executed(['element.updateProperties', 'updateProperties'], _this.updateIds.bind(_assertThisInitialized$2(_this)));
+
+      return _this;
+    }
+
+    _createClass$4(IdChangeBehavior, [{
+      key: "updateIds",
+      value: function updateIds(_ref) {
+        var context = _ref.context;
+        var element = context.element,
+            oldProperties = context.oldProperties,
+            properties = context.properties;
+        var bo = getBusinessObject(element);
+
+        if (!is(bo, 'dmn:DRGElement') || !isIdChange(oldProperties, properties)) {
+          return;
+        }
+
+        var drgElements = getDrgElements(bo);
+        drgElements.forEach(function (drgElement) {
+          updateElementReferences(drgElement, oldProperties.id, properties.id);
+          updateEdges(drgElement, oldProperties.id, properties.id);
+        });
+      }
+    }]);
+
+    return IdChangeBehavior;
+  }(CommandInterceptor);
+  IdChangeBehavior.$inject = ['eventBus']; // helpers //////////////////////
+
+  function isIdChange(oldProperties, properties) {
+    return ID in oldProperties && ID in properties;
+  }
+
+  function getDrgElements(element) {
+    var definitions = getDefinitions(element);
+    var drgElements = definitions.drgElements;
+    return drgElements;
+  }
+  /**
+   * Walk up the tree until at the root to get to dmn:Definitions.
+   *
+   * @param {ModdleElement} element
+   */
+
+
+  function getDefinitions(element) {
+    var definitions = element;
+
+    while (!is(definitions, 'dmn:Definitions')) {
+      definitions = definitions.$parent;
+    }
+
+    return definitions;
+  }
+
+  function updateElementReferences(element, oldId, id) {
+    var handlers = {
+      authorityRequirement: function authorityRequirement() {
+        element.authorityRequirement.forEach(function (authorityRequirement) {
+          var requiredAuthority = authorityRequirement.requiredAuthority,
+              requiredDecision = authorityRequirement.requiredDecision,
+              requiredInput = authorityRequirement.requiredInput;
+
+          if (requiredAuthority && requiredAuthority.href === "#".concat(oldId)) {
+            requiredAuthority.href = "#".concat(id);
+          }
+
+          if (requiredDecision && requiredDecision.href === "#".concat(oldId)) {
+            requiredDecision.href = "#".concat(id);
+          }
+
+          if (requiredInput && requiredInput.href === "#".concat(oldId)) {
+            requiredInput.href = "#".concat(id);
+          }
+        });
+      },
+      informationRequirement: function informationRequirement() {
+        element.informationRequirement.forEach(function (informationRequirement) {
+          var requiredDecision = informationRequirement.requiredDecision,
+              requiredInput = informationRequirement.requiredInput;
+
+          if (requiredDecision && requiredDecision.href === "#".concat(oldId)) {
+            requiredDecision.href = "#".concat(id);
+          }
+
+          if (requiredInput && requiredInput.href === "#".concat(oldId)) {
+            requiredInput.href = "#".concat(id);
+          }
+        });
+      },
+      knowledgeRequirement: function knowledgeRequirement() {
+        element.knowledgeRequirement.forEach(function (knowledgeRequirement) {
+          var requiredKnowledge = knowledgeRequirement.requiredKnowledge;
+
+          if (requiredKnowledge && requiredKnowledge.href === "#".concat(oldId)) {
+            requiredKnowledge.href = "#".concat(id);
+          }
+        });
+      }
+    };
+    forEach(handlers, function (handler, key) {
+      if (element[key]) {
+        handler();
+      }
+    });
+  }
+
+  function updateEdges(element, oldId, id) {
+    if (element.extensionElements) {
+      element.extensionElements.values.forEach(function (extensionElement) {
+        if (is(extensionElement, 'biodi:Edge')) {
+          if (extensionElement.source === oldId) {
+            extensionElement.source = id;
+          }
+        }
+      });
+    }
+  }
+
   var ModelingBehavior = {
-    __init__: ['createConnectionBehavior', 'replaceElementBehavior'],
+    __init__: ['createConnectionBehavior', 'idChangeBehavior', 'replaceConnectionBehavior', 'replaceElementBehavior'],
     createConnectionBehavior: ['type', CreateConnectionBehavior],
+    idChangeBehavior: ['type', IdChangeBehavior],
+    replaceConnectionBehavior: ['type', ReplaceConnectionBehavior],
     replaceElementBehavior: ['type', ReplaceElementBehaviour]
   };
 
@@ -26129,7 +27242,7 @@
     }
 
     if (every(elements, function (element) {
-      return isAny(element, ['dmn:BusinessKnowledgeModel', 'dmn:Decision', 'dmn:InputData', 'dmn:KnowledgeSource', 'dmn:TextAnnotation']);
+      return isAny(element, ['dmn:BusinessKnowledgeModel', 'dmn:Decision', 'dmn:InputData', 'dmn:KnowledgeSource', 'dmn:TextAnnotation', 'dmn:InformationRequirement', 'dmn:AuthorityRequirement', 'dmn:KnowledgeRequirement', 'dmn:Association']);
     }) && is(target, 'dmn:Definitions')) {
       return true;
     }
@@ -26177,17 +27290,21 @@
   };
 
   DrdFactory.prototype.createDiEdge = function (source, waypoints) {
-    var self = this;
     return this.create('biodi:Edge', {
       source: source.id,
-      waypoints: map(waypoints, function (waypoint) {
-        return self.createDiWaypoint(waypoint);
-      })
+      waypoints: this.createDiWaypoints(waypoints)
+    });
+  };
+
+  DrdFactory.prototype.createDiWaypoints = function (waypoints) {
+    var self = this;
+    return waypoints.map(function (waypoint) {
+      return self.createDiWaypoint(waypoint);
     });
   };
 
   DrdFactory.prototype.createDiWaypoint = function (waypoint) {
-    return this.create('biodi:Waypoint', waypoint);
+    return this.create('biodi:Waypoint', pick(waypoint, ['x', 'y']));
   };
 
   DrdFactory.prototype.createExtensionElements = function () {
@@ -26273,7 +27390,7 @@
           connectionBo = connection.businessObject,
           target = context.target,
           targetBo = target.businessObject,
-          extensionElements = targetBo.extensionElements,
+          extensionElements = targetBo.get('extensionElements'),
           di = context.di;
 
       if (is(connection, 'dmn:Association')) {
@@ -26293,7 +27410,7 @@
       var connection = context.connection,
           target = context.target,
           targetBo = target.businessObject,
-          extensionElements = targetBo.extensionElements,
+          extensionElements = targetBo.get('extensionElements'),
           di = context.di;
       reverseUpdateParent(context);
 
@@ -26306,7 +27423,7 @@
           source = context.source,
           target = context.target,
           targetBo = target.businessObject,
-          extensionElements = targetBo.extensionElements;
+          extensionElements = targetBo.get('extensionElements');
 
       if (is(connection, 'dmn:Association')) {
         return;
@@ -26326,7 +27443,7 @@
           target = context.target,
           oldDI = context.oldDI,
           targetBo = target.businessObject,
-          extensionElements = targetBo.extensionElements;
+          extensionElements = targetBo.get('extensionElements');
 
       if (!oldDI || is(connection, 'dmn:Association')) {
         return;
@@ -26341,10 +27458,10 @@
           newSource = context.newSource,
           oldTarget = context.oldTarget,
           oldTargetBo = oldTarget.businessObject,
-          oldTargetBoExtensionElements = oldTargetBo.extensionElements,
+          oldTargetBoExtensionElements = oldTargetBo.get('extensionElements'),
           newTarget = context.newTarget,
           newTargetBo = newTarget.businessObject,
-          newTargetBoExtensionElements = newTargetBo.extensionElements;
+          newTargetBoExtensionElements = newTargetBo.get('extensionElements');
       self.updateSemanticParent(connectionBo, newTargetBo);
       var edge = find(oldTargetBoExtensionElements.get('values'), function (extensionElement) {
         var source = extensionElement.source;
@@ -26355,7 +27472,10 @@
         // (1) remove edge from old target
         remove$3(oldTargetBoExtensionElements.get('values'), edge); // (2) add edge to new target
 
-        newTargetBoExtensionElements.get('values').push(edge); // (3) reference new source
+        if (!is(newTarget, 'dmn:TextAnnotation')) {
+          newTargetBoExtensionElements.get('values').push(edge);
+        } // (3) reference new source
+
 
         if (newSource) {
           edge.source = newSource.id;
@@ -26369,10 +27489,10 @@
           newSource = context.newSource,
           oldTarget = context.oldTarget,
           oldTargetBo = oldTarget.businessObject,
-          oldTargetBoExtensionElements = oldTargetBo.extensionElements,
+          oldTargetBoExtensionElements = oldTargetBo.get('extensionElements'),
           newTarget = context.newTarget,
           newTargetBo = newTarget.businessObject,
-          newTargetBoExtensionElements = newTargetBo.extensionElements;
+          newTargetBoExtensionElements = newTargetBo.get('extensionElements');
       self.updateSemanticParent(connectionBo, oldTargetBo);
       var edge = find(newTargetBoExtensionElements.get('values'), function (extensionElement) {
         var source = extensionElement.source;
@@ -26381,7 +27501,10 @@
 
       if (edge) {
         // (1) remove edge from new target
-        remove$3(newTargetBoExtensionElements.get('values'), edge); // (2) add edge to old target
+        if (!is(newTarget, 'dmn:TextAnnotation')) {
+          remove$3(newTargetBoExtensionElements.get('values'), edge);
+        } // (2) add edge to old target
+
 
         oldTargetBoExtensionElements.get('values').push(edge); // (3) reference old source
 
@@ -26395,7 +27518,7 @@
       var element = context.element,
           outgoing = element.outgoing;
 
-      if (!isIdChange(context) || !outgoing) {
+      if (!isIdChange$1(context) || !outgoing) {
         return;
       }
 
@@ -26404,7 +27527,7 @@
       forEach(outgoing, function (connection) {
         var target = connection.target,
             targetBo = target.businessObject,
-            extensionElements = targetBo.extensionElements;
+            extensionElements = targetBo.get('extensionElements');
         var edge = find(extensionElements.get('values'), function (extensionElement) {
           return is(extensionElement, 'biodi:Edge') && extensionElement.source === oldProperties.id;
         });
@@ -26419,7 +27542,7 @@
       var element = context.element,
           outgoing = element.outgoing;
 
-      if (!isIdChange(context) || !outgoing) {
+      if (!isIdChange$1(context) || !outgoing) {
         return;
       }
 
@@ -26428,7 +27551,7 @@
       forEach(outgoing, function (connection) {
         var target = connection.target,
             targetBo = target.businessObject,
-            extensionElements = targetBo.extensionElements;
+            extensionElements = targetBo.get('extensionElements');
         var edge = find(extensionElements.get('values'), function (extensionElement) {
           return is(extensionElement, 'biodi:Edge') && extensionElement.source === properties.id;
         });
@@ -26445,7 +27568,7 @@
   DrdUpdater.prototype.updateBounds = function (shape) {
     var drdFactory = this._drdFactory;
     var businessObject = shape.businessObject,
-        extensionElements = businessObject.extensionElements,
+        extensionElements = businessObject.get('extensionElements'),
         bounds;
 
     if (!extensionElements) {
@@ -26485,9 +27608,9 @@
         extensionElements;
 
     if (is(connection, 'dmn:Association')) {
-      extensionElements = connectionBo.extensionElements;
+      extensionElements = connectionBo.get('extensionElements');
     } else {
-      extensionElements = targetBo.extensionElements;
+      extensionElements = targetBo.get('extensionElements');
     }
 
     var edge = find(extensionElements.get('values'), function (extensionElement) {
@@ -26495,9 +27618,7 @@
     });
 
     if (edge) {
-      edge.waypoints = map(connection.waypoints, function (waypoint) {
-        return drdFactory.createDiWaypoint(waypoint);
-      }).map(function (waypoint) {
+      edge.waypoints = drdFactory.createDiWaypoints(connection.waypoints).map(function (waypoint) {
         waypoint.$parent = edge;
         return waypoint;
       });
@@ -26559,7 +27680,7 @@
     return array.indexOf(item) !== -1;
   }
 
-  function isIdChange(context) {
+  function isIdChange$1(context) {
     return !!context.properties.id;
   }
 
@@ -26651,13 +27772,13 @@
    *
    */
 
-  function AlignElements(modeling, canvas) {
+  function AlignElements$1(modeling, canvas) {
     this._modeling = modeling;
     this._canvas = canvas;
   }
-  AlignElements.$inject = ['modeling', 'canvas'];
+  AlignElements$1.$inject = ['modeling', 'canvas'];
 
-  AlignElements.prototype.preExecute = function (context) {
+  AlignElements$1.prototype.preExecute = function (context) {
     var modeling = this._modeling;
     var elements = context.elements,
         alignment = context.alignment;
@@ -26685,7 +27806,7 @@
     });
   };
 
-  AlignElements.prototype.postExecute = function (context) {};
+  AlignElements$1.prototype.postExecute = function (context) {};
 
   /**
    * A handler that implements reversible appending of shapes
@@ -26792,9 +27913,10 @@
 
     connection.source = null;
     connection.target = null;
+    return connection;
   };
 
-  var round$6 = Math.round;
+  var round$7 = Math.round;
   function CreateElementsHandler(modeling) {
     this._modeling = modeling;
   }
@@ -26823,15 +27945,15 @@
       if (isConnection$1(element)) {
         element.waypoints = map(element.waypoints, function (waypoint) {
           return {
-            x: round$6(waypoint.x - bbox.x - bbox.width / 2 + position.x),
-            y: round$6(waypoint.y - bbox.y - bbox.height / 2 + position.y)
+            x: round$7(waypoint.x - bbox.x - bbox.width / 2 + position.x),
+            y: round$7(waypoint.y - bbox.y - bbox.height / 2 + position.y)
           };
         });
       }
 
       assign(element, {
-        x: round$6(element.x - bbox.x - bbox.width / 2 + position.x),
-        y: round$6(element.y - bbox.y - bbox.height / 2 + position.y)
+        x: round$7(element.x - bbox.x - bbox.width / 2 + position.x),
+        y: round$7(element.y - bbox.y - bbox.height / 2 + position.y)
       });
     });
     var parents = getParents(elements);
@@ -26858,7 +27980,7 @@
     return !!element.waypoints;
   }
 
-  var round$7 = Math.round;
+  var round$8 = Math.round;
   /**
    * A handler that implements reversible addition of shapes.
    *
@@ -26897,8 +28019,8 @@
       assign(shape, positionOrBounds);
     } else {
       assign(shape, {
-        x: positionOrBounds.x - round$7(shape.width / 2),
-        y: positionOrBounds.y - round$7(shape.height / 2)
+        x: positionOrBounds.x - round$8(shape.width / 2),
+        y: positionOrBounds.y - round$8(shape.height / 2)
       });
     } // (2) add to canvas
 
@@ -26913,8 +28035,11 @@
 
 
   CreateShapeHandler.prototype.revert = function (context) {
-    // (3) remove form canvas
-    this._canvas.removeShape(context.shape);
+    var shape = context.shape; // (3) remove form canvas
+
+    this._canvas.removeShape(shape);
+
+    return shape;
   };
 
   /**
@@ -27155,16 +28280,16 @@
    * A handler that distributes elements evenly.
    */
 
-  function DistributeElements(modeling) {
+  function DistributeElements$1(modeling) {
     this._modeling = modeling;
   }
-  DistributeElements.$inject = ['modeling'];
+  DistributeElements$1.$inject = ['modeling'];
   var OFF_AXIS = {
     x: 'y',
     y: 'x'
   };
 
-  DistributeElements.prototype.preExecute = function (context) {
+  DistributeElements$1.prototype.preExecute = function (context) {
     var modeling = this._modeling;
     var groups = context.groups,
         axis = context.axis,
@@ -27281,7 +28406,7 @@
     });
   };
 
-  DistributeElements.prototype.postExecute = function (context) {};
+  DistributeElements$1.prototype.postExecute = function (context) {};
 
   /**
    * A handler that implements reversible moving of shapes.
@@ -27790,6 +28915,12 @@
       x: newData.x,
       y: newData.y
     };
+    var oldBounds = {
+      x: oldShape.x,
+      y: oldShape.y,
+      width: oldShape.width,
+      height: oldShape.height
+    };
     newShape = context.newShape = context.newShape || self.createShape(newData, position, oldShape.parent, hints); // (2) update host
 
     if (oldShape.host) {
@@ -27811,23 +28942,19 @@
     var incoming = oldShape.incoming.slice(),
         outgoing = oldShape.outgoing.slice();
     forEach(incoming, function (connection) {
-      var waypoints = connection.waypoints,
-          docking = waypoints[waypoints.length - 1],
-          source = connection.source,
+      var source = connection.source,
           allowed = canReconnect(source, newShape, connection);
 
       if (allowed) {
-        self.reconnectEnd(connection, newShape, docking, hints);
+        self.reconnectEnd(connection, newShape, getResizedTargetAnchor(connection, newShape, oldBounds), hints);
       }
     });
     forEach(outgoing, function (connection) {
-      var waypoints = connection.waypoints,
-          docking = waypoints[0],
-          target = connection.target,
+      var target = connection.target,
           allowed = canReconnect(newShape, target, connection);
 
       if (allowed) {
-        self.reconnectStart(connection, newShape, docking, hints);
+        self.reconnectStart(connection, newShape, getResizedSourceAnchor(connection, newShape, oldBounds), hints);
       }
     });
   };
@@ -27837,25 +28964,9 @@
 
 
   ReplaceShapeHandler.prototype.postExecute = function (context) {
-    var modeling = this._modeling;
-    var oldShape = context.oldShape,
-        newShape = context.newShape,
-        layoutConnection = context.hints.layoutConnection;
+    var oldShape = context.oldShape;
 
-    if (layoutConnection !== false) {
-      forEach(newShape.incoming, function (connection) {
-        modeling.layoutConnection(connection, {
-          endChanged: true
-        });
-      });
-      forEach(newShape.outgoing, function (connection) {
-        modeling.layoutConnection(connection, {
-          startChanged: true
-        });
-      });
-    }
-
-    modeling.removeShape(oldShape);
+    this._modeling.removeShape(oldShape);
   };
 
   ReplaceShapeHandler.prototype.execute = function (context) {};
@@ -28254,8 +29365,8 @@
       'elements.create': CreateElementsHandler,
       'elements.move': MoveElementsHandler,
       'elements.delete': DeleteElementsHandler,
-      'elements.distribute': DistributeElements,
-      'elements.align': AlignElements,
+      'elements.distribute': DistributeElements$1,
+      'elements.align': AlignElements$1,
       'element.updateAttachment': UpdateAttachmentHandler
     };
   };
@@ -28664,7 +29775,7 @@
   };
 
   var NAME = 'name',
-      ID = 'id';
+      ID$1 = 'id';
   /**
    * A handler that implements a DMN property update.
    *
@@ -28705,10 +29816,10 @@
         properties = context.properties,
         oldProperties = context.oldProperties || getProperties(businessObject, keys(properties));
 
-    if (isIdChange$1(properties, businessObject)) {
-      ids.unclaim(businessObject[ID]);
-      elementRegistry.updateId(element, properties[ID]);
-      ids.claim(properties[ID], businessObject);
+    if (isIdChange$2(properties, businessObject)) {
+      ids.unclaim(businessObject[ID$1]);
+      elementRegistry.updateId(element, properties[ID$1]);
+      ids.claim(properties[ID$1], businessObject);
     }
 
     if (NAME in properties && element.label) {
@@ -28742,17 +29853,17 @@
 
     setProperties(businessObject, oldProperties);
 
-    if (isIdChange$1(properties, businessObject)) {
-      ids.unclaim(properties[ID]);
-      elementRegistry.updateId(element, oldProperties[ID]);
-      ids.claim(oldProperties[ID], businessObject);
+    if (isIdChange$2(properties, businessObject)) {
+      ids.unclaim(properties[ID$1]);
+      elementRegistry.updateId(element, oldProperties[ID$1]);
+      ids.claim(oldProperties[ID$1], businessObject);
     }
 
     return context.changed;
   };
 
-  function isIdChange$1(properties, businessObject) {
-    return ID in properties && properties[ID] !== businessObject[ID];
+  function isIdChange$2(properties, businessObject) {
+    return ID$1 in properties && properties[ID$1] !== businessObject[ID$1];
   }
 
   function getProperties(businessObject, propertyNames) {
@@ -28898,7 +30009,7 @@
     hints = hints || {};
     var source = hints.source || connection.source,
         target = hints.target || connection.target,
-        waypoints = connection.waypoints,
+        waypoints = hints.waypoints || connection.waypoints,
         start = hints.connectionStart,
         end = hints.connectionEnd,
         middle;
@@ -29007,15 +30118,15 @@
     connectionDocking: ['type', CroppingConnectionDocking]
   };
 
-  var LOW_PRIORITY$6 = 500,
+  var LOW_PRIORITY$7 = 500,
       MEDIUM_PRIORITY = 1250,
-      HIGH_PRIORITY$4 = 1500;
-  var round$8 = Math.round;
+      HIGH_PRIORITY$5 = 1500;
+  var round$9 = Math.round;
 
-  function mid(element) {
+  function mid$1(element) {
     return {
-      x: element.x + round$8(element.width / 2),
-      y: element.y + round$8(element.height / 2)
+      x: element.x + round$9(element.width / 2),
+      y: element.y + round$9(element.height / 2)
     };
   }
   /**
@@ -29052,7 +30163,7 @@
     //
 
 
-    eventBus.on('shape.move.start', HIGH_PRIORITY$4, function (event) {
+    eventBus.on('shape.move.start', HIGH_PRIORITY$5, function (event) {
       var context = event.context,
           shape = event.shape,
           shapes = selection.get().slice(); // move only single shape if the dragged element
@@ -29090,7 +30201,7 @@
     // the context
     //
 
-    eventBus.on('shape.move.move', LOW_PRIORITY$6, function (event) {
+    eventBus.on('shape.move.move', LOW_PRIORITY$7, function (event) {
       var context = event.context,
           validatedShapes = context.validatedShapes,
           hover = event.hover,
@@ -29128,8 +30239,8 @@
       // (important when zoom level was > 1 during move)
 
 
-      delta.x = round$8(delta.x);
-      delta.y = round$8(delta.y);
+      delta.x = round$9(delta.x);
+      delta.y = round$9(delta.y);
 
       if (delta.x === 0 && delta.y === 0) {
         // didn't move
@@ -29171,7 +30282,7 @@
         return;
       }
 
-      var referencePoint = mid(element);
+      var referencePoint = mid$1(element);
       dragging.init(event, referencePoint, 'shape.move', {
         cursor: 'grabbing',
         autoActivate: activate,
@@ -29211,7 +30322,7 @@
     });
   }
 
-  var LOW_PRIORITY$7 = 499;
+  var LOW_PRIORITY$8 = 499;
   var MARKER_DRAGGING = 'djs-dragging',
       MARKER_OK$3 = 'drop-ok',
       MARKER_NOT_OK$3 = 'drop-not-ok',
@@ -29280,7 +30391,7 @@
     // we draw things
 
 
-    eventBus.on('shape.move.start', LOW_PRIORITY$7, function (event) {
+    eventBus.on('shape.move.start', LOW_PRIORITY$8, function (event) {
       var context = event.context,
           dragShapes = context.shapes,
           allDraggedElements = context.allDraggedElements;
@@ -29315,7 +30426,7 @@
       context.differentParents = haveDifferentParents(dragShapes);
     }); // update previews
 
-    eventBus.on('shape.move.move', LOW_PRIORITY$7, function (event) {
+    eventBus.on('shape.move.move', LOW_PRIORITY$8, function (event) {
       var context = event.context,
           dragGroup = context.dragGroup,
           target = context.target,
@@ -29804,7 +30915,7 @@
     palette: ['type', Palette]
   };
 
-  var LOW_PRIORITY$8 = 250;
+  var LOW_PRIORITY$9 = 250;
   /**
    * The tool manager acts as middle-man between the available tool's and the Palette,
    * it takes care of making sure that the correct active state is set.
@@ -29871,7 +30982,7 @@
       eventsToRegister.push(event + '.ended');
       eventsToRegister.push(event + '.canceled');
     });
-    eventBus.on(eventsToRegister, LOW_PRIORITY$8, function (event) {
+    eventBus.on(eventsToRegister, LOW_PRIORITY$9, function (event) {
       var originalEvent = event.originalEvent; // We defer the de-activation of the tool to the .activate phase,
       // so we're able to check if we want to toggle off the current
       // active tool or switch to a new one
@@ -30135,18 +31246,605 @@
         group: 'tools',
         separator: true
       },
-      'create.decision': createAction('dmn:Decision', 'drd', 'dmn-icon-decision'),
-      'create.input-data': createAction('dmn:InputData', 'drd', 'dmn-icon-input-data'),
-      'create.knowledge-source': createAction('dmn:KnowledgeSource', 'drd', 'dmn-icon-knowledge-source'),
-      'create.business-knowledge-model': createAction('dmn:BusinessKnowledgeModel', 'drd', 'dmn-icon-business-knowledge')
+      'create.decision': createAction('dmn:Decision', 'drd', 'dmn-icon-decision', translate('Create Decision')),
+      'create.input-data': createAction('dmn:InputData', 'drd', 'dmn-icon-input-data', translate('Create Input Data')),
+      'create.knowledge-source': createAction('dmn:KnowledgeSource', 'drd', 'dmn-icon-knowledge-source', translate('Create Knowledge Source')),
+      'create.business-knowledge-model': createAction('dmn:BusinessKnowledgeModel', 'drd', 'dmn-icon-business-knowledge', translate('Create Knowledge Model'))
     });
     return actions;
   };
 
   var PaletteModule = {
-    __depends__: [DiagramTranslate, DiagramPalette, DiagramCreate, DiagramLasso],
+    __depends__: [TranslateModule, DiagramPalette, DiagramCreate, DiagramLasso],
     __init__: ['paletteProvider'],
     paletteProvider: ['type', PaletteProvider]
+  };
+
+  /**
+   * A snap context, containing the (possibly incomplete)
+   * mappings of drop targets (to identify the snapping)
+   * to computed snap points.
+   */
+
+  function SnapContext() {
+    /**
+     * Map<String, SnapPoints> mapping drop targets to
+     * a list of possible snappings.
+     *
+     * @type {Object}
+     */
+    this._targets = {};
+    /**
+     * Map<String, Point> initial positioning of element
+     * regarding various snap directions.
+     *
+     * @type {Object}
+     */
+
+    this._snapOrigins = {};
+    /**
+     * List of snap locations
+     *
+     * @type {Array<String>}
+     */
+
+    this._snapLocations = [];
+    /**
+     * Map<String, Array<Point>> of default snapping locations
+     *
+     * @type {Object}
+     */
+
+    this._defaultSnaps = {};
+  }
+
+  SnapContext.prototype.getSnapOrigin = function (snapLocation) {
+    return this._snapOrigins[snapLocation];
+  };
+
+  SnapContext.prototype.setSnapOrigin = function (snapLocation, initialValue) {
+    this._snapOrigins[snapLocation] = initialValue;
+
+    if (this._snapLocations.indexOf(snapLocation) === -1) {
+      this._snapLocations.push(snapLocation);
+    }
+  };
+
+  SnapContext.prototype.addDefaultSnap = function (type, point) {
+    var snapValues = this._defaultSnaps[type];
+
+    if (!snapValues) {
+      snapValues = this._defaultSnaps[type] = [];
+    }
+
+    snapValues.push(point);
+  };
+  /**
+   * Return a number of initialized snaps, i.e. snap locations such as
+   * top-left, mid, bottom-right and so forth.
+   *
+   * @return {Array<String>} snapLocations
+   */
+
+
+  SnapContext.prototype.getSnapLocations = function () {
+    return this._snapLocations;
+  };
+  /**
+   * Set the snap locations for this context.
+   *
+   * The order of locations determines precedence.
+   *
+   * @param {Array<String>} snapLocations
+   */
+
+
+  SnapContext.prototype.setSnapLocations = function (snapLocations) {
+    this._snapLocations = snapLocations;
+  };
+  /**
+   * Get snap points for a given target
+   *
+   * @param {Element|String} target
+   */
+
+
+  SnapContext.prototype.pointsForTarget = function (target) {
+    var targetId = target.id || target;
+    var snapPoints = this._targets[targetId];
+
+    if (!snapPoints) {
+      snapPoints = this._targets[targetId] = new SnapPoints();
+      snapPoints.initDefaults(this._defaultSnaps);
+    }
+
+    return snapPoints;
+  };
+  /**
+   * Creates the snap points and initializes them with the
+   * given default values.
+   *
+   * @param {Object<String, Array<Point>>} [defaultPoints]
+   */
+
+
+  function SnapPoints(defaultSnaps) {
+    /**
+     * Map<String, Map<(x|y), Array<Number>>> mapping snap locations,
+     * i.e. top-left, bottom-right, center to actual snap values.
+     *
+     * @type {Object}
+     */
+    this._snapValues = {};
+  }
+
+  SnapPoints.prototype.add = function (snapLocation, point) {
+    var snapValues = this._snapValues[snapLocation];
+
+    if (!snapValues) {
+      snapValues = this._snapValues[snapLocation] = {
+        x: [],
+        y: []
+      };
+    }
+
+    if (snapValues.x.indexOf(point.x) === -1) {
+      snapValues.x.push(point.x);
+    }
+
+    if (snapValues.y.indexOf(point.y) === -1) {
+      snapValues.y.push(point.y);
+    }
+  };
+
+  SnapPoints.prototype.snap = function (point, snapLocation, axis, tolerance) {
+    var snappingValues = this._snapValues[snapLocation];
+    return snappingValues && snapTo(point[axis], snappingValues[axis], tolerance);
+  };
+  /**
+   * Initialize a number of default snapping points.
+   *
+   * @param  {Object} defaultSnaps
+   */
+
+
+  SnapPoints.prototype.initDefaults = function (defaultSnaps) {
+    var self = this;
+    forEach(defaultSnaps || {}, function (snapPoints, snapLocation) {
+      forEach(snapPoints, function (point) {
+        self.add(snapLocation, point);
+      });
+    });
+  };
+
+  var HIGHER_PRIORITY$1 = 1250;
+  /**
+   * Snap during create and move.
+   *
+   * @param {EventBus} elementRegistry
+   * @param {EventBus} eventBus
+   * @param {Snapping} snapping
+   */
+
+  function CreateMoveSnapping(elementRegistry, eventBus, snapping) {
+    var self = this;
+    this._elementRegistry = elementRegistry;
+    eventBus.on(['create.start', 'shape.move.start'], function (event) {
+      self.initSnap(event);
+    });
+    eventBus.on(['create.move', 'create.end', 'shape.move.move', 'shape.move.end'], HIGHER_PRIORITY$1, function (event) {
+      var context = event.context,
+          shape = context.shape,
+          snapContext = context.snapContext,
+          target = context.target;
+
+      if (event.originalEvent && isCmd(event.originalEvent)) {
+        return;
+      }
+
+      if (isSnapped(event) || !target) {
+        return;
+      }
+
+      var snapPoints = snapContext.pointsForTarget(target);
+
+      if (!snapPoints.initialized) {
+        snapPoints = self.addSnapTargetPoints(snapPoints, shape, target);
+        snapPoints.initialized = true;
+      }
+
+      snapping.snap(event, snapPoints);
+    });
+    eventBus.on(['create.cleanup', 'shape.move.cleanup'], function () {
+      snapping.hide();
+    });
+  }
+  CreateMoveSnapping.$inject = ['elementRegistry', 'eventBus', 'snapping'];
+
+  CreateMoveSnapping.prototype.initSnap = function (event) {
+    var elementRegistry = this._elementRegistry;
+    var context = event.context,
+        shape = context.shape,
+        snapContext = context.snapContext;
+
+    if (!snapContext) {
+      snapContext = context.snapContext = new SnapContext();
+    }
+
+    var shapeMid;
+
+    if (elementRegistry.get(shape.id)) {
+      // move
+      shapeMid = mid(shape, event);
+    } else {
+      // create
+      shapeMid = {
+        x: event.x + mid(shape).x,
+        y: event.y + mid(shape).y
+      };
+    }
+
+    var shapeTopLeft = {
+      x: shapeMid.x - shape.width / 2,
+      y: shapeMid.y - shape.height / 2
+    },
+        shapeBottomRight = {
+      x: shapeMid.x + shape.width / 2,
+      y: shapeMid.y + shape.height / 2
+    };
+    snapContext.setSnapOrigin('mid', {
+      x: shapeMid.x - event.x,
+      y: shapeMid.y - event.y
+    }); // snap labels to mid only
+
+    if (isLabel$2(shape)) {
+      return snapContext;
+    }
+
+    snapContext.setSnapOrigin('top-left', {
+      x: shapeTopLeft.x - event.x,
+      y: shapeTopLeft.y - event.y
+    });
+    snapContext.setSnapOrigin('bottom-right', {
+      x: shapeBottomRight.x - event.x,
+      y: shapeBottomRight.y - event.y
+    });
+    return snapContext;
+  };
+
+  CreateMoveSnapping.prototype.addSnapTargetPoints = function (snapPoints, shape, target) {
+    var snapTargets = this.getSnapTargets(shape, target);
+    forEach(snapTargets, function (snapTarget) {
+      // handle labels
+      if (isLabel$2(snapTarget)) {
+        if (isLabel$2(shape)) {
+          snapPoints.add('mid', mid(snapTarget));
+        }
+
+        return;
+      } // handle connections
+
+
+      if (isConnection$4(snapTarget)) {
+        // ignore single segment connections
+        if (snapTarget.waypoints.length < 3) {
+          return;
+        } // ignore first and last waypoint
+
+
+        var waypoints = snapTarget.waypoints.slice(1, -1);
+        forEach(waypoints, function (waypoint) {
+          snapPoints.add('mid', waypoint);
+        });
+        return;
+      } // handle shapes
+
+
+      snapPoints.add('mid', mid(snapTarget));
+    });
+
+    if (!isNumber(shape.x) || !isNumber(shape.y)) {
+      return snapPoints;
+    } // snap to original position when moving
+
+
+    if (this._elementRegistry.get(shape.id)) {
+      snapPoints.add('mid', mid(shape));
+    }
+
+    return snapPoints;
+  };
+
+  CreateMoveSnapping.prototype.getSnapTargets = function (shape, target) {
+    return getChildren$1(target).filter(function (child) {
+      return !isHidden(child);
+    });
+  }; // helpers //////////
+
+
+  function isConnection$4(element) {
+    return !!element.waypoints;
+  }
+
+  function isHidden(element) {
+    return !!element.hidden;
+  }
+
+  function isLabel$2(element) {
+    return !!element.labelTarget;
+  }
+
+  var HIGHER_PRIORITY$2 = 1250;
+  /**
+   * Snap during resize.
+   *
+   * @param {EventBus} eventBus
+   * @param {Snapping} snapping
+   */
+
+  function ResizeSnapping(eventBus, snapping) {
+    var self = this;
+    eventBus.on(['resize.start'], function (event) {
+      self.initSnap(event);
+    });
+    eventBus.on(['resize.move', 'resize.end'], HIGHER_PRIORITY$2, function (event) {
+      var context = event.context,
+          shape = context.shape,
+          parent = shape.parent,
+          direction = context.direction,
+          snapContext = context.snapContext;
+
+      if (event.originalEvent && isCmd(event.originalEvent)) {
+        return;
+      }
+
+      if (isSnapped(event)) {
+        return;
+      }
+
+      var snapPoints = snapContext.pointsForTarget(parent);
+
+      if (!snapPoints.initialized) {
+        snapPoints = self.addSnapTargetPoints(snapPoints, shape, parent, direction);
+        snapPoints.initialized = true;
+      }
+
+      if (isHorizontal$1(direction)) {
+        setSnapped(event, 'x', event.x);
+      }
+
+      if (isVertical(direction)) {
+        setSnapped(event, 'y', event.y);
+      }
+
+      snapping.snap(event, snapPoints);
+    });
+    eventBus.on(['resize.cleanup'], function () {
+      snapping.hide();
+    });
+  }
+
+  ResizeSnapping.prototype.initSnap = function (event) {
+    var context = event.context,
+        shape = context.shape,
+        direction = context.direction,
+        snapContext = context.snapContext;
+
+    if (!snapContext) {
+      snapContext = context.snapContext = new SnapContext();
+    }
+
+    var snapOrigin = getSnapOrigin(shape, direction);
+    snapContext.setSnapOrigin('corner', {
+      x: snapOrigin.x - event.x,
+      y: snapOrigin.y - event.y
+    });
+    return snapContext;
+  };
+
+  ResizeSnapping.prototype.addSnapTargetPoints = function (snapPoints, shape, target, direction) {
+    var snapTargets = this.getSnapTargets(shape, target);
+    forEach(snapTargets, function (snapTarget) {
+      snapPoints.add('corner', bottomRight(snapTarget));
+      snapPoints.add('corner', topLeft(snapTarget));
+    });
+    snapPoints.add('corner', getSnapOrigin(shape, direction));
+    return snapPoints;
+  };
+
+  ResizeSnapping.$inject = ['eventBus', 'snapping'];
+
+  ResizeSnapping.prototype.getSnapTargets = function (shape, target) {
+    return getChildren$1(target).filter(function (child) {
+      return !isAttached(child, shape) && !isConnection$5(child) && !isHidden$1(child) && !isLabel$3(child);
+    });
+  }; // helpers //////////
+
+
+  function getSnapOrigin(shape, direction) {
+    var mid = getMid(shape),
+        trbl = asTRBL(shape);
+    var snapOrigin = {
+      x: mid.x,
+      y: mid.y
+    };
+
+    if (direction.indexOf('n') !== -1) {
+      snapOrigin.y = trbl.top;
+    } else if (direction.indexOf('s') !== -1) {
+      snapOrigin.y = trbl.bottom;
+    }
+
+    if (direction.indexOf('e') !== -1) {
+      snapOrigin.x = trbl.right;
+    } else if (direction.indexOf('w') !== -1) {
+      snapOrigin.x = trbl.left;
+    }
+
+    return snapOrigin;
+  }
+
+  function isAttached(element, host) {
+    return element.host === host;
+  }
+
+  function isConnection$5(element) {
+    return !!element.waypoints;
+  }
+
+  function isHidden$1(element) {
+    return !!element.hidden;
+  }
+
+  function isLabel$3(element) {
+    return !!element.labelTarget;
+  }
+
+  function isHorizontal$1(direction) {
+    return direction === 'n' || direction === 's';
+  }
+
+  function isVertical(direction) {
+    return direction === 'e' || direction === 'w';
+  }
+
+  var SNAP_TOLERANCE = 7;
+  var SNAP_LINE_HIDE_DELAY = 1000;
+  /**
+   * Generic snapping feature.
+   *
+   * @param {EventBus} eventBus
+   * @param {Canvas} canvas
+   */
+
+  function Snapping(canvas) {
+    this._canvas = canvas; // delay hide by 1000 seconds since last snap
+
+    this._asyncHide = debounce(bind(this.hide, this), SNAP_LINE_HIDE_DELAY);
+  }
+  Snapping.$inject = ['canvas'];
+  /**
+   * Snap an event to given snap points.
+   *
+   * @param {Event} event
+   * @param {SnapPoints} snapPoints
+   */
+
+  Snapping.prototype.snap = function (event, snapPoints) {
+    var context = event.context,
+        snapContext = context.snapContext,
+        snapLocations = snapContext.getSnapLocations();
+    var snapping = {
+      x: isSnapped(event, 'x'),
+      y: isSnapped(event, 'y')
+    };
+    forEach(snapLocations, function (location) {
+      var snapOrigin = snapContext.getSnapOrigin(location);
+      var snapCurrent = {
+        x: event.x + snapOrigin.x,
+        y: event.y + snapOrigin.y
+      }; // snap both axis if not snapped already
+
+      forEach(['x', 'y'], function (axis) {
+        var locationSnapping;
+
+        if (!snapping[axis]) {
+          locationSnapping = snapPoints.snap(snapCurrent, location, axis, SNAP_TOLERANCE);
+
+          if (locationSnapping !== undefined) {
+            snapping[axis] = {
+              value: locationSnapping,
+              originValue: locationSnapping - snapOrigin[axis]
+            };
+          }
+        }
+      }); // no need to continue snapping
+
+      if (snapping.x && snapping.y) {
+        return false;
+      }
+    }); // show snap lines
+
+    this.showSnapLine('vertical', snapping.x && snapping.x.value);
+    this.showSnapLine('horizontal', snapping.y && snapping.y.value); // snap event
+
+    forEach(['x', 'y'], function (axis) {
+      var axisSnapping = snapping[axis];
+
+      if (isObject(axisSnapping)) {
+        setSnapped(event, axis, axisSnapping.originValue);
+      }
+    });
+  };
+
+  Snapping.prototype._createLine = function (orientation) {
+    var root = this._canvas.getLayer('snap');
+
+    var line = create('path');
+    attr$1(line, {
+      d: 'M0,0 L0,0'
+    });
+    classes$1(line).add('djs-snap-line');
+    append(root, line);
+    return {
+      update: function update(position) {
+        if (!isNumber(position)) {
+          attr$1(line, {
+            display: 'none'
+          });
+        } else {
+          if (orientation === 'horizontal') {
+            attr$1(line, {
+              d: 'M-100000,' + position + ' L+100000,' + position,
+              display: ''
+            });
+          } else {
+            attr$1(line, {
+              d: 'M ' + position + ',-100000 L ' + position + ', +100000',
+              display: ''
+            });
+          }
+        }
+      }
+    };
+  };
+
+  Snapping.prototype._createSnapLines = function () {
+    this._snapLines = {
+      horizontal: this._createLine('horizontal'),
+      vertical: this._createLine('vertical')
+    };
+  };
+
+  Snapping.prototype.showSnapLine = function (orientation, position) {
+    var line = this.getSnapLine(orientation);
+
+    if (line) {
+      line.update(position);
+    }
+
+    this._asyncHide();
+  };
+
+  Snapping.prototype.getSnapLine = function (orientation) {
+    if (!this._snapLines) {
+      this._createSnapLines();
+    }
+
+    return this._snapLines[orientation];
+  };
+
+  Snapping.prototype.hide = function () {
+    forEach(this._snapLines, function (snapLine) {
+      snapLine.update();
+    });
+  };
+
+  var SnappingModule = {
+    __init__: ['createMoveSnapping', 'resizeSnapping', 'snapping'],
+    createMoveSnapping: ['type', CreateMoveSnapping],
+    resizeSnapping: ['type', ResizeSnapping],
+    snapping: ['type', Snapping]
   };
 
   /**
@@ -30230,40 +31928,44 @@
     NavigatedViewer.call(this, options);
   }
   inherits_browser(Modeler, NavigatedViewer); // modules the modeler is composed of
+  //
+  // - viewer + navigation modules
+  // - modeling modules
+
   Modeler.prototype._modelingModules = [// modeling components
-  BendpointsModule, ContextPadModule, ConnectPreviewModule, DefinitionPropertiesModule, EditorActionsModule$1, GenerateDiModule, KeyboardModule$1, KeyboardMoveModule, KeyboardMoveSelectionModule, LabelEditingModule, ModelingModule, MoveModule, PaletteModule];
+  AlignElementsModule, AutoScrollModule, BendpointsModule, ContextPadModule, ConnectPreviewModule, DefinitionPropertiesModule, DistributeElementsModule$1, EditorActionsModule$1, GenerateDiModule, GridSnappingModule, KeyboardModule$1, KeyboardMoveModule, KeyboardMoveSelectionModule, LabelEditingModule, ModelingModule, MoveModule, PaletteModule, SnappingModule];
   Modeler.prototype._modules = [].concat(Modeler.prototype._modules, Modeler.prototype._modelingModules);
 
-  function _typeof$4(obj) {
+  function _typeof$5(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$4 = function _typeof$1(obj) {
+      _typeof$5 = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$4 = function _typeof$1(obj) {
+      _typeof$5 = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$4(obj);
+    return _typeof$5(obj);
   }
 
-  function _possibleConstructorReturn$2(self, call) {
-    if (call && (_typeof$4(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$3(self, call) {
+    if (call && (_typeof$5(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$2(self);
+    return _assertThisInitialized$3(self);
   }
 
-  function _getPrototypeOf$2(o) {
-    _getPrototypeOf$2 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$3(o) {
+    _getPrototypeOf$3 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$2(o);
+    return _getPrototypeOf$3(o);
   }
 
-  function _assertThisInitialized$2(self) {
+  function _assertThisInitialized$3(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -30271,7 +31973,7 @@
     return self;
   }
 
-  function _inherits$2(subClass, superClass) {
+  function _inherits$3(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -30283,25 +31985,25 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$2(subClass, superClass);
+    if (superClass) _setPrototypeOf$3(subClass, superClass);
   }
 
-  function _setPrototypeOf$2(o, p) {
-    _setPrototypeOf$2 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$3(o, p) {
+    _setPrototypeOf$3 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$2(o, p);
+    return _setPrototypeOf$3(o, p);
   }
 
-  function _classCallCheck$4(instance, Constructor) {
+  function _classCallCheck$5(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
   var Base$2 = function Base(attrs) {
-    _classCallCheck$4(this, Base);
+    _classCallCheck$5(this, Base);
 
     assign(this, attrs);
     /**
@@ -30318,14 +32020,14 @@
   var Root$1 =
   /*#__PURE__*/
   function (_Base) {
-    _inherits$2(Root, _Base);
+    _inherits$3(Root, _Base);
 
     function Root(attrs) {
       var _this;
 
-      _classCallCheck$4(this, Root);
+      _classCallCheck$5(this, Root);
 
-      _this = _possibleConstructorReturn$2(this, _getPrototypeOf$2(Root).call(this, attrs));
+      _this = _possibleConstructorReturn$3(this, _getPrototypeOf$3(Root).call(this, attrs));
       /**
        * The tables rows
        *
@@ -30333,7 +32035,7 @@
        * @type Row
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this), 'rows', {
+      defineProperty$2(_assertThisInitialized$3(_this), 'rows', {
         enumerable: true,
         value: _this.rows || []
       });
@@ -30344,7 +32046,7 @@
        * @type Col
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this), 'cols', {
+      defineProperty$2(_assertThisInitialized$3(_this), 'cols', {
         enumerable: true,
         value: _this.cols || []
       });
@@ -30356,14 +32058,14 @@
   var Row =
   /*#__PURE__*/
   function (_Base2) {
-    _inherits$2(Row, _Base2);
+    _inherits$3(Row, _Base2);
 
     function Row(attrs) {
       var _this2;
 
-      _classCallCheck$4(this, Row);
+      _classCallCheck$5(this, Row);
 
-      _this2 = _possibleConstructorReturn$2(this, _getPrototypeOf$2(Row).call(this, attrs));
+      _this2 = _possibleConstructorReturn$3(this, _getPrototypeOf$3(Row).call(this, attrs));
       /**
        * Reference to the table
        *
@@ -30371,7 +32073,7 @@
        * @type Root
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this2), 'root', {
+      defineProperty$2(_assertThisInitialized$3(_this2), 'root', {
         writable: true
       });
       /**
@@ -30381,7 +32083,7 @@
        * @type Cell
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this2), 'cells', {
+      defineProperty$2(_assertThisInitialized$3(_this2), 'cells', {
         enumerable: true,
         value: _this2.cells || []
       });
@@ -30393,14 +32095,14 @@
   var Col =
   /*#__PURE__*/
   function (_Base3) {
-    _inherits$2(Col, _Base3);
+    _inherits$3(Col, _Base3);
 
     function Col(attrs) {
       var _this3;
 
-      _classCallCheck$4(this, Col);
+      _classCallCheck$5(this, Col);
 
-      _this3 = _possibleConstructorReturn$2(this, _getPrototypeOf$2(Col).call(this, attrs));
+      _this3 = _possibleConstructorReturn$3(this, _getPrototypeOf$3(Col).call(this, attrs));
       /**
        * Reference to the table
        *
@@ -30408,7 +32110,7 @@
        * @type Root
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this3), 'root', {
+      defineProperty$2(_assertThisInitialized$3(_this3), 'root', {
         writable: true
       });
       /**
@@ -30418,7 +32120,7 @@
        * @type Cell
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this3), 'cells', {
+      defineProperty$2(_assertThisInitialized$3(_this3), 'cells', {
         enumerable: true,
         value: _this3.cells || []
       });
@@ -30430,14 +32132,14 @@
   var Cell =
   /*#__PURE__*/
   function (_Base4) {
-    _inherits$2(Cell, _Base4);
+    _inherits$3(Cell, _Base4);
 
     function Cell(attrs) {
       var _this4;
 
-      _classCallCheck$4(this, Cell);
+      _classCallCheck$5(this, Cell);
 
-      _this4 = _possibleConstructorReturn$2(this, _getPrototypeOf$2(Cell).call(this, attrs));
+      _this4 = _possibleConstructorReturn$3(this, _getPrototypeOf$3(Cell).call(this, attrs));
       /**
        * Reference to the row
        *
@@ -30445,7 +32147,7 @@
        * @type Row
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this4), 'row', {
+      defineProperty$2(_assertThisInitialized$3(_this4), 'row', {
         writable: true
       });
       /**
@@ -30455,7 +32157,7 @@
        * @type Col
        */
 
-      defineProperty$2(_assertThisInitialized$2(_this4), 'col', {
+      defineProperty$2(_assertThisInitialized$3(_this4), 'col', {
         writable: true
       });
       return _this4;
@@ -30483,13 +32185,13 @@
     Object.defineProperty(el, prop, options);
   }
 
-  function _classCallCheck$5(instance, Constructor) {
+  function _classCallCheck$6(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$4(target, props) {
+  function _defineProperties$5(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -30499,9 +32201,9 @@
     }
   }
 
-  function _createClass$4(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$4(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$4(Constructor, staticProps);
+  function _createClass$5(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$5(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$5(Constructor, staticProps);
     return Constructor;
   }
 
@@ -30509,12 +32211,12 @@
   /*#__PURE__*/
   function () {
     function ElementFactory() {
-      _classCallCheck$5(this, ElementFactory);
+      _classCallCheck$6(this, ElementFactory);
 
       this._uid = 12;
     }
 
-    _createClass$4(ElementFactory, [{
+    _createClass$5(ElementFactory, [{
       key: "create",
       value: function create(type) {
         var attrs = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
@@ -30550,13 +32252,13 @@
     return ElementFactory;
   }();
 
-  function _classCallCheck$6(instance, Constructor) {
+  function _classCallCheck$7(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$5(target, props) {
+  function _defineProperties$6(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -30566,9 +32268,9 @@
     }
   }
 
-  function _createClass$5(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$5(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$5(Constructor, staticProps);
+  function _createClass$6(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$6(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$6(Constructor, staticProps);
     return Constructor;
   }
 
@@ -30576,14 +32278,14 @@
   /*#__PURE__*/
   function () {
     function ElementRegistry(eventBus) {
-      _classCallCheck$6(this, ElementRegistry);
+      _classCallCheck$7(this, ElementRegistry);
 
       this._eventBus = eventBus;
       this._elements = {};
       eventBus.on('table.clear', this.clear.bind(this));
     }
 
-    _createClass$5(ElementRegistry, [{
+    _createClass$6(ElementRegistry, [{
       key: "add",
       value: function add(element, type) {
         var id = element.id;
@@ -30674,13 +32376,13 @@
     });
   }
 
-  function _classCallCheck$7(instance, Constructor) {
+  function _classCallCheck$8(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$6(target, props) {
+  function _defineProperties$7(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -30690,9 +32392,9 @@
     }
   }
 
-  function _createClass$6(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$6(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$6(Constructor, staticProps);
+  function _createClass$7(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$7(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$7(Constructor, staticProps);
     return Constructor;
   }
 
@@ -30702,7 +32404,7 @@
     function ChangeSupport(eventBus) {
       var _this = this;
 
-      _classCallCheck$7(this, ChangeSupport);
+      _classCallCheck$8(this, ChangeSupport);
 
       this._listeners = {};
       eventBus.on('elements.changed', function (_ref) {
@@ -30729,7 +32431,7 @@
       });
     }
 
-    _createClass$6(ChangeSupport, [{
+    _createClass$7(ChangeSupport, [{
       key: "elementsChanged",
       value: function elementsChanged(elements) {
         var invoked = {};
@@ -30794,13 +32496,13 @@
   }();
   ChangeSupport$1.$inject = ['eventBus'];
 
-  function _classCallCheck$8(instance, Constructor) {
+  function _classCallCheck$9(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$7(target, props) {
+  function _defineProperties$8(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -30810,9 +32512,9 @@
     }
   }
 
-  function _createClass$7(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$7(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$7(Constructor, staticProps);
+  function _createClass$8(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$8(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$8(Constructor, staticProps);
     return Constructor;
   }
   var DEFAULT_PRIORITY$6 = 1000;
@@ -30821,12 +32523,12 @@
   /*#__PURE__*/
   function () {
     function Components() {
-      _classCallCheck$8(this, Components);
+      _classCallCheck$9(this, Components);
 
       this._listeners = {};
     }
 
-    _createClass$7(Components, [{
+    _createClass$8(Components, [{
       key: "getComponent",
       value: function getComponent(type, context) {
         var listeners = this._listeners[type];
@@ -30943,7 +32645,7 @@
   var ERROR_MSG = 'a runtime error occured! Use Inferno in development environment to find the error.'; // This should be boolean and not reference to window.document
   // in Node 7 and the later versions of V8, slower in older versions though
 
-  var isArray$2 = Array.isArray;
+  var isArray$3 = Array.isArray;
 
   function isStringOrNumber(o) {
     var type = _typeof(o);
@@ -31198,7 +32900,7 @@
       if (!isInvalid(n)) {
         var newKey = currentKey + keyPrefix + index;
 
-        if (isArray$2(n)) {
+        if (isArray$3(n)) {
           _normalizeVNodes(n, result, 0, newKey);
         } else {
           if (isStringOrNumber(n)) {
@@ -31242,7 +32944,7 @@
       /* HasVNodeChildren */
       ;
       newChildren = createTextVNode(children + '');
-    } else if (isArray$2(children)) {
+    } else if (isArray$3(children)) {
       var len = children.length;
 
       if (len === 0) {
@@ -31266,7 +32968,7 @@
         for (var i = 0; i < len; i++) {
           var n = children[i];
 
-          if (isInvalid(n) || isArray$2(n)) {
+          if (isInvalid(n) || isArray$3(n)) {
             newChildren = newChildren || children.slice(0, i);
 
             _normalizeVNodes(children, newChildren, i, '');
@@ -31654,7 +33356,7 @@
 
     dom.value = props.value;
 
-    if (isArray$2(value) && value.indexOf(props.value) !== -1 || props.value === value) {
+    if (isArray$3(value) && value.indexOf(props.value) !== -1 || props.value === value) {
       dom.selected = true;
     } else if (!isNullOrUndef(value) || !isNullOrUndef(props.selected)) {
       dom.selected = props.selected || false;
@@ -33540,27 +35242,27 @@
 
   Component.defaultProps = null;
 
-  function _typeof$5(obj) {
+  function _typeof$6(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$5 = function _typeof$1(obj) {
+      _typeof$6 = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$5 = function _typeof$1(obj) {
+      _typeof$6 = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$5(obj);
+    return _typeof$6(obj);
   }
 
-  function _classCallCheck$9(instance, Constructor) {
+  function _classCallCheck$a(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$8(target, props) {
+  function _defineProperties$9(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -33570,28 +35272,28 @@
     }
   }
 
-  function _createClass$8(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$8(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$8(Constructor, staticProps);
+  function _createClass$9(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$9(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$9(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$3(self, call) {
-    if (call && (_typeof$5(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$4(self, call) {
+    if (call && (_typeof$6(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$3(self);
+    return _assertThisInitialized$4(self);
   }
 
-  function _getPrototypeOf$3(o) {
-    _getPrototypeOf$3 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$4(o) {
+    _getPrototypeOf$4 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$3(o);
+    return _getPrototypeOf$4(o);
   }
 
-  function _assertThisInitialized$3(self) {
+  function _assertThisInitialized$4(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -33599,7 +35301,7 @@
     return self;
   }
 
-  function _inherits$3(subClass, superClass) {
+  function _inherits$4(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -33611,38 +35313,38 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$3(subClass, superClass);
+    if (superClass) _setPrototypeOf$4(subClass, superClass);
   }
 
-  function _setPrototypeOf$3(o, p) {
-    _setPrototypeOf$3 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$4(o, p) {
+    _setPrototypeOf$4 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$3(o, p);
+    return _setPrototypeOf$4(o, p);
   }
 
   var TableComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$3(TableComponent, _Component);
+    _inherits$4(TableComponent, _Component);
 
     function TableComponent(props) {
       var _this;
 
-      _classCallCheck$9(this, TableComponent);
+      _classCallCheck$a(this, TableComponent);
 
-      _this = _possibleConstructorReturn$3(this, _getPrototypeOf$3(TableComponent).call(this, props));
+      _this = _possibleConstructorReturn$4(this, _getPrototypeOf$4(TableComponent).call(this, props));
       var injector = _this._injector = props.injector;
       _this._sheet = injector.get('sheet');
       _this._changeSupport = injector.get('changeSupport');
       _this._components = injector.get('components');
-      _this.onElementsChanged = _this.onElementsChanged.bind(_assertThisInitialized$3(_this));
+      _this.onElementsChanged = _this.onElementsChanged.bind(_assertThisInitialized$4(_this));
       return _this;
     }
 
-    _createClass$8(TableComponent, [{
+    _createClass$9(TableComponent, [{
       key: "onElementsChanged",
       value: function onElementsChanged() {
         this.forceUpdate();
@@ -33709,64 +35411,6 @@
     return TableComponent;
   }(Component);
 
-  function _classCallCheck$a(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$9(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$9(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$9(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$9(Constructor, staticProps);
-    return Constructor;
-  }
-
-  var Renderer =
-  /*#__PURE__*/
-  function () {
-    function Renderer(changeSupport, components, config, eventBus, injector) {
-      _classCallCheck$a(this, Renderer);
-
-      var container = config.container;
-      this._container = container;
-      eventBus.on('root.added', function () {
-        render(createComponentVNode(2, TableComponent, {
-          "injector": injector
-        }), container);
-      });
-      eventBus.on('root.remove', function () {
-        render(null, container);
-      });
-    }
-
-    _createClass$9(Renderer, [{
-      key: "getContainer",
-      value: function getContainer() {
-        return this._container;
-      }
-    }]);
-
-    return Renderer;
-  }();
-  Renderer.$inject = ['changeSupport', 'components', 'config.renderer', 'eventBus', 'injector'];
-
-  var renderModule = {
-    __init__: ['changeSupport', 'components', 'renderer'],
-    changeSupport: ['type', ChangeSupport$1],
-    components: ['type', Components],
-    renderer: ['type', Renderer]
-  };
-
   function _classCallCheck$b(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
@@ -33789,13 +35433,71 @@
     return Constructor;
   }
 
+  var Renderer =
+  /*#__PURE__*/
+  function () {
+    function Renderer(changeSupport, components, config, eventBus, injector) {
+      _classCallCheck$b(this, Renderer);
+
+      var container = config.container;
+      this._container = container;
+      eventBus.on('root.added', function () {
+        render(createComponentVNode(2, TableComponent, {
+          "injector": injector
+        }), container);
+      });
+      eventBus.on('root.remove', function () {
+        render(null, container);
+      });
+    }
+
+    _createClass$a(Renderer, [{
+      key: "getContainer",
+      value: function getContainer() {
+        return this._container;
+      }
+    }]);
+
+    return Renderer;
+  }();
+  Renderer.$inject = ['changeSupport', 'components', 'config.renderer', 'eventBus', 'injector'];
+
+  var renderModule = {
+    __init__: ['changeSupport', 'components', 'renderer'],
+    changeSupport: ['type', ChangeSupport$1],
+    components: ['type', Components],
+    renderer: ['type', Renderer]
+  };
+
+  function _classCallCheck$c(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$b(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$b(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$b(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$b(Constructor, staticProps);
+    return Constructor;
+  }
+
   var Sheet =
   /*#__PURE__*/
   function () {
     function Sheet(elementRegistry, eventBus) {
       var _this = this;
 
-      _classCallCheck$b(this, Sheet);
+      _classCallCheck$c(this, Sheet);
 
       this._elementRegistry = elementRegistry;
       this._eventBus = eventBus;
@@ -33805,7 +35507,7 @@
       });
     }
 
-    _createClass$a(Sheet, [{
+    _createClass$b(Sheet, [{
       key: "setRoot",
       value: function setRoot(root) {
         if (this._root) {
@@ -34085,13 +35787,13 @@
     return target;
   }
 
-  function _classCallCheck$c(instance, Constructor) {
+  function _classCallCheck$d(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$b(target, props) {
+  function _defineProperties$c(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -34101,9 +35803,9 @@
     }
   }
 
-  function _createClass$b(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$b(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$b(Constructor, staticProps);
+  function _createClass$c(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$c(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$c(Constructor, staticProps);
     return Constructor;
   }
 
@@ -34113,7 +35815,7 @@
     function Table() {
       var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      _classCallCheck$c(this, Table);
+      _classCallCheck$d(this, Table);
 
       var injector = options.injector;
 
@@ -34139,7 +35841,7 @@
      */
 
 
-    _createClass$b(Table, [{
+    _createClass$c(Table, [{
       key: "_init",
       value: function _init(options) {
         var modules = options.modules,
@@ -34371,24 +36073,26 @@
     done(error, warnings);
   }
 
-  function AnnotationHeader() {
-    return createVNode(1, "th", "annotation header", createTextVNode("Annotation"), 2, {
+  function AnnotationHeader(props, context) {
+    var _translate = context.injector.get('translate');
+
+    return createVNode(1, "th", "annotation header", _translate('Annotation'), 0, {
       "rowspan": "3"
     });
   }
 
-  function _typeof$6(obj) {
+  function _typeof$7(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$6 = function _typeof$1(obj) {
+      _typeof$7 = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$6 = function _typeof$1(obj) {
+      _typeof$7 = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$6(obj);
+    return _typeof$7(obj);
   }
 
   function ownKeys$2(object, enumerableOnly) {
@@ -34494,7 +36198,7 @@
     }
 
     args.forEach(function (item) {
-      var type = _typeof$6(item);
+      var type = _typeof$7(item);
 
       if (type === 'string' && item.length > 0) {
         set = add$2(set, item);
@@ -34684,18 +36388,18 @@
   };
   SelectionAware.$inject = ['eventBus'];
 
-  function _typeof$7(obj) {
+  function _typeof$8(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$7 = function _typeof$1(obj) {
+      _typeof$8 = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$7 = function _typeof$1(obj) {
+      _typeof$8 = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$7(obj);
+    return _typeof$8(obj);
   }
 
   function ownKeys$3(object, enumerableOnly) {
@@ -34782,13 +36486,13 @@
     return target;
   }
 
-  function _classCallCheck$d(instance, Constructor) {
+  function _classCallCheck$e(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$c(target, props) {
+  function _defineProperties$d(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -34798,28 +36502,28 @@
     }
   }
 
-  function _createClass$c(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$c(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$c(Constructor, staticProps);
+  function _createClass$d(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$d(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$d(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$4(self, call) {
-    if (call && (_typeof$7(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$5(self, call) {
+    if (call && (_typeof$8(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$4(self);
+    return _assertThisInitialized$5(self);
   }
 
-  function _getPrototypeOf$4(o) {
-    _getPrototypeOf$4 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$5(o) {
+    _getPrototypeOf$5 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$4(o);
+    return _getPrototypeOf$5(o);
   }
 
-  function _assertThisInitialized$4(self) {
+  function _assertThisInitialized$5(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -34827,7 +36531,7 @@
     return self;
   }
 
-  function _inherits$4(subClass, superClass) {
+  function _inherits$5(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -34839,35 +36543,35 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$4(subClass, superClass);
+    if (superClass) _setPrototypeOf$5(subClass, superClass);
   }
 
-  function _setPrototypeOf$4(o, p) {
-    _setPrototypeOf$4 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$5(o, p) {
+    _setPrototypeOf$5 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$4(o, p);
+    return _setPrototypeOf$5(o, p);
   }
 
   var BaseCell =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$4(BaseCell, _Component);
+    _inherits$5(BaseCell, _Component);
 
     function BaseCell(props, context) {
       var _this;
 
-      _classCallCheck$d(this, BaseCell);
+      _classCallCheck$e(this, BaseCell);
 
-      _this = _possibleConstructorReturn$4(this, _getPrototypeOf$4(BaseCell).call(this, props, context));
-      mixin(_assertThisInitialized$4(_this), SelectionAware);
-      inject(_assertThisInitialized$4(_this));
+      _this = _possibleConstructorReturn$5(this, _getPrototypeOf$5(BaseCell).call(this, props, context));
+      mixin(_assertThisInitialized$5(_this), SelectionAware);
+      inject(_assertThisInitialized$5(_this));
       return _this;
     }
 
-    _createClass$c(BaseCell, [{
+    _createClass$d(BaseCell, [{
       key: "getRenderProps",
       value: function getRenderProps() {
         var _this$props = this.props,
@@ -34899,18 +36603,18 @@
     return BaseCell;
   }(Component);
 
-  function _typeof$8(obj) {
+  function _typeof$9(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$8 = function _typeof$1(obj) {
+      _typeof$9 = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$8 = function _typeof$1(obj) {
+      _typeof$9 = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$8(obj);
+    return _typeof$9(obj);
   }
 
   function ownKeys$4(object, enumerableOnly) {
@@ -34961,13 +36665,13 @@
     return obj;
   }
 
-  function _classCallCheck$e(instance, Constructor) {
+  function _classCallCheck$f(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$d(target, props) {
+  function _defineProperties$e(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -34977,21 +36681,21 @@
     }
   }
 
-  function _createClass$d(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$d(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$d(Constructor, staticProps);
+  function _createClass$e(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$e(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$e(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$5(self, call) {
-    if (call && (_typeof$8(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$6(self, call) {
+    if (call && (_typeof$9(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$5(self);
+    return _assertThisInitialized$6(self);
   }
 
-  function _assertThisInitialized$5(self) {
+  function _assertThisInitialized$6(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -34999,14 +36703,14 @@
     return self;
   }
 
-  function _getPrototypeOf$5(o) {
-    _getPrototypeOf$5 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$6(o) {
+    _getPrototypeOf$6 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$5(o);
+    return _getPrototypeOf$6(o);
   }
 
-  function _inherits$5(subClass, superClass) {
+  function _inherits$6(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -35018,34 +36722,34 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$5(subClass, superClass);
+    if (superClass) _setPrototypeOf$6(subClass, superClass);
   }
 
-  function _setPrototypeOf$5(o, p) {
-    _setPrototypeOf$5 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$6(o, p) {
+    _setPrototypeOf$6 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$5(o, p);
+    return _setPrototypeOf$6(o, p);
   }
 
   var HeaderCell =
   /*#__PURE__*/
   function (_BaseCell) {
-    _inherits$5(HeaderCell, _BaseCell);
+    _inherits$6(HeaderCell, _BaseCell);
 
     function HeaderCell(props, context) {
       var _this;
 
-      _classCallCheck$e(this, HeaderCell);
+      _classCallCheck$f(this, HeaderCell);
 
-      _this = _possibleConstructorReturn$5(this, _getPrototypeOf$5(HeaderCell).call(this, props, context));
+      _this = _possibleConstructorReturn$6(this, _getPrototypeOf$6(HeaderCell).call(this, props, context));
       _this.state = {};
       return _this;
     }
 
-    _createClass$d(HeaderCell, [{
+    _createClass$e(HeaderCell, [{
       key: "render",
       value: function render() {
         var children = this.props.children;
@@ -35109,13 +36813,13 @@
     }
   }
 
-  function _classCallCheck$f(instance, Constructor) {
+  function _classCallCheck$g(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$e(target, props) {
+  function _defineProperties$f(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -35125,9 +36829,9 @@
     }
   }
 
-  function _createClass$e(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$e(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$e(Constructor, staticProps);
+  function _createClass$f(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$f(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$f(Constructor, staticProps);
     return Constructor;
   }
 
@@ -35143,7 +36847,7 @@
   /*#__PURE__*/
   function () {
     function TableImporter(elementFactory, eventBus, sheet) {
-      _classCallCheck$f(this, TableImporter);
+      _classCallCheck$g(this, TableImporter);
 
       this._elementFactory = elementFactory;
       this._eventBus = eventBus;
@@ -35154,7 +36858,7 @@
      */
 
 
-    _createClass$e(TableImporter, [{
+    _createClass$f(TableImporter, [{
       key: "add",
       value: function add(semantic) {
         var _this = this;
@@ -35208,6 +36912,7 @@
   TableImporter.$inject = ['elementFactory', 'eventBus', 'sheet'];
 
   var importModule = {
+    __depends__: [TranslateModule],
     tableImporter: ['type', TableImporter]
   };
 
@@ -35333,27 +37038,27 @@
   };
   ComponentWithSlots.$inject = ['components'];
 
-  function _typeof$9(obj) {
+  function _typeof$a(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$9 = function _typeof$1(obj) {
+      _typeof$a = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$9 = function _typeof$1(obj) {
+      _typeof$a = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$9(obj);
+    return _typeof$a(obj);
   }
 
-  function _classCallCheck$g(instance, Constructor) {
+  function _classCallCheck$h(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$f(target, props) {
+  function _defineProperties$g(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -35363,28 +37068,28 @@
     }
   }
 
-  function _createClass$f(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$f(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$f(Constructor, staticProps);
+  function _createClass$g(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$g(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$g(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$6(self, call) {
-    if (call && (_typeof$9(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$7(self, call) {
+    if (call && (_typeof$a(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$6(self);
+    return _assertThisInitialized$7(self);
   }
 
-  function _getPrototypeOf$6(o) {
-    _getPrototypeOf$6 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$7(o) {
+    _getPrototypeOf$7 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$6(o);
+    return _getPrototypeOf$7(o);
   }
 
-  function _assertThisInitialized$6(self) {
+  function _assertThisInitialized$7(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -35392,7 +37097,7 @@
     return self;
   }
 
-  function _inherits$6(subClass, superClass) {
+  function _inherits$7(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -35404,16 +37109,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$6(subClass, superClass);
+    if (superClass) _setPrototypeOf$7(subClass, superClass);
   }
 
-  function _setPrototypeOf$6(o, p) {
-    _setPrototypeOf$6 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$7(o, p) {
+    _setPrototypeOf$7 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$6(o, p);
+    return _setPrototypeOf$7(o, p);
   }
 
   function _defineProperty$6(obj, key, value) {
@@ -35434,26 +37139,26 @@
   var DecisionTableHead =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$6(DecisionTableHead, _Component);
+    _inherits$7(DecisionTableHead, _Component);
 
     function DecisionTableHead(props, context) {
       var _this;
 
-      _classCallCheck$g(this, DecisionTableHead);
+      _classCallCheck$h(this, DecisionTableHead);
 
-      _this = _possibleConstructorReturn$6(this, _getPrototypeOf$6(DecisionTableHead).call(this, props, context));
+      _this = _possibleConstructorReturn$7(this, _getPrototypeOf$7(DecisionTableHead).call(this, props, context));
 
-      _defineProperty$6(_assertThisInitialized$6(_this), "onElementsChanged", function () {
+      _defineProperty$6(_assertThisInitialized$7(_this), "onElementsChanged", function () {
         _this.forceUpdate();
       });
 
-      mixin(_assertThisInitialized$6(_this), ComponentWithSlots);
+      mixin(_assertThisInitialized$7(_this), ComponentWithSlots);
       _this._sheet = context.injector.get('sheet');
       _this._changeSupport = context.changeSupport;
       return _this;
     }
 
-    _createClass$f(DecisionTableHead, [{
+    _createClass$g(DecisionTableHead, [{
       key: "componentWillMount",
       value: function componentWillMount() {
         var root = this._sheet.getRoot();
@@ -35547,16 +37252,17 @@
     return DecisionTableHead;
   }(Component); // default components ///////////////////////
 
-  function DefaultInputHeaderCell(props) {
+  function DefaultInputHeaderCell(props, context) {
     var input = props.input,
         className = props.className;
     var label = input.label,
         inputExpression = input.inputExpression;
+    var translate = context.injector.get('translate');
     var actualClassName = (className || '') + ' input-cell';
     return createVNode(1, "th", actualClassName, label ? createVNode(1, "span", "input-label", label, 0, {
-      "title": "Input Label"
+      "title": translate('Input Label')
     }) : createVNode(1, "span", "input-expression", inputExpression.text || '-', 0, {
-      "title": "Input Expression"
+      "title": translate('Input Expression')
     }), 0, {
       "data-col-id": input.id
     }, input.id);
@@ -35565,19 +37271,19 @@
   var DefaultInputLabel =
   /*#__PURE__*/
   function (_Component2) {
-    _inherits$6(DefaultInputLabel, _Component2);
+    _inherits$7(DefaultInputLabel, _Component2);
 
     function DefaultInputLabel(props, context) {
       var _this3;
 
-      _classCallCheck$g(this, DefaultInputLabel);
+      _classCallCheck$h(this, DefaultInputLabel);
 
-      _this3 = _possibleConstructorReturn$6(this, _getPrototypeOf$6(DefaultInputLabel).call(this, props, context));
+      _this3 = _possibleConstructorReturn$7(this, _getPrototypeOf$7(DefaultInputLabel).call(this, props, context));
       _this3._sheet = context.injector.get('sheet');
       return _this3;
     }
 
-    _createClass$f(DefaultInputLabel, [{
+    _createClass$g(DefaultInputLabel, [{
       key: "render",
       value: function render() {
         var root = this._sheet.getRoot(),
@@ -35599,35 +37305,36 @@
     return DefaultInputLabel;
   }(Component);
 
-  function DefaultOutputHeaderCell(props) {
+  function DefaultOutputHeaderCell(props, context) {
     var output = props.output,
         className = props.className;
     var label = output.label,
         name = output.name;
+    var translate = context.injector.get('translate');
     var actualClassName = (className || '') + ' output-cell';
     return createVNode(1, "th", actualClassName, label ? createVNode(1, "span", "output-label", label, 0, {
-      "title": "Output Label"
+      "title": translate('Output Label')
     }) : createVNode(1, "span", "output-name", name || '-', 0, {
-      "title": "Output Name"
+      "title": translate('Output Name')
     }), 0, null, output.id);
   }
 
   var DefaultOutputLabel =
   /*#__PURE__*/
   function (_Component3) {
-    _inherits$6(DefaultOutputLabel, _Component3);
+    _inherits$7(DefaultOutputLabel, _Component3);
 
     function DefaultOutputLabel(props, context) {
       var _this4;
 
-      _classCallCheck$g(this, DefaultOutputLabel);
+      _classCallCheck$h(this, DefaultOutputLabel);
 
-      _this4 = _possibleConstructorReturn$6(this, _getPrototypeOf$6(DefaultOutputLabel).call(this, props, context));
+      _this4 = _possibleConstructorReturn$7(this, _getPrototypeOf$7(DefaultOutputLabel).call(this, props, context));
       _this4._sheet = context.injector.get('sheet');
       return _this4;
     }
 
-    _createClass$f(DefaultOutputLabel, [{
+    _createClass$g(DefaultOutputLabel, [{
       key: "render",
       value: function render() {
         var root = this._sheet.getRoot(),
@@ -35643,12 +37350,13 @@
     return DefaultOutputLabel;
   }(Component);
 
-  function DefaultTypeRefCell(props) {
+  function DefaultTypeRefCell(props, context) {
     var className = props.className,
         element = props.element;
+    var translate = context.injector.get('translate');
     var actualClassName = className + ' type-ref';
     return createVNode(1, "th", actualClassName, element.typeRef, 0, {
-      "title": "Data Type"
+      "title": translate('Data Type')
     });
   }
 
@@ -35662,149 +37370,6 @@
   var decisionTableHeadModule = {
     __init__: ['decisionTableHeadProvider'],
     decisionTableHeadProvider: ['type', DecisionTableHeadProvider]
-  };
-
-  function _typeof$a(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$a = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$a = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$a(obj);
-  }
-
-  function _classCallCheck$h(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$g(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$g(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$g(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$g(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$7(self, call) {
-    if (call && (_typeof$a(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$7(self);
-  }
-
-  function _assertThisInitialized$7(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _getPrototypeOf$7(o) {
-    _getPrototypeOf$7 = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$7(o);
-  }
-
-  function _inherits$7(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$7(subClass, superClass);
-  }
-
-  function _setPrototypeOf$7(o, p) {
-    _setPrototypeOf$7 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$7(o, p);
-  }
-
-  var DecisionTablePropertiesComponent =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$7(DecisionTablePropertiesComponent, _Component);
-
-    function DecisionTablePropertiesComponent() {
-      _classCallCheck$h(this, DecisionTablePropertiesComponent);
-
-      return _possibleConstructorReturn$7(this, _getPrototypeOf$7(DecisionTablePropertiesComponent).apply(this, arguments));
-    }
-
-    _createClass$g(DecisionTablePropertiesComponent, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var injector = this.context.injector;
-        this._sheet = injector.get('sheet');
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        var root = this._sheet.getRoot();
-
-        if (!is(root, 'dmn:DMNElement')) {
-          return null;
-        }
-
-        var _root$businessObject$ = root.businessObject.$parent,
-            id = _root$businessObject$.id,
-            name = _root$businessObject$.name;
-        return createVNode(1, "header", "decision-table-properties", [createVNode(1, "h3", "decision-table-name", name, 0, {
-          "title": "Decision Name"
-        }), createVNode(1, "h5", "decision-table-id", id, 0, {
-          "title": "Decision Id"
-        })], 4);
-      }
-    }]);
-
-    return DecisionTablePropertiesComponent;
-  }(Component);
-
-  function _classCallCheck$i(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var DecisionTableProperties = function DecisionTableProperties(components) {
-    _classCallCheck$i(this, DecisionTableProperties);
-
-    components.onGetComponent('table.before', function () {
-      return DecisionTablePropertiesComponent;
-    });
-  };
-  DecisionTableProperties.$inject = ['components'];
-
-  var decisionTablePropertiesModule = {
-    __init__: ['decisionTableProperties'],
-    decisionTableProperties: ['type', DecisionTableProperties]
   };
 
   function _typeof$b(obj) {
@@ -35821,7 +37386,7 @@
     return _typeof$b(obj);
   }
 
-  function _classCallCheck$j(instance, Constructor) {
+  function _classCallCheck$i(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
@@ -35890,65 +37455,64 @@
     return _setPrototypeOf$8(o, p);
   }
 
-  var DecisionRulesIndexCellComponent =
+  var DecisionTablePropertiesComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$8(DecisionRulesIndexCellComponent, _Component);
+    _inherits$8(DecisionTablePropertiesComponent, _Component);
 
-    function DecisionRulesIndexCellComponent() {
-      _classCallCheck$j(this, DecisionRulesIndexCellComponent);
+    function DecisionTablePropertiesComponent() {
+      _classCallCheck$i(this, DecisionTablePropertiesComponent);
 
-      return _possibleConstructorReturn$8(this, _getPrototypeOf$8(DecisionRulesIndexCellComponent).apply(this, arguments));
+      return _possibleConstructorReturn$8(this, _getPrototypeOf$8(DecisionTablePropertiesComponent).apply(this, arguments));
     }
 
-    _createClass$h(DecisionRulesIndexCellComponent, [{
+    _createClass$h(DecisionTablePropertiesComponent, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var injector = this.context.injector;
+        this._sheet = injector.get('sheet');
+      }
+    }, {
       key: "render",
       value: function render() {
-        var _this$props = this.props,
-            row = _this$props.row,
-            rowIndex = _this$props.rowIndex;
-        var components = this.context.components;
-        var innerComponents = components.getComponents('cell-inner', {
-          cellType: 'rule-index',
-          row: row,
-          rowIndex: rowIndex
-        });
-        return createVNode(1, "td", "rule-index", [innerComponents && innerComponents.map(function (InnerComponent) {
-          return createComponentVNode(2, InnerComponent, {
-            "row": row,
-            "rowIndex": rowIndex
-          });
-        }), rowIndex + 1], 0, {
-          "data-row-id": row.id
-        });
+        var root = this._sheet.getRoot();
+
+        if (!is(root, 'dmn:DMNElement')) {
+          return null;
+        }
+
+        var _root$businessObject$ = root.businessObject.$parent,
+            id = _root$businessObject$.id,
+            name = _root$businessObject$.name;
+        return createVNode(1, "header", "decision-table-properties", [createVNode(1, "h3", "decision-table-name", name, 0, {
+          "title": "Decision Name"
+        }), createVNode(1, "h5", "decision-table-id", id, 0, {
+          "title": "Decision Id"
+        })], 4);
       }
     }]);
 
-    return DecisionRulesIndexCellComponent;
+    return DecisionTablePropertiesComponent;
   }(Component);
 
-  function _classCallCheck$k(instance, Constructor) {
+  function _classCallCheck$j(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  var DecisionRuleIndices = function DecisionRuleIndices(components) {
-    _classCallCheck$k(this, DecisionRuleIndices);
+  var DecisionTableProperties = function DecisionTableProperties(components) {
+    _classCallCheck$j(this, DecisionTableProperties);
 
-    components.onGetComponent('cell', function (_ref) {
-      var cellType = _ref.cellType;
-
-      if (cellType === 'before-rule-cells') {
-        return DecisionRulesIndexCellComponent;
-      }
+    components.onGetComponent('table.before', function () {
+      return DecisionTablePropertiesComponent;
     });
   };
-  DecisionRuleIndices.$inject = ['components'];
+  DecisionTableProperties.$inject = ['components'];
 
-  var decisionRuleIndicesModule = {
-    __init__: ['decisionRuleIndices'],
-    decisionRuleIndices: ['type', DecisionRuleIndices]
+  var decisionTablePropertiesModule = {
+    __init__: ['decisionTableProperties'],
+    decisionTableProperties: ['type', DecisionTableProperties]
   };
 
   function _typeof$c(obj) {
@@ -35965,7 +37529,7 @@
     return _typeof$c(obj);
   }
 
-  function _classCallCheck$l(instance, Constructor) {
+  function _classCallCheck$k(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
@@ -36034,52 +37598,66 @@
     return _setPrototypeOf$9(o, p);
   }
 
-  var DecisionRulesBodyComponent =
+  var DecisionRulesIndexCellComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$9(DecisionRulesBodyComponent, _Component);
+    _inherits$9(DecisionRulesIndexCellComponent, _Component);
 
-    function DecisionRulesBodyComponent() {
-      _classCallCheck$l(this, DecisionRulesBodyComponent);
+    function DecisionRulesIndexCellComponent() {
+      _classCallCheck$k(this, DecisionRulesIndexCellComponent);
 
-      return _possibleConstructorReturn$9(this, _getPrototypeOf$9(DecisionRulesBodyComponent).apply(this, arguments));
+      return _possibleConstructorReturn$9(this, _getPrototypeOf$9(DecisionRulesIndexCellComponent).apply(this, arguments));
     }
 
-    _createClass$i(DecisionRulesBodyComponent, [{
+    _createClass$i(DecisionRulesIndexCellComponent, [{
       key: "render",
-      value: function render(_ref) {
-        var rows = _ref.rows,
-            cols = _ref.cols;
+      value: function render() {
+        var _this$props = this.props,
+            row = _this$props.row,
+            rowIndex = _this$props.rowIndex;
         var components = this.context.components;
-        return createVNode(1, "tbody", null, rows.map(function (row, rowIndex) {
-          var RowComponent = components.getComponent('row', {
-            rowType: 'rule'
-          });
-          return RowComponent && createComponentVNode(2, RowComponent, {
+        var innerComponents = components.getComponents('cell-inner', {
+          cellType: 'rule-index',
+          row: row,
+          rowIndex: rowIndex
+        });
+        return createVNode(1, "td", "rule-index", [innerComponents && innerComponents.map(function (InnerComponent) {
+          return createComponentVNode(2, InnerComponent, {
             "row": row,
-            "rowIndex": rowIndex,
-            "cols": cols
-          }, row.id);
-        }), 0);
+            "rowIndex": rowIndex
+          });
+        }), rowIndex + 1], 0, {
+          "data-row-id": row.id
+        });
       }
     }]);
 
-    return DecisionRulesBodyComponent;
+    return DecisionRulesIndexCellComponent;
   }(Component);
 
-  function _typeof$d(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$d = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$d = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
+  function _classCallCheck$l(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
     }
-
-    return _typeof$d(obj);
   }
+
+  var DecisionRuleIndices = function DecisionRuleIndices(components) {
+    _classCallCheck$l(this, DecisionRuleIndices);
+
+    components.onGetComponent('cell', function (_ref) {
+      var cellType = _ref.cellType;
+
+      if (cellType === 'before-rule-cells') {
+        return DecisionRulesIndexCellComponent;
+      }
+    });
+  };
+  DecisionRuleIndices.$inject = ['components'];
+
+  var decisionRuleIndicesModule = {
+    __init__: ['decisionRuleIndices'],
+    decisionRuleIndices: ['type', DecisionRuleIndices]
+  };
 
   function _classCallCheck$m(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -36102,6 +37680,189 @@
     if (staticProps) _defineProperties$j(Constructor, staticProps);
     return Constructor;
   }
+  var EXPRESSION_LANGUAGE_OPTIONS = [{
+    label: 'FEEL',
+    value: 'feel'
+  }, {
+    label: 'JUEL',
+    value: 'juel'
+  }, {
+    label: 'JavaScript',
+    value: 'javascript'
+  }, {
+    label: 'Groovy',
+    value: 'groovy'
+  }, {
+    label: 'Python',
+    value: 'python'
+  }, {
+    label: 'JRuby',
+    value: 'jruby'
+  }];
+  /**
+   * @typedef ExpressionLanguageDescriptor
+   * @property {string} value - value inserted into XML
+   * @property {string} label - human-readable label
+   */
+
+  /**
+   * Provide options and defaults of expression languages via config.
+   *
+   * @example
+   *
+   * // there will be two languages available with FEEL as default
+   * const editor = new DmnJS({
+   *   expressionLanguages: {
+   *     options: [{
+   *       value: 'feel',
+   *       label: 'FEEL'
+   *     }, {
+   *       value: 'juel',
+   *       label: 'JUEL'
+   *     }],
+   *     defaults: {
+   *       editor: 'feel'
+   *     }
+   *   }
+   * })
+   */
+
+  var ExpressionLanguages =
+  /*#__PURE__*/
+  function () {
+    function ExpressionLanguages(injector) {
+      _classCallCheck$m(this, ExpressionLanguages);
+
+      this._injector = injector;
+      var config = injector.get('config.expressionLanguages') || {};
+      this._config = {
+        options: EXPRESSION_LANGUAGE_OPTIONS,
+        defaults: {
+          editor: 'juel',
+          inputCell: 'feel'
+        }
+      }; // first assign the list of languages as it might be required for the legacy defaults
+
+      if (config.options) {
+        this._config.options = config.options;
+      }
+
+      var legacyDefaults = this._getLegacyDefaults();
+
+      assign(this._config.defaults, legacyDefaults, config.defaults);
+    }
+    /**
+     * Get default expression language for a component or the editor if `componentName`
+     * is not provided.
+     *
+     * @param {string} [componentName]
+     * @returns {ExpressionLanguageDescriptor}
+     */
+
+
+    _createClass$j(ExpressionLanguages, [{
+      key: "getDefault",
+      value: function getDefault(componentName) {
+        var defaults = this._config.defaults;
+        var defaultFromConfig = defaults[componentName] || defaults.editor;
+        return this._getLanguageByValue(defaultFromConfig) || this.getAll()[0];
+      }
+      /**
+       * Get label for provided expression language.
+       *
+       * @param {string} expressionLanguageValue - value from XML
+       * @returns {string}
+       */
+
+    }, {
+      key: "getLabel",
+      value: function getLabel(expressionLanguageValue) {
+        var langauge = this._getLanguageByValue(expressionLanguageValue);
+
+        return langauge ? langauge.label : expressionLanguageValue;
+      }
+      /**
+       * Get list of configured expression languages.
+       *
+       * @returns {ExpressionLanguageDescriptor[]}
+       */
+
+    }, {
+      key: "getAll",
+      value: function getAll() {
+        return this._config.options;
+      }
+    }, {
+      key: "_getLegacyDefaults",
+      value: function _getLegacyDefaults() {
+        var defaults = {},
+            injector = this._injector;
+        var inputCellValue = injector.get('config.defaultInputExpressionLanguage');
+        var outputCellValue = injector.get('config.defaultOutputExpressionLanguage');
+
+        if (inputCellValue) {
+          defaults.inputCell = inputCellValue;
+        }
+
+        if (outputCellValue) {
+          defaults.outputCell = outputCellValue;
+        }
+
+        return defaults;
+      }
+    }, {
+      key: "_getLanguageByValue",
+      value: function _getLanguageByValue(value) {
+        return this.getAll().find(function (language) {
+          return value === language.value;
+        });
+      }
+    }]);
+
+    return ExpressionLanguages;
+  }();
+  ExpressionLanguages.$inject = ['injector'];
+
+  var ExpressionLanguagesModule = {
+    __init__: ['expressionLanguages'],
+    expressionLanguages: ['type', ExpressionLanguages]
+  };
+
+  function _typeof$d(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$d = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$d = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$d(obj);
+  }
+
+  function _classCallCheck$n(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$k(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$k(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$k(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$k(Constructor, staticProps);
+    return Constructor;
+  }
 
   function _possibleConstructorReturn$a(self, call) {
     if (call && (_typeof$d(call) === "object" || typeof call === "function")) {
@@ -36111,19 +37872,19 @@
     return _assertThisInitialized$a(self);
   }
 
-  function _getPrototypeOf$a(o) {
-    _getPrototypeOf$a = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$a(o);
-  }
-
   function _assertThisInitialized$a(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
 
     return self;
+  }
+
+  function _getPrototypeOf$a(o) {
+    _getPrototypeOf$a = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$a(o);
   }
 
   function _inherits$a(subClass, superClass) {
@@ -36150,22 +37911,138 @@
     return _setPrototypeOf$a(o, p);
   }
 
+  var DecisionRulesBodyComponent =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$a(DecisionRulesBodyComponent, _Component);
+
+    function DecisionRulesBodyComponent() {
+      _classCallCheck$n(this, DecisionRulesBodyComponent);
+
+      return _possibleConstructorReturn$a(this, _getPrototypeOf$a(DecisionRulesBodyComponent).apply(this, arguments));
+    }
+
+    _createClass$k(DecisionRulesBodyComponent, [{
+      key: "render",
+      value: function render(_ref) {
+        var rows = _ref.rows,
+            cols = _ref.cols;
+        var components = this.context.components;
+        return createVNode(1, "tbody", null, rows.map(function (row, rowIndex) {
+          var RowComponent = components.getComponent('row', {
+            rowType: 'rule'
+          });
+          return RowComponent && createComponentVNode(2, RowComponent, {
+            "row": row,
+            "rowIndex": rowIndex,
+            "cols": cols
+          }, row.id);
+        }), 0);
+      }
+    }]);
+
+    return DecisionRulesBodyComponent;
+  }(Component);
+
+  function _typeof$e(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$e = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$e = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$e(obj);
+  }
+
+  function _classCallCheck$o(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$l(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$l(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$l(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$l(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$b(self, call) {
+    if (call && (_typeof$e(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$b(self);
+  }
+
+  function _getPrototypeOf$b(o) {
+    _getPrototypeOf$b = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$b(o);
+  }
+
+  function _assertThisInitialized$b(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$b(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$b(subClass, superClass);
+  }
+
+  function _setPrototypeOf$b(o, p) {
+    _setPrototypeOf$b = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$b(o, p);
+  }
+
   var DecisionRulesRowComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$a(DecisionRulesRowComponent, _Component);
+    _inherits$b(DecisionRulesRowComponent, _Component);
 
     function DecisionRulesRowComponent(props, context) {
       var _this;
 
-      _classCallCheck$m(this, DecisionRulesRowComponent);
+      _classCallCheck$o(this, DecisionRulesRowComponent);
 
-      _this = _possibleConstructorReturn$a(this, _getPrototypeOf$a(DecisionRulesRowComponent).call(this, props, context));
-      mixin(_assertThisInitialized$a(_this), ComponentWithSlots);
+      _this = _possibleConstructorReturn$b(this, _getPrototypeOf$b(DecisionRulesRowComponent).call(this, props, context));
+      mixin(_assertThisInitialized$b(_this), ComponentWithSlots);
       return _this;
     }
 
-    _createClass$j(DecisionRulesRowComponent, [{
+    _createClass$l(DecisionRulesRowComponent, [{
       key: "render",
       value: function render() {
         var _this2 = this;
@@ -36209,165 +38086,6 @@
     return DecisionRulesRowComponent;
   }(Component);
 
-  function _typeof$e(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$e = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$e = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$e(obj);
-  }
-
-  function _classCallCheck$n(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$k(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$k(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$k(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$k(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$b(self, call) {
-    if (call && (_typeof$e(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$b(self);
-  }
-
-  function _assertThisInitialized$b(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _getPrototypeOf$b(o) {
-    _getPrototypeOf$b = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$b(o);
-  }
-
-  function _inherits$b(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$b(subClass, superClass);
-  }
-
-  function _setPrototypeOf$b(o, p) {
-    _setPrototypeOf$b = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$b(o, p);
-  }
-
-  var DecisionRulesCellComponent =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$b(DecisionRulesCellComponent, _Component);
-
-    function DecisionRulesCellComponent() {
-      _classCallCheck$n(this, DecisionRulesCellComponent);
-
-      return _possibleConstructorReturn$b(this, _getPrototypeOf$b(DecisionRulesCellComponent).apply(this, arguments));
-    }
-
-    _createClass$k(DecisionRulesCellComponent, [{
-      key: "render",
-      value: function render() {
-        var _this$props = this.props,
-            cell = _this$props.cell,
-            row = _this$props.row,
-            col = _this$props.col;
-
-        if (is(cell, 'dmn:UnaryTests')) {
-          return createComponentVNode(2, HeaderCell, {
-            "className": "input-cell",
-            "elementId": cell.id,
-            "data-row-id": row.id,
-            "data-col-id": col.id,
-            children: cell.businessObject.text
-          });
-        } else {
-          return createComponentVNode(2, HeaderCell, {
-            "className": "output-cell",
-            "elementId": cell.id,
-            "data-row-id": row.id,
-            "data-col-id": col.id,
-            children: cell.businessObject.text
-          });
-        }
-      }
-    }]);
-
-    return DecisionRulesCellComponent;
-  }(Component);
-
-  function _classCallCheck$o(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var Rules$3 = function Rules(components) {
-    _classCallCheck$o(this, Rules);
-
-    components.onGetComponent('table.body', function () {
-      return DecisionRulesBodyComponent;
-    });
-    components.onGetComponent('row', function (_ref) {
-      var rowType = _ref.rowType;
-
-      if (rowType === 'rule') {
-        return DecisionRulesRowComponent;
-      }
-    });
-    components.onGetComponent('cell', function (_ref2) {
-      var cellType = _ref2.cellType;
-
-      if (cellType === 'rule') {
-        return DecisionRulesCellComponent;
-      }
-    });
-  };
-  Rules$3.$inject = ['components'];
-
-  var Rules$4 = {
-    __init__: ['decisionRules'],
-    decisionRules: ['type', Rules$3]
-  };
-
   function _typeof$f(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$f = function _typeof$1(obj) {
@@ -36388,7 +38106,7 @@
     }
   }
 
-  function _defineProperties$l(target, props) {
+  function _defineProperties$m(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -36398,9 +38116,9 @@
     }
   }
 
-  function _createClass$l(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$l(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$l(Constructor, staticProps);
+  function _createClass$m(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$m(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$m(Constructor, staticProps);
     return Constructor;
   }
 
@@ -36451,18 +38169,178 @@
     return _setPrototypeOf$c(o, p);
   }
 
+  var DecisionRulesCellComponent =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$c(DecisionRulesCellComponent, _Component);
+
+    function DecisionRulesCellComponent() {
+      _classCallCheck$p(this, DecisionRulesCellComponent);
+
+      return _possibleConstructorReturn$c(this, _getPrototypeOf$c(DecisionRulesCellComponent).apply(this, arguments));
+    }
+
+    _createClass$m(DecisionRulesCellComponent, [{
+      key: "render",
+      value: function render() {
+        var _this$props = this.props,
+            cell = _this$props.cell,
+            row = _this$props.row,
+            col = _this$props.col;
+
+        if (is(cell, 'dmn:UnaryTests')) {
+          return createComponentVNode(2, HeaderCell, {
+            "className": "input-cell",
+            "elementId": cell.id,
+            "data-row-id": row.id,
+            "data-col-id": col.id,
+            children: cell.businessObject.text
+          });
+        } else {
+          return createComponentVNode(2, HeaderCell, {
+            "className": "output-cell",
+            "elementId": cell.id,
+            "data-row-id": row.id,
+            "data-col-id": col.id,
+            children: cell.businessObject.text
+          });
+        }
+      }
+    }]);
+
+    return DecisionRulesCellComponent;
+  }(Component);
+
+  function _classCallCheck$q(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var Rules$3 = function Rules(components) {
+    _classCallCheck$q(this, Rules);
+
+    components.onGetComponent('table.body', function () {
+      return DecisionRulesBodyComponent;
+    });
+    components.onGetComponent('row', function (_ref) {
+      var rowType = _ref.rowType;
+
+      if (rowType === 'rule') {
+        return DecisionRulesRowComponent;
+      }
+    });
+    components.onGetComponent('cell', function (_ref2) {
+      var cellType = _ref2.cellType;
+
+      if (cellType === 'rule') {
+        return DecisionRulesCellComponent;
+      }
+    });
+  };
+  Rules$3.$inject = ['components'];
+
+  var Rules$4 = {
+    __depends__: [ExpressionLanguagesModule],
+    __init__: ['decisionRules'],
+    decisionRules: ['type', Rules$3]
+  };
+
+  function _typeof$g(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$g = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$g = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$g(obj);
+  }
+
+  function _classCallCheck$r(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$n(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$n(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$n(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$n(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$d(self, call) {
+    if (call && (_typeof$g(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$d(self);
+  }
+
+  function _assertThisInitialized$d(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _getPrototypeOf$d(o) {
+    _getPrototypeOf$d = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$d(o);
+  }
+
+  function _inherits$d(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$d(subClass, superClass);
+  }
+
+  function _setPrototypeOf$d(o, p) {
+    _setPrototypeOf$d = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$d(o, p);
+  }
+
   var HitPolicyCell =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$c(HitPolicyCell, _Component);
+    _inherits$d(HitPolicyCell, _Component);
 
     function HitPolicyCell() {
-      _classCallCheck$p(this, HitPolicyCell);
+      _classCallCheck$r(this, HitPolicyCell);
 
-      return _possibleConstructorReturn$c(this, _getPrototypeOf$c(HitPolicyCell).apply(this, arguments));
+      return _possibleConstructorReturn$d(this, _getPrototypeOf$d(HitPolicyCell).apply(this, arguments));
     }
 
-    _createClass$l(HitPolicyCell, [{
+    _createClass$n(HitPolicyCell, [{
       key: "componentWillMount",
       value: function componentWillMount() {
         var injector = this.context.injector;
@@ -36521,230 +38399,6 @@
   var hitPolicyModule = {
     __init__: ['hitPolicyProvider'],
     hitPolicyProvider: ['type', HitPolicyProvider]
-  };
-
-  function _typeof$g(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$g = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$g = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$g(obj);
-  }
-
-  function _classCallCheck$q(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$m(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$m(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$m(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$m(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$d(self, call) {
-    if (call && (_typeof$g(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$d(self);
-  }
-
-  function _getPrototypeOf$d(o) {
-    _getPrototypeOf$d = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$d(o);
-  }
-
-  function _assertThisInitialized$d(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$d(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$d(subClass, superClass);
-  }
-
-  function _setPrototypeOf$d(o, p) {
-    _setPrototypeOf$d = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$d(o, p);
-  }
-
-  function _defineProperty$7(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var ViewDrdComponent =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$d(ViewDrdComponent, _Component);
-
-    function ViewDrdComponent(props, context) {
-      var _this;
-
-      _classCallCheck$q(this, ViewDrdComponent);
-
-      _this = _possibleConstructorReturn$d(this, _getPrototypeOf$d(ViewDrdComponent).call(this, props, context));
-
-      _defineProperty$7(_assertThisInitialized$d(_this), "onClick", function () {
-        _this._eventBus.fire('showDrd');
-      });
-
-      var injector = context.injector;
-      _this._eventBus = injector.get('eventBus');
-      return _this;
-    }
-
-    _createClass$m(ViewDrdComponent, [{
-      key: "render",
-      value: function render() {
-        var _this2 = this;
-
-        return createVNode(1, "div", "view-drd", createVNode(1, "button", "view-drd-button", createTextVNode("View DRD"), 2, {
-          "onClick": this.onClick
-        }), 2, null, null, function (node) {
-          return _this2.node = node;
-        });
-      }
-    }]);
-
-    return ViewDrdComponent;
-  }(Component);
-
-  function _classCallCheck$r(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$n(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$n(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$n(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$n(Constructor, staticProps);
-    return Constructor;
-  }
-
-  var ViewDrd =
-  /*#__PURE__*/
-  function () {
-    function ViewDrd(components, eventBus, injector, sheet) {
-      var _this = this;
-
-      _classCallCheck$r(this, ViewDrd);
-
-      this._injector = injector;
-      this._sheet = sheet;
-      components.onGetComponent('table.before', function () {
-        if (_this.canViewDrd()) {
-          return ViewDrdComponent;
-        }
-      });
-      eventBus.on('showDrd', function () {
-        var parent = injector.get('_parent', false);
-        var root = sheet.getRoot();
-        var definitions = getDefinitions(root);
-
-        if (!definitions) {
-          return;
-        } // open definitions
-
-
-        var view = parent.getView(definitions);
-        parent.open(view);
-      });
-    }
-
-    _createClass$n(ViewDrd, [{
-      key: "canViewDrd",
-      value: function canViewDrd() {
-        var parent = this._injector.get('_parent', false);
-
-        if (!parent) {
-          return false;
-        }
-
-        var root = this._sheet.getRoot();
-
-        var definitions = getDefinitions(root);
-        return !!parent.getView(definitions);
-      }
-    }]);
-
-    return ViewDrd;
-  }();
-  ViewDrd.$inject = ['components', 'eventBus', 'injector', 'sheet']; // helpers //////////////////////
-
-  function getDefinitions(root) {
-    var businessObject = root.businessObject; // root might not have business object
-
-    if (!businessObject) {
-      return;
-    }
-
-    var decision = businessObject.$parent;
-    var definitions = decision.$parent;
-    return definitions;
-  }
-
-  var viewDrdModule = {
-    __init__: ['viewDrd'],
-    viewDrd: ['type', ViewDrd]
   };
 
   function _typeof$h(obj) {
@@ -36830,7 +38484,7 @@
     return _setPrototypeOf$e(o, p);
   }
 
-  function _defineProperty$8(obj, key, value) {
+  function _defineProperty$7(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
         value: value,
@@ -36845,22 +38499,20 @@
     return obj;
   }
 
-  var logo = 'iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAMAAADypuvZAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAADBQTFRFiMte9PrwldFwfcZPqtqN0+zEyOe1XLgjvuKncsJAZ70y6fXh3vDT////UrQV////G2zN+AAAABB0Uk5T////////////////////AOAjXRkAAAHDSURBVHjavJZJkoUgDEBJmAX8979tM8u3E6x20VlYJfFFMoL4vBDxATxZcakIOJTWSmxvKWVIkJ8jHvlRv1F2LFrVISCZI+tCtQx+XfewgVTfyY3plPiQEAzI3zWy+kR6NBhFBYeBuscJLOUuA2WVLpCjVIaFzrNQZArxAZKUQm6gsj37L9Cb7dnIBUKxENaaMJQqMpDXvSL+ktxdGRm2IsKgJGGPg7atwUG5CcFUEuSv+CwQqizTrvDTNXdMU2bMiDWZd8d7QIySWVRsb2vBBioxOFt4OinPBapL+neAb5KL5IJ8szOza2/DYoipUCx+CjO0Bpsv0V6mktNZ+k8rlABlWG0FrOpKYVo8DT3dBeLEjUBAj7moDogVii7nSS9QzZnFcOVBp1g2PyBQ3Vr5aIapN91VJy33HTJLC1iX2FY6F8gRdaAeIEfVONgtFCzZTmoLEdOjBDfsIOA6128gw3eu1shAajdZNAORxuQDJN5A5PbEG6gNIu24QJD5iNyRMZIr6bsHbCtCU/OaOaSvgkUyDMdDa1BXGf5HJ1To+/Ym6mCKT02Y+/Sa126ZKyd3jxhzpc1r8zVL6YM1Qy/kR4ABAFJ6iQUnivhAAAAAAElFTkSuQmCC';
-
-  var PoweredByLogoComponent =
+  var ViewDrdComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$e(PoweredByLogoComponent, _Component);
+    _inherits$e(ViewDrdComponent, _Component);
 
-    function PoweredByLogoComponent(props, context) {
+    function ViewDrdComponent(props, context) {
       var _this;
 
-      _classCallCheck$s(this, PoweredByLogoComponent);
+      _classCallCheck$s(this, ViewDrdComponent);
 
-      _this = _possibleConstructorReturn$e(this, _getPrototypeOf$e(PoweredByLogoComponent).call(this, props, context));
+      _this = _possibleConstructorReturn$e(this, _getPrototypeOf$e(ViewDrdComponent).call(this, props, context));
 
-      _defineProperty$8(_assertThisInitialized$e(_this), "onClick", function () {
-        _this._eventBus.fire('poweredBy.show');
+      _defineProperty$7(_assertThisInitialized$e(_this), "onClick", function () {
+        _this._eventBus.fire('showDrd');
       });
 
       var injector = context.injector;
@@ -36868,38 +38520,21 @@
       return _this;
     }
 
-    _createClass$o(PoweredByLogoComponent, [{
+    _createClass$o(ViewDrdComponent, [{
       key: "render",
       value: function render() {
         var _this2 = this;
 
-        return createVNode(1, "div", "powered-by-logo", createVNode(1, "img", "logo", null, 1, {
-          "src": "data:image/png;base64,".concat(logo)
-        }), 2, {
-          "onClick": this.onClick,
-          "title": "Powered by bpmn.io"
-        }, null, function (node) {
+        return createVNode(1, "div", "view-drd", createVNode(1, "button", "view-drd-button", createTextVNode("View DRD"), 2, {
+          "onClick": this.onClick
+        }), 2, null, null, function (node) {
           return _this2.node = node;
         });
       }
     }]);
 
-    return PoweredByLogoComponent;
+    return ViewDrdComponent;
   }(Component);
-
-  function _typeof$i(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$i = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$i = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$i(obj);
-  }
 
   function _classCallCheck$t(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -36920,6 +38555,109 @@
   function _createClass$p(Constructor, protoProps, staticProps) {
     if (protoProps) _defineProperties$p(Constructor.prototype, protoProps);
     if (staticProps) _defineProperties$p(Constructor, staticProps);
+    return Constructor;
+  }
+
+  var ViewDrd =
+  /*#__PURE__*/
+  function () {
+    function ViewDrd(components, eventBus, injector, sheet) {
+      var _this = this;
+
+      _classCallCheck$t(this, ViewDrd);
+
+      this._injector = injector;
+      this._sheet = sheet;
+      components.onGetComponent('table.before', function () {
+        if (_this.canViewDrd()) {
+          return ViewDrdComponent;
+        }
+      });
+      eventBus.on('showDrd', function () {
+        var parent = injector.get('_parent', false);
+        var root = sheet.getRoot();
+        var definitions = getDefinitions$1(root);
+
+        if (!definitions) {
+          return;
+        } // open definitions
+
+
+        var view = parent.getView(definitions);
+        parent.open(view);
+      });
+    }
+
+    _createClass$p(ViewDrd, [{
+      key: "canViewDrd",
+      value: function canViewDrd() {
+        var parent = this._injector.get('_parent', false);
+
+        if (!parent) {
+          return false;
+        }
+
+        var root = this._sheet.getRoot();
+
+        var definitions = getDefinitions$1(root);
+        return !!parent.getView(definitions);
+      }
+    }]);
+
+    return ViewDrd;
+  }();
+  ViewDrd.$inject = ['components', 'eventBus', 'injector', 'sheet']; // helpers //////////////////////
+
+  function getDefinitions$1(root) {
+    var businessObject = root.businessObject; // root might not have business object
+
+    if (!businessObject) {
+      return;
+    }
+
+    var decision = businessObject.$parent;
+    var definitions = decision.$parent;
+    return definitions;
+  }
+
+  var viewDrdModule = {
+    __init__: ['viewDrd'],
+    viewDrd: ['type', ViewDrd]
+  };
+
+  function _typeof$i(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$i = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$i = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$i(obj);
+  }
+
+  function _classCallCheck$u(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$q(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$q(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$q(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$q(Constructor, staticProps);
     return Constructor;
   }
 
@@ -36970,28 +38708,168 @@
     return _setPrototypeOf$f(o, p);
   }
 
+  function _defineProperty$8(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var logo = 'iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAMAAADypuvZAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAADBQTFRFiMte9PrwldFwfcZPqtqN0+zEyOe1XLgjvuKncsJAZ70y6fXh3vDT////UrQV////G2zN+AAAABB0Uk5T////////////////////AOAjXRkAAAHDSURBVHjavJZJkoUgDEBJmAX8979tM8u3E6x20VlYJfFFMoL4vBDxATxZcakIOJTWSmxvKWVIkJ8jHvlRv1F2LFrVISCZI+tCtQx+XfewgVTfyY3plPiQEAzI3zWy+kR6NBhFBYeBuscJLOUuA2WVLpCjVIaFzrNQZArxAZKUQm6gsj37L9Cb7dnIBUKxENaaMJQqMpDXvSL+ktxdGRm2IsKgJGGPg7atwUG5CcFUEuSv+CwQqizTrvDTNXdMU2bMiDWZd8d7QIySWVRsb2vBBioxOFt4OinPBapL+neAb5KL5IJ8szOza2/DYoipUCx+CjO0Bpsv0V6mktNZ+k8rlABlWG0FrOpKYVo8DT3dBeLEjUBAj7moDogVii7nSS9QzZnFcOVBp1g2PyBQ3Vr5aIapN91VJy33HTJLC1iX2FY6F8gRdaAeIEfVONgtFCzZTmoLEdOjBDfsIOA6128gw3eu1shAajdZNAORxuQDJN5A5PbEG6gNIu24QJD5iNyRMZIr6bsHbCtCU/OaOaSvgkUyDMdDa1BXGf5HJ1To+/Ym6mCKT02Y+/Sa126ZKyd3jxhzpc1r8zVL6YM1Qy/kR4ABAFJ6iQUnivhAAAAAAElFTkSuQmCC';
+
+  var PoweredByLogoComponent =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$f(PoweredByLogoComponent, _Component);
+
+    function PoweredByLogoComponent(props, context) {
+      var _this;
+
+      _classCallCheck$u(this, PoweredByLogoComponent);
+
+      _this = _possibleConstructorReturn$f(this, _getPrototypeOf$f(PoweredByLogoComponent).call(this, props, context));
+
+      _defineProperty$8(_assertThisInitialized$f(_this), "onClick", function () {
+        _this._eventBus.fire('poweredBy.show');
+      });
+
+      var injector = context.injector;
+      _this._eventBus = injector.get('eventBus');
+      return _this;
+    }
+
+    _createClass$q(PoweredByLogoComponent, [{
+      key: "render",
+      value: function render() {
+        var _this2 = this;
+
+        return createVNode(1, "div", "powered-by-logo", createVNode(1, "img", "logo", null, 1, {
+          "src": "data:image/png;base64,".concat(logo)
+        }), 2, {
+          "onClick": this.onClick,
+          "title": "Powered by bpmn.io"
+        }, null, function (node) {
+          return _this2.node = node;
+        });
+      }
+    }]);
+
+    return PoweredByLogoComponent;
+  }(Component);
+
+  function _typeof$j(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$j = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$j = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$j(obj);
+  }
+
+  function _classCallCheck$v(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$r(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$r(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$r(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$r(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$g(self, call) {
+    if (call && (_typeof$j(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$g(self);
+  }
+
+  function _getPrototypeOf$g(o) {
+    _getPrototypeOf$g = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$g(o);
+  }
+
+  function _assertThisInitialized$g(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$g(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$g(subClass, superClass);
+  }
+
+  function _setPrototypeOf$g(o, p) {
+    _setPrototypeOf$g = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$g(o, p);
+  }
+
   var logo$1 = 'iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAMAAADypuvZAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAADBQTFRFiMte9PrwldFwfcZPqtqN0+zEyOe1XLgjvuKncsJAZ70y6fXh3vDT////UrQV////G2zN+AAAABB0Uk5T////////////////////AOAjXRkAAAHDSURBVHjavJZJkoUgDEBJmAX8979tM8u3E6x20VlYJfFFMoL4vBDxATxZcakIOJTWSmxvKWVIkJ8jHvlRv1F2LFrVISCZI+tCtQx+XfewgVTfyY3plPiQEAzI3zWy+kR6NBhFBYeBuscJLOUuA2WVLpCjVIaFzrNQZArxAZKUQm6gsj37L9Cb7dnIBUKxENaaMJQqMpDXvSL+ktxdGRm2IsKgJGGPg7atwUG5CcFUEuSv+CwQqizTrvDTNXdMU2bMiDWZd8d7QIySWVRsb2vBBioxOFt4OinPBapL+neAb5KL5IJ8szOza2/DYoipUCx+CjO0Bpsv0V6mktNZ+k8rlABlWG0FrOpKYVo8DT3dBeLEjUBAj7moDogVii7nSS9QzZnFcOVBp1g2PyBQ3Vr5aIapN91VJy33HTJLC1iX2FY6F8gRdaAeIEfVONgtFCzZTmoLEdOjBDfsIOA6128gw3eu1shAajdZNAORxuQDJN5A5PbEG6gNIu24QJD5iNyRMZIr6bsHbCtCU/OaOaSvgkUyDMdDa1BXGf5HJ1To+/Ym6mCKT02Y+/Sa126ZKyd3jxhzpc1r8zVL6YM1Qy/kR4ABAFJ6iQUnivhAAAAAAElFTkSuQmCC';
 
   var PoweredByOverlayComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$f(PoweredByOverlayComponent, _Component);
+    _inherits$g(PoweredByOverlayComponent, _Component);
 
     function PoweredByOverlayComponent(props) {
       var _this;
 
-      _classCallCheck$t(this, PoweredByOverlayComponent);
+      _classCallCheck$v(this, PoweredByOverlayComponent);
 
-      _this = _possibleConstructorReturn$f(this, _getPrototypeOf$f(PoweredByOverlayComponent).call(this, props));
+      _this = _possibleConstructorReturn$g(this, _getPrototypeOf$g(PoweredByOverlayComponent).call(this, props));
       _this.state = {
         show: false
       };
-      _this.onClick = _this.onClick.bind(_assertThisInitialized$f(_this));
-      _this.onShow = _this.onShow.bind(_assertThisInitialized$f(_this));
+      _this.onClick = _this.onClick.bind(_assertThisInitialized$g(_this));
+      _this.onShow = _this.onShow.bind(_assertThisInitialized$g(_this));
       return _this;
     }
 
-    _createClass$p(PoweredByOverlayComponent, [{
+    _createClass$r(PoweredByOverlayComponent, [{
       key: "onClick",
       value: function onClick() {
         this.setState({
@@ -37038,14 +38916,14 @@
     return PoweredByOverlayComponent;
   }(Component);
 
-  function _classCallCheck$u(instance, Constructor) {
+  function _classCallCheck$w(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var PoweredBy = function PoweredBy(components, eventBus) {
-    _classCallCheck$u(this, PoweredBy);
+    _classCallCheck$w(this, PoweredBy);
 
     components.onGetComponent('table.before', function () {
       return PoweredByLogoComponent;
@@ -37061,18 +38939,18 @@
     poweredBy: ['type', PoweredBy]
   };
 
-  function _typeof$j(obj) {
+  function _typeof$k(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$j = function _typeof$1(obj) {
+      _typeof$k = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$j = function _typeof$1(obj) {
+      _typeof$k = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$j(obj);
+    return _typeof$k(obj);
   }
 
   function _toConsumableArray$6(arr) {
@@ -37133,13 +39011,13 @@
     return target;
   }
 
-  function _classCallCheck$v(instance, Constructor) {
+  function _classCallCheck$x(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$q(target, props) {
+  function _defineProperties$s(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -37149,21 +39027,21 @@
     }
   }
 
-  function _createClass$q(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$q(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$q(Constructor, staticProps);
+  function _createClass$s(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$s(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$s(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$g(self, call) {
-    if (call && (_typeof$j(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$h(self, call) {
+    if (call && (_typeof$k(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$g(self);
+    return _assertThisInitialized$h(self);
   }
 
-  function _assertThisInitialized$g(self) {
+  function _assertThisInitialized$h(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -37194,21 +39072,21 @@
 
   function _superPropBase$1(object, property) {
     while (!Object.prototype.hasOwnProperty.call(object, property)) {
-      object = _getPrototypeOf$g(object);
+      object = _getPrototypeOf$h(object);
       if (object === null) break;
     }
 
     return object;
   }
 
-  function _getPrototypeOf$g(o) {
-    _getPrototypeOf$g = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$h(o) {
+    _getPrototypeOf$h = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$g(o);
+    return _getPrototypeOf$h(o);
   }
 
-  function _inherits$g(subClass, superClass) {
+  function _inherits$h(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -37220,33 +39098,33 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$g(subClass, superClass);
+    if (superClass) _setPrototypeOf$h(subClass, superClass);
   }
 
-  function _setPrototypeOf$g(o, p) {
-    _setPrototypeOf$g = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$h(o, p) {
+    _setPrototypeOf$h = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$g(o, p);
+    return _setPrototypeOf$h(o, p);
   }
 
   var Viewer$1 =
   /*#__PURE__*/
   function (_Table) {
-    _inherits$g(Viewer, _Table);
+    _inherits$h(Viewer, _Table);
 
     function Viewer() {
       var _this;
 
       var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      _classCallCheck$v(this, Viewer);
+      _classCallCheck$x(this, Viewer);
 
       var container = Viewer._createContainer();
 
-      _this = _possibleConstructorReturn$g(this, _getPrototypeOf$g(Viewer).call(this, assign(options, {
+      _this = _possibleConstructorReturn$h(this, _getPrototypeOf$h(Viewer).call(this, assign(options, {
         renderer: {
           container: container
         }
@@ -37255,7 +39133,7 @@
       return _this;
     }
 
-    _createClass$q(Viewer, [{
+    _createClass$s(Viewer, [{
       key: "open",
       value: function open(decision, done) {
         var err; // use try/catch to not swallow synchronous exceptions
@@ -37388,7 +39266,7 @@
     }, {
       key: "destroy",
       value: function destroy() {
-        _get$1(_getPrototypeOf$g(Viewer.prototype), "destroy", this).call(this);
+        _get$1(_getPrototypeOf$h(Viewer.prototype), "destroy", this).call(this);
 
         this.detach();
       }
@@ -37400,7 +39278,7 @@
     }], [{
       key: "_getModules",
       value: function _getModules() {
-        return [annotationsModule, coreModule, decisionTableHeadModule, decisionTablePropertiesModule, decisionRuleIndicesModule, Rules$4, hitPolicyModule, viewDrdModule];
+        return [annotationsModule, coreModule, TranslateModule, decisionTableHeadModule, decisionTablePropertiesModule, decisionRuleIndicesModule, Rules$4, hitPolicyModule, viewDrdModule];
       }
     }, {
       key: "_createContainer",
@@ -37412,27 +39290,27 @@
     return Viewer;
   }(Table);
 
-  function _typeof$k(obj) {
+  function _typeof$l(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$k = function _typeof$1(obj) {
+      _typeof$l = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$k = function _typeof$1(obj) {
+      _typeof$l = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$k(obj);
+    return _typeof$l(obj);
   }
 
-  function _classCallCheck$w(instance, Constructor) {
+  function _classCallCheck$y(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$r(target, props) {
+  function _defineProperties$t(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -37442,28 +39320,28 @@
     }
   }
 
-  function _createClass$r(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$r(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$r(Constructor, staticProps);
+  function _createClass$t(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$t(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$t(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$h(self, call) {
-    if (call && (_typeof$k(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$i(self, call) {
+    if (call && (_typeof$l(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$h(self);
+    return _assertThisInitialized$i(self);
   }
 
-  function _getPrototypeOf$h(o) {
-    _getPrototypeOf$h = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$i(o) {
+    _getPrototypeOf$i = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$h(o);
+    return _getPrototypeOf$i(o);
   }
 
-  function _assertThisInitialized$h(self) {
+  function _assertThisInitialized$i(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -37471,7 +39349,7 @@
     return self;
   }
 
-  function _inherits$h(subClass, superClass) {
+  function _inherits$i(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -37483,16 +39361,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$h(subClass, superClass);
+    if (superClass) _setPrototypeOf$i(subClass, superClass);
   }
 
-  function _setPrototypeOf$h(o, p) {
-    _setPrototypeOf$h = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$i(o, p) {
+    _setPrototypeOf$i = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$h(o, p);
+    return _setPrototypeOf$i(o, p);
   }
 
   function _defineProperty$9(obj, key, value) {
@@ -37513,27 +39391,27 @@
   var AddRuleFootComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$h(AddRuleFootComponent, _Component);
+    _inherits$i(AddRuleFootComponent, _Component);
 
     function AddRuleFootComponent(props, context) {
       var _this;
 
-      _classCallCheck$w(this, AddRuleFootComponent);
+      _classCallCheck$y(this, AddRuleFootComponent);
 
-      _this = _possibleConstructorReturn$h(this, _getPrototypeOf$h(AddRuleFootComponent).call(this, props, context));
+      _this = _possibleConstructorReturn$i(this, _getPrototypeOf$i(AddRuleFootComponent).call(this, props, context));
 
-      _defineProperty$9(_assertThisInitialized$h(_this), "handleClick", function (e) {
+      _defineProperty$9(_assertThisInitialized$i(_this), "handleClick", function (e) {
         e.stopPropagation();
 
         _this.addRule();
       });
 
-      inject(_assertThisInitialized$h(_this));
-      _this.addRule = _this.addRule.bind(_assertThisInitialized$h(_this));
+      inject(_assertThisInitialized$i(_this));
+      _this.addRule = _this.addRule.bind(_assertThisInitialized$i(_this));
       return _this;
     }
 
-    _createClass$r(AddRuleFootComponent, [{
+    _createClass$t(AddRuleFootComponent, [{
       key: "componentWillMount",
       value: function componentWillMount() {
         this._eventBus = this.context.injector.get('eventBus');
@@ -37563,9 +39441,12 @@
 
           var _businessObject = cols[i] && cols[i].businessObject;
 
+          var placeholder = '';
+
           if (_businessObject) {
             if (_businessObject.$instanceOf('dmn:InputClause')) {
               className += ' input-cell';
+              placeholder = '-';
             }
 
             if (_businessObject.$instanceOf('dmn:OutputClause')) {
@@ -37573,7 +39454,7 @@
             }
           }
 
-          cells.push(createVNode(1, "td", className, createTextVNode("-"), 2));
+          cells.push(createVNode(1, "td", className, placeholder, 0));
         }
 
         return createVNode(1, "tfoot", "actionable add-rule", createVNode(1, "tr", null, cells, 0), 2, {
@@ -37586,14 +39467,14 @@
   }(Component);
   AddRuleFootComponent.$inject = ['sheet'];
 
-  function _classCallCheck$x(instance, Constructor) {
+  function _classCallCheck$z(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var AddRule = function AddRule(components, editorActions, eventBus) {
-    _classCallCheck$x(this, AddRule);
+    _classCallCheck$z(this, AddRule);
 
     components.onGetComponent('table.foot', function () {
       return AddRuleFootComponent;
@@ -37604,13 +39485,13 @@
   };
   AddRule.$inject = ['components', 'editorActions', 'eventBus'];
 
-  function _classCallCheck$y(instance, Constructor) {
+  function _classCallCheck$A(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$s(target, props) {
+  function _defineProperties$u(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -37620,9 +39501,9 @@
     }
   }
 
-  function _createClass$s(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$s(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$s(Constructor, staticProps);
+  function _createClass$u(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$u(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$u(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -37635,7 +39516,7 @@
     function Selection(elementRegistry, eventBus, renderer) {
       var _this = this;
 
-      _classCallCheck$y(this, Selection);
+      _classCallCheck$A(this, Selection);
 
       this._elementRegistry = elementRegistry;
       this._eventBus = eventBus;
@@ -37652,7 +39533,7 @@
      */
 
 
-    _createClass$s(Selection, [{
+    _createClass$u(Selection, [{
       key: "select",
       value: function select(element) {
         if (isString(element)) {
@@ -37711,7 +39592,7 @@
   }();
   Selection$1.$inject = ['elementRegistry', 'eventBus', 'renderer'];
 
-  function _classCallCheck$z(instance, Constructor) {
+  function _classCallCheck$B(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
@@ -37722,7 +39603,7 @@
 
 
   var SelectionBehavior$1 = function SelectionBehavior(elementRegistry, eventBus, renderer, selection) {
-    _classCallCheck$z(this, SelectionBehavior);
+    _classCallCheck$B(this, SelectionBehavior);
 
     this._elementRegistry = elementRegistry;
     this._renderer = renderer;
@@ -37770,13 +39651,13 @@
     selectionBehavior: ['type', SelectionBehavior$1]
   };
 
-  function _classCallCheck$A(instance, Constructor) {
+  function _classCallCheck$C(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$t(target, props) {
+  function _defineProperties$v(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -37786,9 +39667,9 @@
     }
   }
 
-  function _createClass$t(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$t(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$t(Constructor, staticProps);
+  function _createClass$v(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$v(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$v(Constructor, staticProps);
     return Constructor;
   }
 
@@ -37820,7 +39701,7 @@
     function InteractionEvents(config, eventBus) {
       var _this = this;
 
-      _classCallCheck$A(this, InteractionEvents);
+      _classCallCheck$C(this, InteractionEvents);
 
       _defineProperty$a(this, "_handleEvent", function (event) {
         var target = event.target,
@@ -37863,7 +39744,7 @@
       });
     }
 
-    _createClass$t(InteractionEvents, [{
+    _createClass$v(InteractionEvents, [{
       key: "_addEventListeners",
       value: function _addEventListeners(events) {
         var _this2 = this;
@@ -38684,7 +40565,7 @@
     }
   }
 
-  var LOW_PRIORITY$9 = 500;
+  var LOW_PRIORITY$a = 500;
   var VALID_DIRECTIONS = {
     above: true,
     below: true,
@@ -38770,9 +40651,9 @@
       }
     }
 
-    eventBus.on('cell.click', LOW_PRIORITY$9, click);
-    eventBus.on('cell.focusin', LOW_PRIORITY$9, focus);
-    eventBus.on('cell.focusout', LOW_PRIORITY$9, unfocus);
+    eventBus.on('cell.click', LOW_PRIORITY$a, click);
+    eventBus.on('cell.focusin', LOW_PRIORITY$a, focus);
+    eventBus.on('cell.focusout', LOW_PRIORITY$a, unfocus);
     eventBus.on('cellSelection.changed', function (event) {
       var elementId = event.elementId,
           selection = event.selection;
@@ -38938,27 +40819,27 @@
     clipboard: ['type', Clipboard]
   };
 
-  function _typeof$l(obj) {
+  function _typeof$m(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$l = function _typeof$1(obj) {
+      _typeof$m = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$l = function _typeof$1(obj) {
+      _typeof$m = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$l(obj);
+    return _typeof$m(obj);
   }
 
-  function _classCallCheck$B(instance, Constructor) {
+  function _classCallCheck$D(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$u(target, props) {
+  function _defineProperties$w(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -38968,21 +40849,21 @@
     }
   }
 
-  function _createClass$u(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$u(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$u(Constructor, staticProps);
+  function _createClass$w(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$w(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$w(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$i(self, call) {
-    if (call && (_typeof$l(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$j(self, call) {
+    if (call && (_typeof$m(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$i(self);
+    return _assertThisInitialized$j(self);
   }
 
-  function _assertThisInitialized$i(self) {
+  function _assertThisInitialized$j(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -38990,14 +40871,14 @@
     return self;
   }
 
-  function _getPrototypeOf$i(o) {
-    _getPrototypeOf$i = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$j(o) {
+    _getPrototypeOf$j = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$i(o);
+    return _getPrototypeOf$j(o);
   }
 
-  function _inherits$i(subClass, superClass) {
+  function _inherits$j(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -39009,40 +40890,40 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$i(subClass, superClass);
+    if (superClass) _setPrototypeOf$j(subClass, superClass);
   }
 
-  function _setPrototypeOf$i(o, p) {
-    _setPrototypeOf$i = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$j(o, p) {
+    _setPrototypeOf$j = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$i(o, p);
+    return _setPrototypeOf$j(o, p);
   }
-  var HIGH_PRIORITY$5 = 2000;
+  var HIGH_PRIORITY$6 = 2000;
 
   var DecisionTableModelingRules =
   /*#__PURE__*/
   function (_RuleProvider) {
-    _inherits$i(DecisionTableModelingRules, _RuleProvider);
+    _inherits$j(DecisionTableModelingRules, _RuleProvider);
 
     function DecisionTableModelingRules(eventBus, sheet) {
       var _this;
 
-      _classCallCheck$B(this, DecisionTableModelingRules);
+      _classCallCheck$D(this, DecisionTableModelingRules);
 
-      _this = _possibleConstructorReturn$i(this, _getPrototypeOf$i(DecisionTableModelingRules).call(this, eventBus));
+      _this = _possibleConstructorReturn$j(this, _getPrototypeOf$j(DecisionTableModelingRules).call(this, eventBus));
       _this._sheet = sheet;
       return _this;
     }
 
-    _createClass$u(DecisionTableModelingRules, [{
+    _createClass$w(DecisionTableModelingRules, [{
       key: "init",
       value: function init() {
         var _this2 = this;
 
-        this.addRule('col.move', HIGH_PRIORITY$5, function (_ref) {
+        this.addRule('col.move', HIGH_PRIORITY$6, function (_ref) {
           var col = _ref.col,
               index = _ref.index;
 
@@ -39056,7 +40937,7 @@
             return index >= input.length;
           }
         });
-        this.addRule('col.remove', HIGH_PRIORITY$5, function (_ref2) {
+        this.addRule('col.remove', HIGH_PRIORITY$6, function (_ref2) {
           var col = _ref2.col;
 
           var _this2$_sheet$getRoot2 = _this2._sheet.getRoot(),
@@ -39071,7 +40952,7 @@
           return true;
         }); // a rule that is aware of the data structure coming from copy and paste
 
-        this.addRule('paste', HIGH_PRIORITY$5, function (_ref3) {
+        this.addRule('paste', HIGH_PRIORITY$6, function (_ref3) {
           var data = _ref3.data,
               target = _ref3.target;
 
@@ -39154,13 +41035,13 @@
     decisionTableModelingRules: ['type', DecisionTableModelingRules]
   };
 
-  function _classCallCheck$C(instance, Constructor) {
+  function _classCallCheck$E(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$v(target, props) {
+  function _defineProperties$x(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -39170,9 +41051,9 @@
     }
   }
 
-  function _createClass$v(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$v(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$v(Constructor, staticProps);
+  function _createClass$x(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$x(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$x(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -39184,7 +41065,7 @@
   /*#__PURE__*/
   function () {
     function CutHandler(clipboard, modeling, sheet) {
-      _classCallCheck$C(this, CutHandler);
+      _classCallCheck$E(this, CutHandler);
 
       this._clipboard = clipboard;
       this._modeling = modeling;
@@ -39195,7 +41076,7 @@
      */
 
 
-    _createClass$v(CutHandler, [{
+    _createClass$x(CutHandler, [{
       key: "execute",
       value: function execute(context) {
         var data = context.data;
@@ -39778,13 +41659,13 @@
     };
   }
 
-  function _classCallCheck$D(instance, Constructor) {
+  function _classCallCheck$F(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$w(target, props) {
+  function _defineProperties$y(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -39794,9 +41675,9 @@
     }
   }
 
-  function _createClass$w(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$w(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$w(Constructor, staticProps);
+  function _createClass$y(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$y(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$y(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -39807,7 +41688,7 @@
   /*#__PURE__*/
   function () {
     function PasteHandler(clipboard, dmnFactory, elementFactory, elementRegistry, eventBus, moddle, modeling, sheet) {
-      _classCallCheck$D(this, PasteHandler);
+      _classCallCheck$F(this, PasteHandler);
 
       this._clipboard = clipboard;
       this._dmnFactory = dmnFactory;
@@ -39823,7 +41704,7 @@
      */
 
 
-    _createClass$w(PasteHandler, [{
+    _createClass$y(PasteHandler, [{
       key: "postExecute",
       value: function postExecute(context) {
         var _this = this;
@@ -39941,13 +41822,13 @@
     return obj;
   }
 
-  function _classCallCheck$E(instance, Constructor) {
+  function _classCallCheck$G(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$x(target, props) {
+  function _defineProperties$z(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -39957,9 +41838,9 @@
     }
   }
 
-  function _createClass$x(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$x(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$x(Constructor, staticProps);
+  function _createClass$z(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$z(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$z(Constructor, staticProps);
     return Constructor;
   }
 
@@ -39967,7 +41848,7 @@
   /*#__PURE__*/
   function () {
     function CutPaste(clipboard, commandStack, eventBus, modeling, sheet, rules) {
-      _classCallCheck$E(this, CutPaste);
+      _classCallCheck$G(this, CutPaste);
 
       this._clipboard = clipboard;
       this._commandStack = commandStack;
@@ -39985,7 +41866,7 @@
      */
 
 
-    _createClass$x(CutPaste, [{
+    _createClass$z(CutPaste, [{
       key: "copy",
       value: function copy(elements) {
         if (!isArray(elements)) {
@@ -40104,14 +41985,14 @@
     copyCutPaste: ['type', CutPaste]
   };
 
-  function _classCallCheck$F(instance, Constructor) {
+  function _classCallCheck$H(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var DecisionTableEditorActions = function DecisionTableEditorActions(copyCutPaste, editorActions, modeling, selection, cellSelection, sheet) {
-    _classCallCheck$F(this, DecisionTableEditorActions);
+    _classCallCheck$H(this, DecisionTableEditorActions);
 
     var actions = {
       addRule: function addRule() {
@@ -40375,13 +42256,13 @@
   };
   DecisionTableEditorActions.$inject = ['copyCutPaste', 'editorActions', 'modeling', 'selection', 'cellSelection', 'sheet'];
 
-  function _classCallCheck$G(instance, Constructor) {
+  function _classCallCheck$I(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$y(target, props) {
+  function _defineProperties$A(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -40391,9 +42272,9 @@
     }
   }
 
-  function _createClass$y(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$y(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$y(Constructor, staticProps);
+  function _createClass$A(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$A(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$A(Constructor, staticProps);
     return Constructor;
   }
   var NOT_REGISTERED_ERROR$1 = 'is not a registered action',
@@ -40411,7 +42292,7 @@
   /*#__PURE__*/
   function () {
     function EditorActions(commandStack, eventBus, modeling, selection) {
-      _classCallCheck$G(this, EditorActions);
+      _classCallCheck$I(this, EditorActions);
 
       this._actions = {
         undo: function undo() {
@@ -40467,7 +42348,7 @@
      */
 
 
-    _createClass$y(EditorActions, [{
+    _createClass$A(EditorActions, [{
       key: "trigger",
       value: function trigger(action, opts) {
         if (!this._actions[action]) {
@@ -40785,27 +42666,27 @@
   var range_1 = range;
   selectionUpdate.range = range_1;
 
-  function _typeof$m(obj) {
+  function _typeof$n(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$m = function _typeof$1(obj) {
+      _typeof$n = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$m = function _typeof$1(obj) {
+      _typeof$n = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$m(obj);
+    return _typeof$n(obj);
   }
 
-  function _classCallCheck$H(instance, Constructor) {
+  function _classCallCheck$J(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$z(target, props) {
+  function _defineProperties$B(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -40815,28 +42696,28 @@
     }
   }
 
-  function _createClass$z(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$z(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$z(Constructor, staticProps);
+  function _createClass$B(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$B(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$B(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$j(self, call) {
-    if (call && (_typeof$m(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$k(self, call) {
+    if (call && (_typeof$n(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$j(self);
+    return _assertThisInitialized$k(self);
   }
 
-  function _getPrototypeOf$j(o) {
-    _getPrototypeOf$j = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$k(o) {
+    _getPrototypeOf$k = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$j(o);
+    return _getPrototypeOf$k(o);
   }
 
-  function _assertThisInitialized$j(self) {
+  function _assertThisInitialized$k(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -40844,7 +42725,7 @@
     return self;
   }
 
-  function _inherits$j(subClass, superClass) {
+  function _inherits$k(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -40856,16 +42737,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$j(subClass, superClass);
+    if (superClass) _setPrototypeOf$k(subClass, superClass);
   }
 
-  function _setPrototypeOf$j(o, p) {
-    _setPrototypeOf$j = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$k(o, p) {
+    _setPrototypeOf$k = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$j(o, p);
+    return _setPrototypeOf$k(o, p);
   }
 
   function _defineProperty$d(obj, key, value) {
@@ -40913,16 +42794,16 @@
   var ContentEditable =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$j(ContentEditable, _Component);
+    _inherits$k(ContentEditable, _Component);
 
     function ContentEditable(props, context) {
       var _this;
 
-      _classCallCheck$H(this, ContentEditable);
+      _classCallCheck$J(this, ContentEditable);
 
-      _this = _possibleConstructorReturn$j(this, _getPrototypeOf$j(ContentEditable).call(this, props, context));
+      _this = _possibleConstructorReturn$k(this, _getPrototypeOf$k(ContentEditable).call(this, props, context));
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onFocus", function () {
+      _defineProperty$d(_assertThisInitialized$k(_this), "onFocus", function () {
         var propsFocus = _this.props.onFocus;
 
         _this.setState({
@@ -40934,7 +42815,7 @@
         }
       });
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onBlur", function () {
+      _defineProperty$d(_assertThisInitialized$k(_this), "onBlur", function () {
         var propsBlur = _this.props.onBlur;
 
         _this.setState({
@@ -40946,7 +42827,7 @@
         }
       });
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onKeydown", function (event) {
+      _defineProperty$d(_assertThisInitialized$k(_this), "onKeydown", function (event) {
         // enter
         if (event.which === 13) {
           // prevent default action (<br/> insert)
@@ -40963,7 +42844,7 @@
         }
       });
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onInput", function (event) {
+      _defineProperty$d(_assertThisInitialized$k(_this), "onInput", function (event) {
         var propsInput = _this.props.onInput;
 
         if (typeof propsInput !== 'function') {
@@ -40974,9 +42855,9 @@
         propsInput(text);
       });
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onPaste", noop$1);
+      _defineProperty$d(_assertThisInitialized$k(_this), "onPaste", noop$1);
 
-      _defineProperty$d(_assertThisInitialized$j(_this), "onKeypress", noop$1);
+      _defineProperty$d(_assertThisInitialized$k(_this), "onKeypress", noop$1);
 
       _this.state = {}; // TODO(nikku): remove once we drop IE 11 support
 
@@ -40997,7 +42878,7 @@
       return _this;
     }
 
-    _createClass$z(ContentEditable, [{
+    _createClass$B(ContentEditable, [{
       key: "componentWillUpdate",
       value: function componentWillUpdate(newProps, newState) {
         // save old selection + text for later
@@ -41100,27 +42981,27 @@
     return event.metaKey || event.ctrlKey;
   }
 
-  function _typeof$n(obj) {
+  function _typeof$o(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$n = function _typeof$1(obj) {
+      _typeof$o = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$n = function _typeof$1(obj) {
+      _typeof$o = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$n(obj);
+    return _typeof$o(obj);
   }
 
-  function _classCallCheck$I(instance, Constructor) {
+  function _classCallCheck$K(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$A(target, props) {
+  function _defineProperties$C(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -41130,28 +43011,28 @@
     }
   }
 
-  function _createClass$A(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$A(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$A(Constructor, staticProps);
+  function _createClass$C(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$C(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$C(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$k(self, call) {
-    if (call && (_typeof$n(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$l(self, call) {
+    if (call && (_typeof$o(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$k(self);
+    return _assertThisInitialized$l(self);
   }
 
-  function _getPrototypeOf$k(o) {
-    _getPrototypeOf$k = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$l(o) {
+    _getPrototypeOf$l = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$k(o);
+    return _getPrototypeOf$l(o);
   }
 
-  function _assertThisInitialized$k(self) {
+  function _assertThisInitialized$l(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -41159,7 +43040,7 @@
     return self;
   }
 
-  function _inherits$k(subClass, superClass) {
+  function _inherits$l(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -41171,16 +43052,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$k(subClass, superClass);
+    if (superClass) _setPrototypeOf$l(subClass, superClass);
   }
 
-  function _setPrototypeOf$k(o, p) {
-    _setPrototypeOf$k = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$l(o, p) {
+    _setPrototypeOf$l = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$k(o, p);
+    return _setPrototypeOf$l(o, p);
   }
 
   function _defineProperty$e(obj, key, value) {
@@ -41230,16 +43111,16 @@
   var EditableComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$k(EditableComponent, _Component);
+    _inherits$l(EditableComponent, _Component);
 
     function EditableComponent(props, context) {
       var _this;
 
-      _classCallCheck$I(this, EditableComponent);
+      _classCallCheck$K(this, EditableComponent);
 
-      _this = _possibleConstructorReturn$k(this, _getPrototypeOf$k(EditableComponent).call(this, props, context));
+      _this = _possibleConstructorReturn$l(this, _getPrototypeOf$l(EditableComponent).call(this, props, context));
 
-      _defineProperty$e(_assertThisInitialized$k(_this), "onFocus", function () {
+      _defineProperty$e(_assertThisInitialized$l(_this), "onFocus", function () {
         _this.setState({
           focussed: true
         });
@@ -41251,7 +43132,7 @@
         }
       });
 
-      _defineProperty$e(_assertThisInitialized$k(_this), "onBlur", function (property) {
+      _defineProperty$e(_assertThisInitialized$l(_this), "onBlur", function (property) {
         _this.setState({
           focussed: false
         });
@@ -41313,7 +43194,7 @@
       return _this;
     }
 
-    _createClass$A(EditableComponent, [{
+    _createClass$C(EditableComponent, [{
       key: "getClassName",
       value: function getClassName() {
         var className = this.props.className;
@@ -41335,7 +43216,9 @@
     }, {
       key: "getDisplayValue",
       value: function getDisplayValue() {
-        var value = this.props.value;
+        var _this$props = this.props,
+            value = _this$props.value,
+            placeholder = _this$props.placeholder;
         var _this$state2 = this.state,
             focussed = _this$state2.focussed,
             changing = _this$state2.changing;
@@ -41345,7 +43228,7 @@
         }
 
         if (!value) {
-          value = focussed ? '' : '-';
+          value = focussed ? '' : placeholder || '';
         }
 
         return value;
@@ -41368,229 +43251,6 @@
     return EditableComponent;
   }(Component);
 
-  function _typeof$o(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$o = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$o = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$o(obj);
-  }
-
-  function _classCallCheck$J(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$B(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$B(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$B(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$B(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$l(self, call) {
-    if (call && (_typeof$o(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$l(self);
-  }
-
-  function _getPrototypeOf$l(o) {
-    _getPrototypeOf$l = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$l(o);
-  }
-
-  function _assertThisInitialized$l(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$l(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$l(subClass, superClass);
-  }
-
-  function _setPrototypeOf$l(o, p) {
-    _setPrototypeOf$l = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$l(o, p);
-  }
-
-  function _defineProperty$f(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var EditableAnnotationCell =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$l(EditableAnnotationCell, _Component);
-
-    function EditableAnnotationCell(props, context) {
-      var _this;
-
-      _classCallCheck$J(this, EditableAnnotationCell);
-
-      _this = _possibleConstructorReturn$l(this, _getPrototypeOf$l(EditableAnnotationCell).call(this, props, context));
-
-      _defineProperty$f(_assertThisInitialized$l(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
-      });
-
-      _defineProperty$f(_assertThisInitialized$l(_this), "setAnnotationValue", function (text) {
-        var row = _this.props.row;
-
-        _this.modeling.editAnnotation(row.businessObject, text);
-      });
-
-      inject(_assertThisInitialized$l(_this));
-      return _this;
-    }
-
-    _createClass$B(EditableAnnotationCell, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var row = this.props.row;
-        this.changeSupport.onElementsChanged(row.id, this.onElementsChanged);
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        var row = this.props.row;
-        this.changeSupport.offElementsChanged(row.id, this.onElementsChanged);
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        var _this$props = this.props,
-            row = _this$props.row,
-            rowIndex = _this$props.rowIndex;
-        var _row$businessObject = row.businessObject,
-            description = _row$businessObject.description,
-            id = _row$businessObject.id;
-        return createComponentVNode(2, HeaderCell, {
-          "className": "annotation",
-          "onChange": this.setAnnotationValue,
-          "coords": "".concat(rowIndex, ":annotation"),
-          "value": description,
-          "elementId": id + '__annotation',
-          "data-row-id": row.id,
-          children: createComponentVNode(2, AnnotationEditor, {
-            "ctrlForNewline": true,
-            "className": "annotation-editor",
-            "onChange": this.setAnnotationValue,
-            "value": description
-          })
-        });
-      }
-    }]);
-
-    return EditableAnnotationCell;
-  }(Component);
-  EditableAnnotationCell.$inject = ['changeSupport', 'modeling'];
-
-  var AnnotationEditor =
-  /*#__PURE__*/
-  function (_EditableComponent) {
-    _inherits$l(AnnotationEditor, _EditableComponent);
-
-    function AnnotationEditor() {
-      _classCallCheck$J(this, AnnotationEditor);
-
-      return _possibleConstructorReturn$l(this, _getPrototypeOf$l(AnnotationEditor).apply(this, arguments));
-    }
-
-    _createClass$B(AnnotationEditor, [{
-      key: "render",
-      value: function render() {
-        return createVNode(1, "div", this.getClassName(), this.getEditor(), 0);
-      }
-    }]);
-
-    return AnnotationEditor;
-  }(EditableComponent);
-
-  function AnnotationsEditingProvider(components) {
-    components.onGetComponent('cell', function (_ref) {
-      var cellType = _ref.cellType;
-
-      if (cellType === 'after-label-cells') {
-        return AnnotationHeader;
-      } else if (cellType === 'after-rule-cells') {
-        return EditableAnnotationCell;
-      }
-    });
-  }
-  AnnotationsEditingProvider.$inject = ['components'];
-
-  var DEFAULT_DEBOUNCE_TIME = 300;
-  function debounceInput(shouldDebounce) {
-    return function _debounceInput(fn) {
-      if (shouldDebounce !== false) {
-        var debounceTime = isNumber(shouldDebounce) ? shouldDebounce : DEFAULT_DEBOUNCE_TIME;
-        return debounce(fn, debounceTime);
-      } else {
-        return fn;
-      }
-    };
-  }
-  debounceInput.$inject = ['config.debounceInput'];
-
-  var DebounceInput = {
-    debounceInput: ['factory', debounceInput]
-  };
-
-  var annotationsEditorModule = {
-    __depends__: [DebounceInput],
-    __init__: ['annotationsProvider'],
-    annotationsProvider: ['type', AnnotationsEditingProvider]
-  };
-
   function _typeof$p(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$p = function _typeof$1(obj) {
@@ -41605,13 +43265,13 @@
     return _typeof$p(obj);
   }
 
-  function _classCallCheck$K(instance, Constructor) {
+  function _classCallCheck$L(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$C(target, props) {
+  function _defineProperties$D(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -41621,9 +43281,9 @@
     }
   }
 
-  function _createClass$C(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$C(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$C(Constructor, staticProps);
+  function _createClass$D(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$D(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$D(Constructor, staticProps);
     return Constructor;
   }
 
@@ -41674,6 +43334,229 @@
     return _setPrototypeOf$m(o, p);
   }
 
+  function _defineProperty$f(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var EditableAnnotationCell =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$m(EditableAnnotationCell, _Component);
+
+    function EditableAnnotationCell(props, context) {
+      var _this;
+
+      _classCallCheck$L(this, EditableAnnotationCell);
+
+      _this = _possibleConstructorReturn$m(this, _getPrototypeOf$m(EditableAnnotationCell).call(this, props, context));
+
+      _defineProperty$f(_assertThisInitialized$m(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
+      });
+
+      _defineProperty$f(_assertThisInitialized$m(_this), "setAnnotationValue", function (text) {
+        var row = _this.props.row;
+
+        _this.modeling.editAnnotation(row.businessObject, text);
+      });
+
+      inject(_assertThisInitialized$m(_this));
+      return _this;
+    }
+
+    _createClass$D(EditableAnnotationCell, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var row = this.props.row;
+        this.changeSupport.onElementsChanged(row.id, this.onElementsChanged);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var row = this.props.row;
+        this.changeSupport.offElementsChanged(row.id, this.onElementsChanged);
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this$props = this.props,
+            row = _this$props.row,
+            rowIndex = _this$props.rowIndex;
+        var _row$businessObject = row.businessObject,
+            description = _row$businessObject.description,
+            id = _row$businessObject.id;
+        return createComponentVNode(2, HeaderCell, {
+          "className": "annotation",
+          "onChange": this.setAnnotationValue,
+          "coords": "".concat(rowIndex, ":annotation"),
+          "value": description,
+          "elementId": id + '__annotation',
+          "data-row-id": row.id,
+          children: createComponentVNode(2, AnnotationEditor, {
+            "ctrlForNewline": true,
+            "className": "annotation-editor",
+            "onChange": this.setAnnotationValue,
+            "value": description
+          })
+        });
+      }
+    }]);
+
+    return EditableAnnotationCell;
+  }(Component);
+  EditableAnnotationCell.$inject = ['changeSupport', 'modeling'];
+
+  var AnnotationEditor =
+  /*#__PURE__*/
+  function (_EditableComponent) {
+    _inherits$m(AnnotationEditor, _EditableComponent);
+
+    function AnnotationEditor() {
+      _classCallCheck$L(this, AnnotationEditor);
+
+      return _possibleConstructorReturn$m(this, _getPrototypeOf$m(AnnotationEditor).apply(this, arguments));
+    }
+
+    _createClass$D(AnnotationEditor, [{
+      key: "render",
+      value: function render() {
+        return createVNode(1, "div", this.getClassName(), this.getEditor(), 0);
+      }
+    }]);
+
+    return AnnotationEditor;
+  }(EditableComponent);
+
+  function AnnotationsEditingProvider(components) {
+    components.onGetComponent('cell', function (_ref) {
+      var cellType = _ref.cellType;
+
+      if (cellType === 'after-label-cells') {
+        return AnnotationHeader;
+      } else if (cellType === 'after-rule-cells') {
+        return EditableAnnotationCell;
+      }
+    });
+  }
+  AnnotationsEditingProvider.$inject = ['components'];
+
+  var DEFAULT_DEBOUNCE_TIME = 300;
+  function debounceInput(shouldDebounce) {
+    return function _debounceInput(fn) {
+      if (shouldDebounce !== false) {
+        var debounceTime = isNumber(shouldDebounce) ? shouldDebounce : DEFAULT_DEBOUNCE_TIME;
+        return debounce(fn, debounceTime);
+      } else {
+        return fn;
+      }
+    };
+  }
+  debounceInput.$inject = ['config.debounceInput'];
+
+  var DebounceInput = {
+    debounceInput: ['factory', debounceInput]
+  };
+
+  var annotationsEditorModule = {
+    __depends__: [DebounceInput],
+    __init__: ['annotationsProvider'],
+    annotationsProvider: ['type', AnnotationsEditingProvider]
+  };
+
+  function _typeof$q(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$q = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$q = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$q(obj);
+  }
+
+  function _classCallCheck$M(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$E(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$E(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$E(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$E(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$n(self, call) {
+    if (call && (_typeof$q(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$n(self);
+  }
+
+  function _getPrototypeOf$n(o) {
+    _getPrototypeOf$n = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$n(o);
+  }
+
+  function _assertThisInitialized$n(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$n(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$n(subClass, superClass);
+  }
+
+  function _setPrototypeOf$n(o, p) {
+    _setPrototypeOf$n = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$n(o, p);
+  }
+
   function _defineProperty$g(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -41692,16 +43575,16 @@
   var ContextMenuComponent =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$m(ContextMenuComponent, _Component);
+    _inherits$n(ContextMenuComponent, _Component);
 
     function ContextMenuComponent(props, _context) {
       var _this;
 
-      _classCallCheck$K(this, ContextMenuComponent);
+      _classCallCheck$M(this, ContextMenuComponent);
 
-      _this = _possibleConstructorReturn$m(this, _getPrototypeOf$m(ContextMenuComponent).call(this, props, _context));
+      _this = _possibleConstructorReturn$n(this, _getPrototypeOf$n(ContextMenuComponent).call(this, props, _context));
 
-      _defineProperty$g(_assertThisInitialized$m(_this), "open", function (_ref) {
+      _defineProperty$g(_assertThisInitialized$n(_this), "open", function (_ref) {
         var position = _ref.position,
             context = _ref.context; // always close first
 
@@ -41717,7 +43600,7 @@
         });
       });
 
-      _defineProperty$g(_assertThisInitialized$m(_this), "close", function () {
+      _defineProperty$g(_assertThisInitialized$n(_this), "close", function () {
         if (_this.state.isOpen) {
           _this.setState({
             context: undefined,
@@ -41730,7 +43613,7 @@
         }
       });
 
-      _defineProperty$g(_assertThisInitialized$m(_this), "triggerClose", function () {
+      _defineProperty$g(_assertThisInitialized$n(_this), "triggerClose", function () {
         _this.eventBus.fire('contextMenu.close');
       });
 
@@ -41741,7 +43624,7 @@
           y: 0
         }
       };
-      inject(_assertThisInitialized$m(_this));
+      inject(_assertThisInitialized$n(_this));
       return _this;
     }
     /**
@@ -41755,7 +43638,7 @@
      */
 
 
-    _createClass$C(ContextMenuComponent, [{
+    _createClass$E(ContextMenuComponent, [{
       key: "componentDidMount",
       value: function componentDidMount() {
         this.eventBus.on('contextMenu.open', this.open);
@@ -41811,20 +43694,20 @@
   var ContextMenu =
   /*#__PURE__*/
   function (_Component2) {
-    _inherits$m(ContextMenu, _Component2);
+    _inherits$n(ContextMenu, _Component2);
 
     function ContextMenu(props, context) {
       var _this2;
 
-      _classCallCheck$K(this, ContextMenu);
+      _classCallCheck$M(this, ContextMenu);
 
-      _this2 = _possibleConstructorReturn$m(this, _getPrototypeOf$m(ContextMenu).call(this, props, context));
+      _this2 = _possibleConstructorReturn$n(this, _getPrototypeOf$n(ContextMenu).call(this, props, context));
 
-      _defineProperty$g(_assertThisInitialized$m(_this2), "onGlobalMouseDown", function (event) {
+      _defineProperty$g(_assertThisInitialized$n(_this2), "onGlobalMouseDown", function (event) {
         _this2.checkClose(event.target);
       });
 
-      _defineProperty$g(_assertThisInitialized$m(_this2), "onGlobalKey", function (event) {
+      _defineProperty$g(_assertThisInitialized$n(_this2), "onGlobalKey", function (event) {
         var keyCode = event.which; // ENTER or ESC
 
         if (keyCode === 13 || keyCode === 27) {
@@ -41835,11 +43718,11 @@
         }
       });
 
-      _defineProperty$g(_assertThisInitialized$m(_this2), "onFocusChanged", function (event) {
+      _defineProperty$g(_assertThisInitialized$n(_this2), "onFocusChanged", function (event) {
         _this2.checkClose(event.target);
       });
 
-      _defineProperty$g(_assertThisInitialized$m(_this2), "setNode", function (node) {
+      _defineProperty$g(_assertThisInitialized$n(_this2), "setNode", function (node) {
         _this2.node = node;
         var autoFocus = _this2.props.autoFocus;
 
@@ -41852,11 +43735,11 @@
         }
       });
 
-      inject(_assertThisInitialized$m(_this2));
+      inject(_assertThisInitialized$n(_this2));
       return _this2;
     }
 
-    _createClass$C(ContextMenu, [{
+    _createClass$E(ContextMenu, [{
       key: "close",
       value: function close() {
         var onClose = this.props.onClose;
@@ -42024,13 +43907,13 @@
     }
   }
 
-  function _classCallCheck$L(instance, Constructor) {
+  function _classCallCheck$N(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$D(target, props) {
+  function _defineProperties$F(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -42040,9 +43923,9 @@
     }
   }
 
-  function _createClass$D(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$D(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$D(Constructor, staticProps);
+  function _createClass$F(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$F(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$F(Constructor, staticProps);
     return Constructor;
   }
 
@@ -42050,7 +43933,7 @@
   /*#__PURE__*/
   function () {
     function ContextMenu(components, eventBus, renderer) {
-      _classCallCheck$L(this, ContextMenu);
+      _classCallCheck$N(this, ContextMenu);
 
       this._eventBus = eventBus;
       components.onGetComponent('table.before', function () {
@@ -42058,7 +43941,7 @@
       });
     }
 
-    _createClass$D(ContextMenu, [{
+    _createClass$F(ContextMenu, [{
       key: "open",
       value: function open(position, context) {
         this._eventBus.fire('contextMenu.open', {
@@ -42095,13 +43978,13 @@
     return modifiers.shiftKey;
   }
 
-  function _classCallCheck$M(instance, Constructor) {
+  function _classCallCheck$O(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$E(target, props) {
+  function _defineProperties$G(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -42111,9 +43994,9 @@
     }
   }
 
-  function _createClass$E(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$E(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$E(Constructor, staticProps);
+  function _createClass$G(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$G(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$G(Constructor, staticProps);
     return Constructor;
   }
 
@@ -42141,7 +44024,7 @@
     function CopyPasteKeyBindings(injector, eventBus, clipboard, cellSelection, elementRegistry, editorActions, renderer) {
       var _this = this;
 
-      _classCallCheck$M(this, CopyPasteKeyBindings);
+      _classCallCheck$O(this, CopyPasteKeyBindings);
 
       _defineProperty$h(this, "_clearClipboard", function () {
         _this._clipboard.clear();
@@ -42259,7 +44142,7 @@
       });
     }
 
-    _createClass$E(CopyPasteKeyBindings, [{
+    _createClass$G(CopyPasteKeyBindings, [{
       key: "_getSelectedCell",
 
       /**
@@ -42316,141 +44199,6 @@
     copyCutPasteKeyBindings: ['type', CopyPasteKeyBindings]
   };
 
-  function _typeof$q(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$q = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$q = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$q(obj);
-  }
-
-  function _classCallCheck$N(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$F(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$F(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$F(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$F(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$n(self, call) {
-    if (call && (_typeof$q(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$n(self);
-  }
-
-  function _getPrototypeOf$n(o) {
-    _getPrototypeOf$n = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$n(o);
-  }
-
-  function _assertThisInitialized$n(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$n(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$n(subClass, superClass);
-  }
-
-  function _setPrototypeOf$n(o, p) {
-    _setPrototypeOf$n = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$n(o, p);
-  }
-
-  function _defineProperty$i(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var CreateInputsHeaderCell =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$n(CreateInputsHeaderCell, _Component);
-
-    function CreateInputsHeaderCell(props, context) {
-      var _this;
-
-      _classCallCheck$N(this, CreateInputsHeaderCell);
-
-      _this = _possibleConstructorReturn$n(this, _getPrototypeOf$n(CreateInputsHeaderCell).call(this, props, context));
-
-      _defineProperty$i(_assertThisInitialized$n(_this), "onClick", function (event) {
-        _this.editorActions.trigger('addInput');
-      });
-
-      inject(_assertThisInitialized$n(_this));
-      return _this;
-    }
-
-    _createClass$F(CreateInputsHeaderCell, [{
-      key: "render",
-      value: function render() {
-        return createVNode(1, "th", "input-cell create-inputs header actionable", [createTextVNode("Input "), createVNode(1, "span", "add-input dmn-icon-plus action-icon", null, 1, {
-          "title": "Add Input"
-        })], 4, {
-          "onClick": this.onClick,
-          "rowspan": "3",
-          "title": "Add Input"
-        });
-      }
-    }]);
-
-    return CreateInputsHeaderCell;
-  }(Component);
-  CreateInputsHeaderCell.$inject = ['editorActions'];
-
   function _typeof$r(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$r = function _typeof$1(obj) {
@@ -42465,13 +44213,13 @@
     return _typeof$r(obj);
   }
 
-  function _classCallCheck$O(instance, Constructor) {
+  function _classCallCheck$P(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$G(target, props) {
+  function _defineProperties$H(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -42481,9 +44229,9 @@
     }
   }
 
-  function _createClass$G(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$G(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$G(Constructor, staticProps);
+  function _createClass$H(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$H(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$H(Constructor, staticProps);
     return Constructor;
   }
 
@@ -42534,6 +44282,141 @@
     return _setPrototypeOf$o(o, p);
   }
 
+  function _defineProperty$i(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var CreateInputsHeaderCell =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$o(CreateInputsHeaderCell, _Component);
+
+    function CreateInputsHeaderCell(props, context) {
+      var _this;
+
+      _classCallCheck$P(this, CreateInputsHeaderCell);
+
+      _this = _possibleConstructorReturn$o(this, _getPrototypeOf$o(CreateInputsHeaderCell).call(this, props, context));
+
+      _defineProperty$i(_assertThisInitialized$o(_this), "onClick", function (event) {
+        _this.editorActions.trigger('addInput');
+      });
+
+      inject(_assertThisInitialized$o(_this));
+      return _this;
+    }
+
+    _createClass$H(CreateInputsHeaderCell, [{
+      key: "render",
+      value: function render() {
+        return createVNode(1, "th", "input-cell create-inputs header actionable", [this.translate('Input'), createTextVNode(" "), createVNode(1, "span", "add-input dmn-icon-plus action-icon", null, 1, {
+          "title": this.translate('Add Input')
+        })], 0, {
+          "onClick": this.onClick,
+          "rowspan": "3",
+          "title": this.translate('Add Input')
+        });
+      }
+    }]);
+
+    return CreateInputsHeaderCell;
+  }(Component);
+  CreateInputsHeaderCell.$inject = ['editorActions', 'translate'];
+
+  function _typeof$s(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$s = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$s = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$s(obj);
+  }
+
+  function _classCallCheck$Q(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$I(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$I(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$I(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$I(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$p(self, call) {
+    if (call && (_typeof$s(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$p(self);
+  }
+
+  function _getPrototypeOf$p(o) {
+    _getPrototypeOf$p = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$p(o);
+  }
+
+  function _assertThisInitialized$p(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$p(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$p(subClass, superClass);
+  }
+
+  function _setPrototypeOf$p(o, p) {
+    _setPrototypeOf$p = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$p(o, p);
+  }
+
   function _defineProperty$j(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -42552,48 +44435,48 @@
   var CreateInputsCell =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$o(CreateInputsCell, _Component);
+    _inherits$p(CreateInputsCell, _Component);
 
     function CreateInputsCell(props, context) {
       var _this;
 
-      _classCallCheck$O(this, CreateInputsCell);
+      _classCallCheck$Q(this, CreateInputsCell);
 
-      _this = _possibleConstructorReturn$o(this, _getPrototypeOf$o(CreateInputsCell).call(this, props, context));
+      _this = _possibleConstructorReturn$p(this, _getPrototypeOf$p(CreateInputsCell).call(this, props, context));
 
-      _defineProperty$j(_assertThisInitialized$o(_this), "onClick", function (event) {
+      _defineProperty$j(_assertThisInitialized$p(_this), "onClick", function (event) {
         _this.editorActions.trigger('addInput');
       });
 
-      inject(_assertThisInitialized$o(_this));
+      inject(_assertThisInitialized$p(_this));
       return _this;
     }
 
-    _createClass$G(CreateInputsCell, [{
+    _createClass$I(CreateInputsCell, [{
       key: "render",
       value: function render() {
         return createVNode(1, "td", "input-cell create-inputs", createTextVNode("-"), 2, {
           "onClick": this.onClick,
-          "title": "Add Input"
+          "title": this.translate('Add Input')
         });
       }
     }]);
 
     return CreateInputsCell;
   }(Component);
-  CreateInputsCell.$inject = ['editorActions'];
+  CreateInputsCell.$inject = ['editorActions', 'translate'];
 
-  function _classCallCheck$P(instance, Constructor) {
+  function _classCallCheck$R(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var LOW_PRIORITY$a = 500;
+  var LOW_PRIORITY$b = 500;
 
   var CreateInputsProvider = function CreateInputsProvider(components, sheet) {
-    _classCallCheck$P(this, CreateInputsProvider);
+    _classCallCheck$R(this, CreateInputsProvider);
 
-    components.onGetComponent('cell', LOW_PRIORITY$a, function (_ref) {
+    components.onGetComponent('cell', LOW_PRIORITY$b, function (_ref) {
       var cellType = _ref.cellType;
 
       var _sheet$getRoot = sheet.getRoot(),
@@ -42618,13 +44501,13 @@
     createInputsProvider: ['type', CreateInputsProvider]
   };
 
-  function _classCallCheck$Q(instance, Constructor) {
+  function _classCallCheck$S(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$H(target, props) {
+  function _defineProperties$J(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -42634,19 +44517,19 @@
     }
   }
 
-  function _createClass$H(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$H(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$H(Constructor, staticProps);
+  function _createClass$J(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$J(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$J(Constructor, staticProps);
     return Constructor;
   }
 
   var ContextMenu$2 =
   /*#__PURE__*/
   function () {
-    function ContextMenu(components, contextMenu, clipboard, editorActions, eventBus, elementRegistry, modeling, sheet, rules) {
+    function ContextMenu(components, contextMenu, clipboard, editorActions, eventBus, elementRegistry, modeling, sheet, rules, translate) {
       var _this = this;
 
-      _classCallCheck$Q(this, ContextMenu);
+      _classCallCheck$S(this, ContextMenu);
 
       this._contextMenu = contextMenu;
       this._clipboard = clipboard;
@@ -42656,6 +44539,7 @@
       this._modeling = modeling;
       this._sheet = sheet;
       this._rules = rules;
+      this._translate = translate;
       this._getEntries = this._getEntries.bind(this);
       components.onGetComponent('context-menu', function () {
         var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -42668,7 +44552,7 @@
           var additionalCellEntries = isCell(element) && components.getComponents('context-menu-cell-additional', context);
 
           if (additionalCellEntries && additionalCellEntries.length) {
-            var cellEntriesGroup = createVNode(1, "div", "context-menu-group context-menu-group-cell", [createVNode(1, "h4", "context-menu-group-title", createTextVNode("Cell"), 2), additionalCellEntries], 0);
+            var cellEntriesGroup = createVNode(1, "div", "context-menu-group context-menu-group-cell", [createVNode(1, "h4", "context-menu-group-title", _this._translate('Cell'), 0), additionalCellEntries], 0);
             return function () {
               return createVNode(1, "div", "context-menu-flex", (entries || []).concat([cellEntriesGroup]), 0);
             };
@@ -42694,7 +44578,7 @@
       });
     }
 
-    _createClass$H(ContextMenu, [{
+    _createClass$J(ContextMenu, [{
       key: "_getEntries",
       value: function _getEntries(context) {
         var _this2 = this;
@@ -42813,31 +44697,31 @@
             target: element.row
           });
 
-          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-rule", [createVNode(1, "h4", "context-menu-group-title", createTextVNode("Rule"), 2), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-rule-above", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-up"), createTextVNode("Add Above")], 4, {
+          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-rule", [createVNode(1, "h4", "context-menu-group-title", this._translate('Rule'), 0), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-rule-above", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-up"), this._translate('Add Above')], 0, {
             "onClick": function onClick() {
               return handlers.addRuleAbove(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-rule-below", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-down"), createTextVNode("Add Below")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-rule-below", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-down"), this._translate('Add Below')], 0, {
             "onClick": function onClick() {
               return handlers.addRuleBelow(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-remove-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), createTextVNode("Remove")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-remove-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), this._translate('Remove')], 0, {
             "onClick": function onClick() {
               return handlers.removeRule(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), createTextVNode("Copy")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), this._translate('Copy')], 0, {
             "onClick": function onClick() {
               return handlers.copy(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-cut-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), createTextVNode("Cut")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-cut-rule", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), this._translate('Cut')], 0, {
             "onClick": function onClick() {
               return handlers.cut(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(canPaste ? '' : 'disabled', " context-menu-entry-paste-rule-above"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Above")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(canPaste ? '' : 'disabled', " context-menu-entry-paste-rule-above"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Above')], 0, {
             "onClick": function onClick() {
               return handlers.pasteBefore(element.row);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(canPaste ? '' : 'disabled', " context-menu-entry-paste-rule-below"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Below")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(canPaste ? '' : 'disabled', " context-menu-entry-paste-rule-below"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Below')], 0, {
             "onClick": function onClick() {
               return handlers.pasteAfter(element.row);
             }
@@ -42856,31 +44740,31 @@
             target: element.col || element
           });
 
-          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-input", [createVNode(1, "h4", "context-menu-group-title", createTextVNode("Input"), 2), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-input-left", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-left"), createTextVNode("Add Left")], 4, {
+          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-input", [createVNode(1, "h4", "context-menu-group-title", this._translate('Input'), 0), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-input-left", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-left"), this._translate('Add Left')], 0, {
             "onClick": function onClick() {
               return handlers.addInputLeft(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-input-right", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-right"), createTextVNode("Add Right")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-input-right", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-right"), this._translate('Add Right')], 0, {
             "onClick": function onClick() {
               return handlers.addInputRight(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(canRemove ? '' : 'disabled', " context-menu-entry-remove-input"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), createTextVNode("Remove")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(canRemove ? '' : 'disabled', " context-menu-entry-remove-input"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), this._translate('Remove')], 0, {
             "onClick": function onClick() {
               return handlers.removeInput(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-input", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), createTextVNode("Copy")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-input", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), this._translate('Copy')], 0, {
             "onClick": function onClick() {
               return handlers.copy(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(canRemove ? '' : 'disabled', " context-menu-entry-cut-input"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), createTextVNode("Cut")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(canRemove ? '' : 'disabled', " context-menu-entry-cut-input"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), this._translate('Cut')], 0, {
             "onClick": function onClick() {
               return handlers.cut(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste ? '' : 'disabled', " context-menu-entry-paste-input-left"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Left")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste ? '' : 'disabled', " context-menu-entry-paste-input-left"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Left')], 0, {
             "onClick": function onClick() {
               return handlers.pasteBefore(actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste ? '' : 'disabled', " context-menu-entry-paste-input-right"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Right")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste ? '' : 'disabled', " context-menu-entry-paste-input-right"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Right')], 0, {
             "onClick": function onClick() {
               return handlers.pasteAfter(actualElement);
             }
@@ -42897,31 +44781,31 @@
             target: element.col || element
           });
 
-          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-output", [createVNode(1, "h4", "context-menu-group-title", createTextVNode("Output"), 2), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-output-left", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-left"), createTextVNode("Add Left")], 4, {
+          entries.push(createVNode(1, "div", "context-menu-group context-menu-group-output", [createVNode(1, "h4", "context-menu-group-title", this._translate('Output'), 0), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-output-left", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-left"), this._translate('Add Left')], 0, {
             "onClick": function onClick() {
               return handlers.addOutputLeft(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-output-right", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-right"), createTextVNode("Add Right")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-add-output-right", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-right"), this._translate('Add Right')], 0, {
             "onClick": function onClick() {
               return handlers.addOutputRight(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canRemove ? '' : 'disabled', " context-menu-entry-remove-output"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), createTextVNode("Remove")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canRemove ? '' : 'disabled', " context-menu-entry-remove-output"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-clear"), this._translate('Remove')], 0, {
             "onClick": function onClick() {
               return handlers.removeOutput(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-output", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), createTextVNode("Copy")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry context-menu-entry-copy-output", [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-copy"), this._translate('Copy')], 0, {
             "onClick": function onClick() {
               return handlers.copy(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canRemove ? '' : 'disabled', " context-menu-entry-cut-output"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), createTextVNode("Cut")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canRemove ? '' : 'disabled', " context-menu-entry-cut-output"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-cut"), this._translate('Cut')], 0, {
             "onClick": function onClick() {
               return handlers.cut(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste2 ? '' : 'disabled', " context-menu-entry-paste-output-left"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Left")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste2 ? '' : 'disabled', " context-menu-entry-paste-output-left"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Left')], 0, {
             "onClick": function onClick() {
               return handlers.pasteBefore(_actualElement);
             }
-          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste2 ? '' : 'disabled', " context-menu-entry-paste-output-right"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), createTextVNode("Paste Right")], 4, {
+          }), createVNode(1, "div", "context-menu-group-entry ".concat(_canPaste2 ? '' : 'disabled', " context-menu-entry-paste-output-right"), [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-paste"), this._translate('Paste Right')], 0, {
             "onClick": function onClick() {
               return handlers.pasteAfter(_actualElement);
             }
@@ -42934,13 +44818,13 @@
 
     return ContextMenu;
   }();
-  ContextMenu$2.$inject = ['components', 'contextMenu', 'clipboard', 'editorActions', 'eventBus', 'elementRegistry', 'modeling', 'sheet', 'rules']; // helpers ///////////
+  ContextMenu$2.$inject = ['components', 'contextMenu', 'clipboard', 'editorActions', 'eventBus', 'elementRegistry', 'modeling', 'sheet', 'rules', 'translate']; // helpers ///////////
 
   function isCell(element) {
     return element instanceof Cell;
   }
 
-  function _classCallCheck$R(instance, Constructor) {
+  function _classCallCheck$T(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
@@ -42949,7 +44833,7 @@
   var COMMANDS = ['row.add', 'row.remove', 'col.add', 'col.remove'];
 
   var ContextMenuCloseBehavior = function ContextMenuCloseBehavior(contextMenu, eventBus) {
-    _classCallCheck$R(this, ContextMenuCloseBehavior);
+    _classCallCheck$T(this, ContextMenuCloseBehavior);
 
     eventBus.on('commandStack.executed', function (_ref) {
       var command = _ref.command; // close on certain modeling operations
@@ -42972,188 +44856,6 @@
     contextMenuCloseBehavior: ['type', ContextMenuCloseBehavior]
   };
 
-  function _typeof$s(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$s = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$s = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$s(obj);
-  }
-
-  function _classCallCheck$S(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$I(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$I(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$I(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$I(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$p(self, call) {
-    if (call && (_typeof$s(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$p(self);
-  }
-
-  function _getPrototypeOf$p(o) {
-    _getPrototypeOf$p = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$p(o);
-  }
-
-  function _assertThisInitialized$p(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$p(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$p(subClass, superClass);
-  }
-
-  function _setPrototypeOf$p(o, p) {
-    _setPrototypeOf$p = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$p(o, p);
-  }
-
-  function _defineProperty$k(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var OutputCell =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$p(OutputCell, _Component);
-
-    function OutputCell(props, context) {
-      var _this;
-
-      _classCallCheck$S(this, OutputCell);
-
-      _this = _possibleConstructorReturn$p(this, _getPrototypeOf$p(OutputCell).call(this, props, context));
-
-      _defineProperty$k(_assertThisInitialized$p(_this), "onClick", function (event) {
-        var output = _this.props.output;
-
-        _this._eventBus.fire('output.edit', {
-          event: event,
-          output: output
-        });
-      });
-
-      _defineProperty$k(_assertThisInitialized$p(_this), "onContextmenu", function (event) {
-        var id = _this.props.output.id;
-
-        _this._eventBus.fire('cell.contextmenu', {
-          event: event,
-          id: id
-        });
-      });
-
-      _defineProperty$k(_assertThisInitialized$p(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
-      });
-
-      mixin(_assertThisInitialized$p(_this), ComponentWithSlots);
-      return _this;
-    }
-
-    _createClass$I(OutputCell, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var injector = this.context.injector;
-        this._changeSupport = this.context.changeSupport;
-        this._eventBus = injector.get('eventBus');
-        this._elementRegistry = injector.get('elementRegistry');
-        var output = this.props.output;
-
-        this._changeSupport.onElementsChanged(output.id, this.onElementsChanged);
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        var output = this.props.output;
-
-        this._changeSupport.offElementsChanged(output.id, this.onElementsChanged);
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        var output = this.props.output;
-        var label = output.get('label');
-        var name = output.get('name');
-        return createVNode(1, "th", "output-cell output-editor", [this.slotFills({
-          type: 'cell-inner',
-          context: {
-            cellType: 'output-cell',
-            col: this._elementRegistry.get(output.id)
-          },
-          col: output
-        }), label ? createVNode(1, "span", "output-label", label, 0, {
-          "title": "Output Label"
-        }) : createVNode(1, "span", "output-name", name || '-', 0, {
-          "title": "Output Expression"
-        })], 0, {
-          "data-col-id": output.id,
-          "onClick": this.onClick,
-          "onContextmenu": this.onContextmenu
-        });
-      }
-    }]);
-
-    return OutputCell;
-  }(Component);
-
   function _typeof$t(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$t = function _typeof$1(obj) {
@@ -43168,13 +44870,13 @@
     return _typeof$t(obj);
   }
 
-  function _classCallCheck$T(instance, Constructor) {
+  function _classCallCheck$U(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$J(target, props) {
+  function _defineProperties$K(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -43184,9 +44886,9 @@
     }
   }
 
-  function _createClass$J(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$J(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$J(Constructor, staticProps);
+  function _createClass$K(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$K(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$K(Constructor, staticProps);
     return Constructor;
   }
 
@@ -43237,7 +44939,7 @@
     return _setPrototypeOf$q(o, p);
   }
 
-  function _defineProperty$l(obj, key, value) {
+  function _defineProperty$k(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
         value: value,
@@ -43252,72 +44954,89 @@
     return obj;
   }
 
-  var Input =
+  var OutputCell =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$q(Input, _Component);
+    _inherits$q(OutputCell, _Component);
 
-    function Input(props, context) {
+    function OutputCell(props, context) {
       var _this;
 
-      _classCallCheck$T(this, Input);
+      _classCallCheck$U(this, OutputCell);
 
-      _this = _possibleConstructorReturn$q(this, _getPrototypeOf$q(Input).call(this, props, context));
+      _this = _possibleConstructorReturn$q(this, _getPrototypeOf$q(OutputCell).call(this, props, context));
 
-      _defineProperty$l(_assertThisInitialized$q(_this), "onInput", function (event) {
-        var onInput = _this.props.onInput;
+      _defineProperty$k(_assertThisInitialized$q(_this), "onClick", function (event) {
+        var output = _this.props.output;
 
-        if (typeof onInput !== 'function') {
-          return;
-        }
-
-        onInput(event.target.value);
+        _this._eventBus.fire('output.edit', {
+          event: event,
+          output: output
+        });
       });
 
-      _defineProperty$l(_assertThisInitialized$q(_this), "onKeyDown", function (event) {
-        var onKeyDown = _this.props.onKeyDown;
+      _defineProperty$k(_assertThisInitialized$q(_this), "onContextmenu", function (event) {
+        var id = _this.props.output.id;
 
-        if (typeof onKeyDown !== 'function') {
-          return;
-        }
-
-        onKeyDown(event);
+        _this._eventBus.fire('cell.contextmenu', {
+          event: event,
+          id: id
+        });
       });
 
-      _defineProperty$l(_assertThisInitialized$q(_this), "onKeyUp", function (event) {
-        var onKeyUp = _this.props.onKeyUp;
-
-        if (typeof onKeyUp !== 'function') {
-          return;
-        }
-
-        onKeyUp(event);
+      _defineProperty$k(_assertThisInitialized$q(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
       });
 
+      mixin(_assertThisInitialized$q(_this), ComponentWithSlots);
+      _this._translate = context.injector.get('translate');
       return _this;
     }
 
-    _createClass$J(Input, [{
+    _createClass$K(OutputCell, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var injector = this.context.injector;
+        this._changeSupport = this.context.changeSupport;
+        this._eventBus = injector.get('eventBus');
+        this._elementRegistry = injector.get('elementRegistry');
+        var output = this.props.output;
+
+        this._changeSupport.onElementsChanged(output.id, this.onElementsChanged);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var output = this.props.output;
+
+        this._changeSupport.offElementsChanged(output.id, this.onElementsChanged);
+      }
+    }, {
       key: "render",
       value: function render() {
-        var _this$props = this.props,
-            className = _this$props.className,
-            placeholder = _this$props.placeholder,
-            type = _this$props.type,
-            value = _this$props.value;
-        return createVNode(64, "input", [className || '', 'dms-input'].join(' '), null, 1, {
-          "placeholder": placeholder || '',
-          "onInput": this.onInput,
-          "onKeyDown": this.onKeyDown,
-          "onKeyUp": this.onKeyUp,
-          "spellcheck": "false",
-          "type": type || 'text',
-          "value": value
+        var output = this.props.output;
+        var label = output.get('label');
+        var name = output.get('name');
+        return createVNode(1, "th", "output-cell output-editor", [this.slotFills({
+          type: 'cell-inner',
+          context: {
+            cellType: 'output-cell',
+            col: this._elementRegistry.get(output.id)
+          },
+          col: output
+        }), label ? createVNode(1, "span", "output-label", label, 0, {
+          "title": this._translate('Output Label')
+        }) : createVNode(1, "span", "output-name", name || '-', 0, {
+          "title": this._translate('Output Expression')
+        })], 0, {
+          "data-col-id": output.id,
+          "onClick": this.onClick,
+          "onContextmenu": this.onContextmenu
         });
       }
     }]);
 
-    return Input;
+    return OutputCell;
   }(Component);
 
   function _typeof$u(obj) {
@@ -43334,13 +45053,13 @@
     return _typeof$u(obj);
   }
 
-  function _classCallCheck$U(instance, Constructor) {
+  function _classCallCheck$V(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$K(target, props) {
+  function _defineProperties$L(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -43350,9 +45069,9 @@
     }
   }
 
-  function _createClass$K(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$K(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$K(Constructor, staticProps);
+  function _createClass$L(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$L(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$L(Constructor, staticProps);
     return Constructor;
   }
 
@@ -43364,19 +45083,19 @@
     return _assertThisInitialized$r(self);
   }
 
+  function _getPrototypeOf$r(o) {
+    _getPrototypeOf$r = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$r(o);
+  }
+
   function _assertThisInitialized$r(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
 
     return self;
-  }
-
-  function _getPrototypeOf$r(o) {
-    _getPrototypeOf$r = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$r(o);
   }
 
   function _inherits$r(subClass, superClass) {
@@ -43403,17 +45122,184 @@
     return _setPrototypeOf$r(o, p);
   }
 
+  function _defineProperty$l(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var Input =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$r(Input, _Component);
+
+    function Input(props, context) {
+      var _this;
+
+      _classCallCheck$V(this, Input);
+
+      _this = _possibleConstructorReturn$r(this, _getPrototypeOf$r(Input).call(this, props, context));
+
+      _defineProperty$l(_assertThisInitialized$r(_this), "onInput", function (event) {
+        var onInput = _this.props.onInput;
+
+        if (typeof onInput !== 'function') {
+          return;
+        }
+
+        onInput(event.target.value);
+      });
+
+      _defineProperty$l(_assertThisInitialized$r(_this), "onKeyDown", function (event) {
+        var onKeyDown = _this.props.onKeyDown;
+
+        if (typeof onKeyDown !== 'function') {
+          return;
+        }
+
+        onKeyDown(event);
+      });
+
+      _defineProperty$l(_assertThisInitialized$r(_this), "onKeyUp", function (event) {
+        var onKeyUp = _this.props.onKeyUp;
+
+        if (typeof onKeyUp !== 'function') {
+          return;
+        }
+
+        onKeyUp(event);
+      });
+
+      return _this;
+    }
+
+    _createClass$L(Input, [{
+      key: "render",
+      value: function render() {
+        var _this$props = this.props,
+            className = _this$props.className,
+            placeholder = _this$props.placeholder,
+            type = _this$props.type,
+            value = _this$props.value;
+        return createVNode(64, "input", [className || '', 'dms-input'].join(' '), null, 1, {
+          "placeholder": placeholder || '',
+          "onInput": this.onInput,
+          "onKeyDown": this.onKeyDown,
+          "onKeyUp": this.onKeyUp,
+          "spellcheck": "false",
+          "type": type || 'text',
+          "value": value
+        });
+      }
+    }]);
+
+    return Input;
+  }(Component);
+
+  function _typeof$v(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$v = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$v = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$v(obj);
+  }
+
+  function _classCallCheck$W(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$M(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$M(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$M(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$M(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$s(self, call) {
+    if (call && (_typeof$v(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$s(self);
+  }
+
+  function _assertThisInitialized$s(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _getPrototypeOf$s(o) {
+    _getPrototypeOf$s = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$s(o);
+  }
+
+  function _inherits$s(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$s(subClass, superClass);
+  }
+
+  function _setPrototypeOf$s(o, p) {
+    _setPrototypeOf$s = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$s(o, p);
+  }
+
   var OutputEditor =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$r(OutputEditor, _Component);
+    _inherits$s(OutputEditor, _Component);
 
     function OutputEditor(props, context) {
       var _this;
 
-      _classCallCheck$U(this, OutputEditor);
+      _classCallCheck$W(this, OutputEditor);
 
-      _this = _possibleConstructorReturn$r(this, _getPrototypeOf$r(OutputEditor).call(this, props, context));
+      _this = _possibleConstructorReturn$s(this, _getPrototypeOf$s(OutputEditor).call(this, props, context));
+      _this.translate = context.injector ? context.injector.get('translate') : noopTranslate;
 
       _this.setName = function (name) {
         name = name || undefined;
@@ -43434,7 +45320,7 @@
       return _this;
     }
 
-    _createClass$K(OutputEditor, [{
+    _createClass$M(OutputEditor, [{
       key: "handleChange",
       value: function handleChange(changes) {
         var onChange = this.props.onChange;
@@ -43449,11 +45335,11 @@
         var _this$props = this.props,
             name = _this$props.name,
             label = _this$props.label;
-        return createVNode(1, "div", "dms-container ref-output-editor", [createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", createTextVNode("Output Label"), 2), createComponentVNode(2, Input, {
+        return createVNode(1, "div", "dms-container ref-output-editor", [createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", this.translate('Output Label'), 0), createComponentVNode(2, Input, {
           "className": "ref-output-label",
           "value": label || '',
           "onInput": this.setLabel
-        })], 4), createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", createTextVNode("Output Name"), 2), createComponentVNode(2, Input, {
+        })], 4), createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", this.translate('Output Name'), 0), createComponentVNode(2, Input, {
           "className": "ref-output-name",
           "value": name || '',
           "onInput": this.setName
@@ -43464,18 +45350,22 @@
     return OutputEditor;
   }(Component);
 
-  function _typeof$v(obj) {
+  function noopTranslate(str) {
+    return str;
+  }
+
+  function _typeof$w(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$v = function _typeof$1(obj) {
+      _typeof$w = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$v = function _typeof$1(obj) {
+      _typeof$w = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$v(obj);
+    return _typeof$w(obj);
   }
 
   function ownKeys$8(object, enumerableOnly) {
@@ -43512,225 +45402,13 @@
     return target;
   }
 
-  function _classCallCheck$V(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$L(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$L(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$L(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$L(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$s(self, call) {
-    if (call && (_typeof$v(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$s(self);
-  }
-
-  function _getPrototypeOf$s(o) {
-    _getPrototypeOf$s = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$s(o);
-  }
-
-  function _assertThisInitialized$s(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$s(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$s(subClass, superClass);
-  }
-
-  function _setPrototypeOf$s(o, p) {
-    _setPrototypeOf$s = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$s(o, p);
-  }
-
-  function _defineProperty$m(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var OutputCellContextMenu =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$s(OutputCellContextMenu, _Component);
-
-    function OutputCellContextMenu(props, context) {
-      var _this;
-
-      _classCallCheck$V(this, OutputCellContextMenu);
-
-      _this = _possibleConstructorReturn$s(this, _getPrototypeOf$s(OutputCellContextMenu).call(this, props, context));
-
-      _defineProperty$m(_assertThisInitialized$s(_this), "persistChanges", function () {
-        var output = _this.props.context.output;
-        var unsaved = _this.state.unsaved;
-
-        if (!unsaved) {
-          return;
-        }
-
-        _this.modeling.updateProperties(output, unsaved);
-
-        _this.setState({
-          unsaved: false
-        });
-      });
-
-      _defineProperty$m(_assertThisInitialized$s(_this), "handleChange", function (changes) {
-        _this.setState({
-          unsaved: _objectSpread$8({}, _this.state.unsaved, {}, changes)
-        }, _this.persistChanges);
-      });
-
-      _this.state = {};
-      inject(_assertThisInitialized$s(_this));
-      _this.persistChanges = _this.debounceInput(_this.persistChanges);
-      return _this;
-    }
-
-    _createClass$L(OutputCellContextMenu, [{
-      key: "getValue",
-      value: function getValue(attr) {
-        var output = this.props.context.output;
-        var unsaved = this.state.unsaved;
-        return unsaved && attr in unsaved ? unsaved[attr] : output.get(attr);
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        return createVNode(1, "div", "context-menu-container output-edit", createComponentVNode(2, OutputEditor, {
-          "name": this.getValue('name'),
-          "label": this.getValue('label'),
-          "onChange": this.handleChange
-        }), 2);
-      }
-    }]);
-
-    return OutputCellContextMenu;
-  }(Component);
-  OutputCellContextMenu.$inject = ['debounceInput', 'modeling'];
-
-  function _classCallCheck$W(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var OutputEditingProvider = function OutputEditingProvider(components, contextMenu, eventBus, renderer) {
-    _classCallCheck$W(this, OutputEditingProvider);
-
-    components.onGetComponent('cell', function (_ref) {
-      var cellType = _ref.cellType;
-
-      if (cellType === 'output-header') {
-        return OutputCell;
-      }
-    });
-    components.onGetComponent('context-menu', function () {
-      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-      if (context.contextMenuType === 'output-edit') {
-        return OutputCellContextMenu;
-      }
-    });
-    eventBus.on('output.edit', function (_ref2) {
-      var event = _ref2.event,
-          output = _ref2.output;
-      var target = event.target;
-      var node = closest(target, 'th', true);
-
-      var _node$getBoundingClie = node.getBoundingClientRect(),
-          left = _node$getBoundingClie.left,
-          top = _node$getBoundingClie.top,
-          width = _node$getBoundingClie.width,
-          height = _node$getBoundingClie.height;
-
-      var container = renderer.getContainer();
-      contextMenu.open({
-        x: left + container.parentNode.scrollLeft,
-        y: top + container.parentNode.scrollTop,
-        width: width,
-        height: height
-      }, {
-        contextMenuType: 'output-edit',
-        output: output,
-        offset: {
-          x: 4,
-          y: 4
-        }
-      });
-    });
-  };
-  OutputEditingProvider.$inject = ['components', 'contextMenu', 'eventBus', 'renderer'];
-
-  function _typeof$w(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$w = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$w = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$w(obj);
-  }
-
   function _classCallCheck$X(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$M(target, props) {
+  function _defineProperties$N(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -43740,9 +45418,9 @@
     }
   }
 
-  function _createClass$M(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$M(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$M(Constructor, staticProps);
+  function _createClass$N(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$N(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$N(Constructor, staticProps);
     return Constructor;
   }
 
@@ -43793,7 +45471,7 @@
     return _setPrototypeOf$t(o, p);
   }
 
-  function _defineProperty$n(obj, key, value) {
+  function _defineProperty$m(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
         value: value,
@@ -43807,108 +45485,120 @@
 
     return obj;
   }
-  var DEFAULT_EXPRESSION_LANGUAGE = 'JUEL';
 
-  var InputCell =
+  var OutputCellContextMenu =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$t(InputCell, _Component);
+    _inherits$t(OutputCellContextMenu, _Component);
 
-    function InputCell(props, context) {
+    function OutputCellContextMenu(props, context) {
       var _this;
 
-      _classCallCheck$X(this, InputCell);
+      _classCallCheck$X(this, OutputCellContextMenu);
 
-      _this = _possibleConstructorReturn$t(this, _getPrototypeOf$t(InputCell).call(this, props, context));
+      _this = _possibleConstructorReturn$t(this, _getPrototypeOf$t(OutputCellContextMenu).call(this, props, context));
 
-      _defineProperty$n(_assertThisInitialized$t(_this), "onClick", function (event) {
-        var input = _this.props.input;
+      _defineProperty$m(_assertThisInitialized$t(_this), "persistChanges", function () {
+        var output = _this.props.context.output;
+        var unsaved = _this.state.unsaved;
 
-        _this._eventBus.fire('input.edit', {
-          event: event,
-          input: input
+        if (!unsaved) {
+          return;
+        }
+
+        _this.modeling.updateProperties(output, unsaved);
+
+        _this.setState({
+          unsaved: false
         });
       });
 
-      _defineProperty$n(_assertThisInitialized$t(_this), "onContextmenu", function (event) {
-        var id = _this.props.input.id;
-
-        _this._eventBus.fire('cell.contextmenu', {
-          event: event,
-          id: id
-        });
+      _defineProperty$m(_assertThisInitialized$t(_this), "handleChange", function (changes) {
+        _this.setState({
+          unsaved: _objectSpread$8({}, _this.state.unsaved, {}, changes)
+        }, _this.persistChanges);
       });
 
-      _defineProperty$n(_assertThisInitialized$t(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
-      });
-
-      mixin(_assertThisInitialized$t(_this), ComponentWithSlots);
+      _this.state = {};
+      inject(_assertThisInitialized$t(_this));
+      _this.persistChanges = _this.debounceInput(_this.persistChanges);
       return _this;
     }
 
-    _createClass$M(InputCell, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var injector = this.context.injector;
-        this._changeSupport = this.context.changeSupport;
-        this._sheet = injector.get('sheet');
-        this._eventBus = injector.get('eventBus');
-        this._elementRegistry = injector.get('elementRegistry');
-
-        var root = this._sheet.getRoot();
-
-        var input = this.props.input;
-
-        this._changeSupport.onElementsChanged(root.id, this.onElementsChanged);
-
-        this._changeSupport.onElementsChanged(input.id, this.onElementsChanged);
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        var root = this._sheet.getRoot();
-
-        var input = this.props.input;
-
-        this._changeSupport.offElementsChanged(root.id, this.onElementsChanged);
-
-        this._changeSupport.offElementsChanged(input.id, this.onElementsChanged);
+    _createClass$N(OutputCellContextMenu, [{
+      key: "getValue",
+      value: function getValue(attr) {
+        var output = this.props.context.output;
+        var unsaved = this.state.unsaved;
+        return unsaved && attr in unsaved ? unsaved[attr] : output.get(attr);
       }
     }, {
       key: "render",
       value: function render() {
-        var input = this.props.input;
-        var inputExpression = input.inputExpression;
-        var label = input.get('label');
-        var inputVariable = input.get('inputVariable');
-        var expressionLanguage = inputExpression.get('expressionLanguage');
-        var showLanguageBadge = !label && expressionLanguage && expressionLanguage !== DEFAULT_EXPRESSION_LANGUAGE;
-        return createVNode(1, "th", "input-cell input-editor", [this.slotFills({
-          type: 'cell-inner',
-          context: {
-            cellType: 'input-cell',
-            col: this._elementRegistry.get(input.id)
-          },
-          col: input
-        }), label ? createVNode(1, "span", "input-label", label, 0, {
-          "title": "Input Label"
-        }) : createVNode(1, "span", "input-expression", inputExpression.text || '-', 0, {
-          "title": "Input Expression"
-        }), inputVariable && createVNode(1, "span", "dms-badge dmn-variable-name input-variable", inputVariable, 0, {
-          "title": "Input Variable"
-        }), showLanguageBadge && createVNode(1, "span", "dms-badge dmn-expression-language input-expression-language", [createVNode(1, "span", "dms-badge-icon dmn-icon-file-code"), createVNode(1, "span", "dms-badge-label", expressionLanguage, 0)], 4, {
-          "title": 'Input Expression Language = ' + expressionLanguage
-        })], 0, {
-          "data-col-id": input.id,
-          "onClick": this.onClick,
-          "onContextmenu": this.onContextmenu
-        });
+        return createVNode(1, "div", "context-menu-container output-edit", createComponentVNode(2, OutputEditor, {
+          "name": this.getValue('name'),
+          "label": this.getValue('label'),
+          "onChange": this.handleChange
+        }), 2);
       }
     }]);
 
-    return InputCell;
+    return OutputCellContextMenu;
   }(Component);
+  OutputCellContextMenu.$inject = ['debounceInput', 'modeling'];
+
+  function _classCallCheck$Y(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var OutputEditingProvider = function OutputEditingProvider(components, contextMenu, eventBus, renderer) {
+    _classCallCheck$Y(this, OutputEditingProvider);
+
+    components.onGetComponent('cell', function (_ref) {
+      var cellType = _ref.cellType;
+
+      if (cellType === 'output-header') {
+        return OutputCell;
+      }
+    });
+    components.onGetComponent('context-menu', function () {
+      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      if (context.contextMenuType === 'output-edit') {
+        return OutputCellContextMenu;
+      }
+    });
+    eventBus.on('output.edit', function (_ref2) {
+      var event = _ref2.event,
+          output = _ref2.output;
+      var target = event.target;
+      var node = closest(target, 'th', true);
+
+      var _node$getBoundingClie = node.getBoundingClientRect(),
+          left = _node$getBoundingClie.left,
+          top = _node$getBoundingClie.top,
+          width = _node$getBoundingClie.width,
+          height = _node$getBoundingClie.height;
+
+      var container = renderer.getContainer();
+      contextMenu.open({
+        x: left + container.parentNode.scrollLeft,
+        y: top + container.parentNode.scrollTop,
+        width: width,
+        height: height
+      }, {
+        contextMenuType: 'output-edit',
+        output: output,
+        offset: {
+          x: 4,
+          y: 4
+        }
+      });
+    });
+  };
+  OutputEditingProvider.$inject = ['components', 'contextMenu', 'eventBus', 'renderer'];
 
   function _typeof$x(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
@@ -43924,13 +45614,13 @@
     return _typeof$x(obj);
   }
 
-  function _classCallCheck$Y(instance, Constructor) {
+  function _classCallCheck$Z(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$N(target, props) {
+  function _defineProperties$O(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -43940,9 +45630,9 @@
     }
   }
 
-  function _createClass$N(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$N(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$N(Constructor, staticProps);
+  function _createClass$O(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$O(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$O(Constructor, staticProps);
     return Constructor;
   }
 
@@ -43993,6 +45683,215 @@
     return _setPrototypeOf$u(o, p);
   }
 
+  function _defineProperty$n(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var InputCell =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$u(InputCell, _Component);
+
+    function InputCell(props, context) {
+      var _this;
+
+      _classCallCheck$Z(this, InputCell);
+
+      _this = _possibleConstructorReturn$u(this, _getPrototypeOf$u(InputCell).call(this, props, context));
+
+      _defineProperty$n(_assertThisInitialized$u(_this), "onClick", function (event) {
+        var input = _this.props.input;
+
+        _this._eventBus.fire('input.edit', {
+          event: event,
+          input: input
+        });
+      });
+
+      _defineProperty$n(_assertThisInitialized$u(_this), "onContextmenu", function (event) {
+        var id = _this.props.input.id;
+
+        _this._eventBus.fire('cell.contextmenu', {
+          event: event,
+          id: id
+        });
+      });
+
+      _defineProperty$n(_assertThisInitialized$u(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
+      });
+
+      mixin(_assertThisInitialized$u(_this), ComponentWithSlots);
+      _this._translate = context.injector.get('translate');
+      return _this;
+    }
+
+    _createClass$O(InputCell, [{
+      key: "isDefaultExpressionLanguage",
+      value: function isDefaultExpressionLanguage(expressionLanguage) {
+        var expressionLanguages = this.context.injector.get('expressionLanguages');
+        var defaultExpressionLanguage = expressionLanguages.getDefault('inputCell').value;
+        return expressionLanguage === defaultExpressionLanguage;
+      }
+    }, {
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var injector = this.context.injector;
+        this._changeSupport = this.context.changeSupport;
+        this._sheet = injector.get('sheet');
+        this._eventBus = injector.get('eventBus');
+        this._elementRegistry = injector.get('elementRegistry');
+
+        var root = this._sheet.getRoot();
+
+        var input = this.props.input;
+
+        this._changeSupport.onElementsChanged(root.id, this.onElementsChanged);
+
+        this._changeSupport.onElementsChanged(input.id, this.onElementsChanged);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var root = this._sheet.getRoot();
+
+        var input = this.props.input;
+
+        this._changeSupport.offElementsChanged(root.id, this.onElementsChanged);
+
+        this._changeSupport.offElementsChanged(input.id, this.onElementsChanged);
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var input = this.props.input;
+        var inputExpression = input.inputExpression;
+        var label = input.get('label');
+        var inputVariable = input.get('inputVariable');
+        var expressionLanguage = inputExpression.get('expressionLanguage');
+        var showLanguageBadge = !label && expressionLanguage && this.isDefaultExpressionLanguage(expressionLanguage);
+        return createVNode(1, "th", "input-cell input-editor", [this.slotFills({
+          type: 'cell-inner',
+          context: {
+            cellType: 'input-cell',
+            col: this._elementRegistry.get(input.id)
+          },
+          col: input
+        }), label ? createVNode(1, "span", "input-label", label, 0, {
+          "title": this._translate('Input Label')
+        }) : createVNode(1, "span", "input-expression", inputExpression.text || '-', 0, {
+          "title": this._translate('Input Expression')
+        }), inputVariable && createVNode(1, "span", "dms-badge dmn-variable-name input-variable", inputVariable, 0, {
+          "title": "Input Variable"
+        }), showLanguageBadge && createVNode(1, "span", "dms-badge dmn-expression-language input-expression-language", [createVNode(1, "span", "dms-badge-icon dmn-icon-file-code"), createVNode(1, "span", "dms-badge-label", expressionLanguage, 0)], 4, {
+          "title": this._translate('Input Expression Language = {expressionLanguage}', {
+            expressionLanguage: expressionLanguage
+          })
+        })], 0, {
+          "data-col-id": input.id,
+          "onClick": this.onClick,
+          "onContextmenu": this.onContextmenu
+        });
+      }
+    }]);
+
+    return InputCell;
+  }(Component);
+
+  function _typeof$y(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$y = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$y = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$y(obj);
+  }
+
+  function _classCallCheck$_(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$P(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$P(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$P(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$P(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$v(self, call) {
+    if (call && (_typeof$y(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$v(self);
+  }
+
+  function _getPrototypeOf$v(o) {
+    _getPrototypeOf$v = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$v(o);
+  }
+
+  function _assertThisInitialized$v(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$v(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$v(subClass, superClass);
+  }
+
+  function _setPrototypeOf$v(o, p) {
+    _setPrototypeOf$v = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$v(o, p);
+  }
+
   function _defineProperty$o(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -44011,16 +45910,16 @@
   var InputSelect =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$u(InputSelect, _Component);
+    _inherits$v(InputSelect, _Component);
 
     function InputSelect(props, context) {
       var _this;
 
-      _classCallCheck$Y(this, InputSelect);
+      _classCallCheck$_(this, InputSelect);
 
-      _this = _possibleConstructorReturn$u(this, _getPrototypeOf$u(InputSelect).call(this, props, context));
+      _this = _possibleConstructorReturn$v(this, _getPrototypeOf$v(InputSelect).call(this, props, context));
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onChange", function (value) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onChange", function (value) {
         _this.setState({
           value: value
         });
@@ -44034,7 +45933,7 @@
         onChange(value);
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onInputClick", function (event) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onInputClick", function (event) {
         event.preventDefault();
         event.stopPropagation();
 
@@ -44043,13 +45942,13 @@
         _this.focusInput();
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onInput", function (event) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onInput", function (event) {
         var value = event.target.value;
 
         _this.onChange(value);
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onOptionClick", function (value, event) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onOptionClick", function (value, event) {
         event.preventDefault();
         event.stopPropagation();
 
@@ -44060,15 +45959,15 @@
         _this.focusInput();
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onFocusChanged", function (evt) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onFocusChanged", function (evt) {
         _this.checkClose(evt.target);
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onGlobalClick", function (evt) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onGlobalClick", function (evt) {
         _this.checkClose(evt.target);
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onKeyDown", function (evt) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onKeyDown", function (evt) {
         var optionsVisible = _this.state.optionsVisible;
         var code = evt.which; // DOWN or UP
 
@@ -44095,7 +45994,7 @@
         }
       });
 
-      _defineProperty$o(_assertThisInitialized$u(_this), "onKeyboard", function (keycode) {
+      _defineProperty$o(_assertThisInitialized$v(_this), "onKeyboard", function (keycode) {
         var optionsVisible = _this.state.optionsVisible;
 
         if (!optionsVisible) {
@@ -44110,7 +46009,7 @@
         }
       });
 
-      inject(_assertThisInitialized$u(_this));
+      inject(_assertThisInitialized$v(_this));
       var _value = props.value;
       _this.state = {
         value: _value,
@@ -44120,7 +46019,7 @@
       return _this;
     }
 
-    _createClass$N(InputSelect, [{
+    _createClass$P(InputSelect, [{
       key: "componentDidMount",
       value: function componentDidMount() {
         document.addEventListener('click', this.onGlobalClick);
@@ -44303,27 +46202,27 @@
     event.stopPropagation();
   }
 
-  function _typeof$y(obj) {
+  function _typeof$z(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$y = function _typeof$1(obj) {
+      _typeof$z = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$y = function _typeof$1(obj) {
+      _typeof$z = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$y(obj);
+    return _typeof$z(obj);
   }
 
-  function _classCallCheck$Z(instance, Constructor) {
+  function _classCallCheck$$(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$O(target, props) {
+  function _defineProperties$Q(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -44333,21 +46232,21 @@
     }
   }
 
-  function _createClass$O(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$O(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$O(Constructor, staticProps);
+  function _createClass$Q(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$Q(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$Q(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$v(self, call) {
-    if (call && (_typeof$y(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$w(self, call) {
+    if (call && (_typeof$z(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$v(self);
+    return _assertThisInitialized$w(self);
   }
 
-  function _assertThisInitialized$v(self) {
+  function _assertThisInitialized$w(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -44355,14 +46254,14 @@
     return self;
   }
 
-  function _getPrototypeOf$v(o) {
-    _getPrototypeOf$v = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$w(o) {
+    _getPrototypeOf$w = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$v(o);
+    return _getPrototypeOf$w(o);
   }
 
-  function _inherits$v(subClass, superClass) {
+  function _inherits$w(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -44374,30 +46273,31 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$v(subClass, superClass);
+    if (superClass) _setPrototypeOf$w(subClass, superClass);
   }
 
-  function _setPrototypeOf$v(o, p) {
-    _setPrototypeOf$v = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$w(o, p) {
+    _setPrototypeOf$w = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$v(o, p);
+    return _setPrototypeOf$w(o, p);
   }
-  var DEFAULT_EXPRESSION_LANGUAGE$1 = 'JUEL';
 
   var InputEditor =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$v(InputEditor, _Component);
+    _inherits$w(InputEditor, _Component);
 
     function InputEditor(props, context) {
       var _this;
 
-      _classCallCheck$Z(this, InputEditor);
+      _classCallCheck$$(this, InputEditor);
 
-      _this = _possibleConstructorReturn$v(this, _getPrototypeOf$v(InputEditor).call(this, props, context));
+      _this = _possibleConstructorReturn$w(this, _getPrototypeOf$w(InputEditor).call(this, props, context));
+      _this.translate = context.injector ? context.injector.get('translate') : noopTranslate$1;
+      var defaultExpressionLanguage = props.defaultExpressionLanguage.value;
 
       _this.setExpressionLanguage = function (expressionLanguage) {
         _this.handleChange({
@@ -44409,7 +46309,7 @@
         event.preventDefault();
         event.stopPropagation();
 
-        _this.setExpressionLanguage(DEFAULT_EXPRESSION_LANGUAGE$1);
+        _this.setExpressionLanguage(defaultExpressionLanguage);
       };
 
       _this.handleValue = function (text) {
@@ -44419,10 +46319,10 @@
         };
 
         if (isMultiLine(text) && !expressionLanguage) {
-          change.expressionLanguage = DEFAULT_EXPRESSION_LANGUAGE$1;
+          change.expressionLanguage = defaultExpressionLanguage;
         }
 
-        if (!isMultiLine(text) && expressionLanguage === DEFAULT_EXPRESSION_LANGUAGE$1) {
+        if (!isMultiLine(text) && expressionLanguage === defaultExpressionLanguage) {
           change.expressionLanguage = undefined;
         }
 
@@ -44454,7 +46354,7 @@
       return _this;
     }
 
-    _createClass$O(InputEditor, [{
+    _createClass$Q(InputEditor, [{
       key: "handleChange",
       value: function handleChange(changes) {
         var onChange = this.props.onChange;
@@ -44467,40 +46367,37 @@
       key: "render",
       value: function render() {
         var _this$props = this.props,
+            defaultExpressionLanguage = _this$props.defaultExpressionLanguage,
             expressionLanguage = _this$props.expressionLanguage,
+            expressionLanguages = _this$props.expressionLanguages,
             inputVariable = _this$props.inputVariable,
             label = _this$props.label,
             text = _this$props.text;
         var editScript = expressionLanguage || isMultiLine(text);
-        var languageOptions = [!isMultiLine(text) && '', 'FEEL', 'JUEL', 'JavaScript', 'Groovy', 'Python'].filter(isString).map(function (o) {
-          return {
-            label: o,
-            value: o
-          };
-        });
-        return createVNode(1, "div", "dms-container ref-input-editor", [createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", createTextVNode("Input Label"), 2), createComponentVNode(2, Input, {
+        return createVNode(1, "div", "dms-container ref-input-editor", [createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", this.translate('Input Label'), 0), createComponentVNode(2, Input, {
           "className": "ref-input-label",
           "value": label || '',
           "onInput": this.handleLabelChange
-        })], 4), createVNode(1, "hr", "dms-hrule"), createVNode(1, "h4", "dms-heading", createTextVNode("Input Expression"), 2), createComponentVNode(2, ContentEditable, {
+        })], 4), createVNode(1, "hr", "dms-hrule"), createVNode(1, "h4", "dms-heading", this.translate('Input Expression'), 0), createComponentVNode(2, ContentEditable, {
           "placeholder": "enter expression",
           "ctrlForNewline": true,
           "className": ['ref-text', 'dms-input', editScript ? 'dms-script-input script-editor' : '', 'dms-fit-row'].join(' '),
           "onInput": this.handleValue,
           "value": text || ''
-        }), !editScript && createVNode(1, "p", "dms-hint", [createTextVNode("Enter simple "), createVNode(1, "code", null, DEFAULT_EXPRESSION_LANGUAGE$1, 0), createTextVNode(" expression or "), createVNode(1, "button", "ref-make-script", createTextVNode("change to script"), 2, {
+        }), !editScript && // TODO @barmac: Replace with proper i18n tooling
+        createVNode(1, "p", "dms-hint", [this.translate('Enter simple'), createVNode(1, "code", null, defaultExpressionLanguage.label, 0), this.translate('expression or'), createVNode(1, "button", "ref-make-script", this.translate('change to script.'), 0, {
           "type": "button",
           "onClick": this.makeScript
-        }), createTextVNode(".")], 4), editScript && createVNode(1, "p", "dms-hint", createTextVNode("Enter script."), 2), editScript && createVNode(1, "p", null, [createVNode(1, "label", "dms-label", createTextVNode("Expression Language"), 2), createComponentVNode(2, InputSelect, {
+        }), createTextVNode(".")], 0), editScript && createVNode(1, "p", "dms-hint", this.translate('Enter script.'), 0), editScript && createVNode(1, "p", null, [createVNode(1, "label", "dms-label", this.translate('Expression Language'), 0), createComponentVNode(2, InputSelect, {
           "className": "ref-language",
           "value": expressionLanguage || '',
           "onChange": this.handleLanguageChange,
-          "options": languageOptions
-        })], 4), createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", createTextVNode("Input Variable"), 2), createComponentVNode(2, Input, {
+          "options": expressionLanguages
+        })], 4), createVNode(1, "p", "dms-fill-row", [createVNode(1, "label", "dms-label", this.translate('Input Variable'), 0), createComponentVNode(2, Input, {
           "className": "ref-input-variable",
           "value": inputVariable || '',
           "onInput": this.handleInputVariableChange,
-          "placeholder": "cellInput"
+          "placeholder": this.translate('cellInput')
         })], 4)], 0);
       }
     }]);
@@ -44512,18 +46409,22 @@
     return text && text.split(/\n/).length > 1;
   }
 
-  function _typeof$z(obj) {
+  function noopTranslate$1(str) {
+    return str;
+  }
+
+  function _typeof$A(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$z = function _typeof$1(obj) {
+      _typeof$A = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$z = function _typeof$1(obj) {
+      _typeof$A = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$z(obj);
+    return _typeof$A(obj);
   }
 
   function ownKeys$9(object, enumerableOnly) {
@@ -44596,255 +46497,13 @@
     return target;
   }
 
-  function _classCallCheck$_(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$P(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$P(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$P(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$P(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$w(self, call) {
-    if (call && (_typeof$z(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$w(self);
-  }
-
-  function _getPrototypeOf$w(o) {
-    _getPrototypeOf$w = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$w(o);
-  }
-
-  function _assertThisInitialized$w(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$w(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$w(subClass, superClass);
-  }
-
-  function _setPrototypeOf$w(o, p) {
-    _setPrototypeOf$w = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$w(o, p);
-  }
-
-  function _defineProperty$p(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var InputCellContextMenu =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$w(InputCellContextMenu, _Component);
-
-    function InputCellContextMenu(props, context) {
-      var _this;
-
-      _classCallCheck$_(this, InputCellContextMenu);
-
-      _this = _possibleConstructorReturn$w(this, _getPrototypeOf$w(InputCellContextMenu).call(this, props, context));
-
-      _defineProperty$p(_assertThisInitialized$w(_this), "persistChanges", function () {
-        var input = _this.props.context.input;
-        var unsaved = _this.state.unsaved;
-
-        if (!unsaved) {
-          return;
-        }
-
-        var inputVariable = unsaved.inputVariable,
-            label = unsaved.label,
-            inputExpressionProperties = _objectWithoutProperties$5(unsaved, ["inputVariable", "label"]);
-
-        var changes = {};
-
-        if ('inputVariable' in unsaved) {
-          changes.inputVariable = inputVariable;
-        }
-
-        if ('label' in unsaved) {
-          changes.label = label;
-        }
-
-        if (hasKeys(inputExpressionProperties)) {
-          changes.inputExpression = inputExpressionProperties;
-        }
-
-        _this.modeling.updateProperties(input, changes);
-
-        _this.setState({
-          unsaved: false
-        });
-      });
-
-      _defineProperty$p(_assertThisInitialized$w(_this), "handleChange", function (changes) {
-        _this.setState({
-          unsaved: _objectSpread$9({}, _this.state.unsaved, {}, changes)
-        }, _this.persistChanges);
-      });
-
-      _this.state = {};
-      inject(_assertThisInitialized$w(_this));
-      _this.persistChanges = _this.debounceInput(_this.persistChanges);
-      return _this;
-    }
-
-    _createClass$P(InputCellContextMenu, [{
-      key: "getValue",
-      value: function getValue(attr) {
-        var input = this.props.context.input;
-        var unsaved = this.state.unsaved;
-        var target = input; // input variable stored in parent
-
-        if (attr === 'expressionLanguage' || attr === 'text') {
-          target = target.inputExpression;
-        }
-
-        return unsaved && attr in unsaved ? unsaved[attr] : target.get(attr);
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        return createVNode(1, "div", "context-menu-container input-edit", createComponentVNode(2, InputEditor, {
-          "expressionLanguage": this.getValue('expressionLanguage'),
-          "inputVariable": this.getValue('inputVariable'),
-          "label": this.getValue('label'),
-          "text": this.getValue('text'),
-          "onChange": this.handleChange
-        }), 2);
-      }
-    }]);
-
-    return InputCellContextMenu;
-  }(Component);
-  InputCellContextMenu.$inject = ['debounceInput', 'modeling']; // helpers //////////////////////
-
-  function hasKeys(obj) {
-    return Object.keys(obj).length;
-  }
-
-  function _classCallCheck$$(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  var InputCellProvider = function InputCellProvider(components, contextMenu, eventBus, renderer) {
-    _classCallCheck$$(this, InputCellProvider);
-
-    components.onGetComponent('cell', function (_ref) {
-      var cellType = _ref.cellType;
-
-      if (cellType === 'input-header') {
-        return InputCell;
-      }
-    });
-    components.onGetComponent('context-menu', function () {
-      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-      if (context.contextMenuType === 'input-edit') {
-        return InputCellContextMenu;
-      }
-    });
-    eventBus.on('input.edit', function (_ref2) {
-      var event = _ref2.event,
-          input = _ref2.input;
-      var target = event.target;
-      var node = closest(target, 'th', true);
-
-      var _node$getBoundingClie = node.getBoundingClientRect(),
-          left = _node$getBoundingClie.left,
-          top = _node$getBoundingClie.top,
-          width = _node$getBoundingClie.width,
-          height = _node$getBoundingClie.height;
-
-      var container = renderer.getContainer();
-      contextMenu.open({
-        x: left + container.parentNode.scrollLeft,
-        y: top + container.parentNode.scrollTop,
-        width: width,
-        height: height
-      }, {
-        contextMenuType: 'input-edit',
-        input: input,
-        offset: {
-          x: 4,
-          y: 4
-        }
-      });
-    });
-  };
-  InputCellProvider.$inject = ['components', 'contextMenu', 'eventBus', 'renderer'];
-
-  function _typeof$A(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$A = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$A = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$A(obj);
-  }
-
   function _classCallCheck$10(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$Q(target, props) {
+  function _defineProperties$R(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -44854,9 +46513,9 @@
     }
   }
 
-  function _createClass$Q(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$Q(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$Q(Constructor, staticProps);
+  function _createClass$R(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$R(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$R(Constructor, staticProps);
     return Constructor;
   }
 
@@ -44907,7 +46566,7 @@
     return _setPrototypeOf$x(o, p);
   }
 
-  function _defineProperty$q(obj, key, value) {
+  function _defineProperty$p(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
         value: value,
@@ -44922,92 +46581,155 @@
     return obj;
   }
 
-  var TypeRefCell =
+  var InputCellContextMenu =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$x(TypeRefCell, _Component);
+    _inherits$x(InputCellContextMenu, _Component);
 
-    function TypeRefCell(props) {
+    function InputCellContextMenu(props, context) {
       var _this;
 
-      _classCallCheck$10(this, TypeRefCell);
+      _classCallCheck$10(this, InputCellContextMenu);
 
-      _this = _possibleConstructorReturn$x(this, _getPrototypeOf$x(TypeRefCell).call(this, props));
+      _this = _possibleConstructorReturn$x(this, _getPrototypeOf$x(InputCellContextMenu).call(this, props, context));
 
-      _defineProperty$q(_assertThisInitialized$x(_this), "onClick", function (event) {
-        var element = _this.getTypeRefTarget();
+      _defineProperty$p(_assertThisInitialized$x(_this), "persistChanges", function () {
+        var input = _this.props.context.input;
+        var unsaved = _this.state.unsaved;
 
-        _this._eventBus.fire('typeRef.edit', {
-          event: event,
-          element: element
-        });
-      });
-
-      _defineProperty$q(_assertThisInitialized$x(_this), "onContextmenu", function (event) {
-        var element = _this.props.element;
-        var actualElement = element;
-
-        if (is(element, 'dmn:LiteralExpression')) {
-          actualElement = element.$parent;
+        if (!unsaved) {
+          return;
         }
 
-        _this._eventBus.fire('cell.contextmenu', {
-          event: event,
-          node: event.node,
-          id: actualElement.id
+        var inputVariable = unsaved.inputVariable,
+            label = unsaved.label,
+            inputExpressionProperties = _objectWithoutProperties$5(unsaved, ["inputVariable", "label"]);
+
+        var changes = {};
+
+        if ('inputVariable' in unsaved) {
+          changes.inputVariable = inputVariable;
+        }
+
+        if ('label' in unsaved) {
+          changes.label = label;
+        }
+
+        if (hasKeys(inputExpressionProperties)) {
+          changes.inputExpression = inputExpressionProperties;
+        }
+
+        _this.modeling.updateProperties(input, changes);
+
+        _this.setState({
+          unsaved: false
         });
       });
 
-      _defineProperty$q(_assertThisInitialized$x(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
+      _defineProperty$p(_assertThisInitialized$x(_this), "handleChange", function (changes) {
+        _this.setState({
+          unsaved: _objectSpread$9({}, _this.state.unsaved, {}, changes)
+        }, _this.persistChanges);
       });
 
+      _this.state = {};
+      inject(_assertThisInitialized$x(_this));
+      _this.persistChanges = _this.debounceInput(_this.persistChanges);
+      _this._expressionLanguages = context.injector.get('expressionLanguages');
       return _this;
     }
 
-    _createClass$Q(TypeRefCell, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var injector = this.context.injector;
-        this._changeSupport = this.context.changeSupport;
-        this._sheet = injector.get('sheet');
-        this._eventBus = injector.get('eventBus');
-        var target = this.getTypeRefTarget();
+    _createClass$R(InputCellContextMenu, [{
+      key: "getValue",
+      value: function getValue(attr) {
+        var input = this.props.context.input;
+        var unsaved = this.state.unsaved;
+        var target = input; // input variable stored in parent
 
-        this._changeSupport.onElementsChanged(target.id, this.onElementsChanged);
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        var target = this.getTypeRefTarget();
+        if (attr === 'expressionLanguage' || attr === 'text') {
+          target = target.inputExpression;
+        }
 
-        this._changeSupport.offElementsChanged(target.id, this.onElementsChanged);
-      }
-    }, {
-      key: "getTypeRefTarget",
-      value: function getTypeRefTarget() {
-        var element = this.props.element;
-        return is(element, 'dmn:InputClause') ? element.inputExpression : element;
+        return unsaved && attr in unsaved ? unsaved[attr] : target.get(attr);
       }
     }, {
       key: "render",
       value: function render() {
-        var _this$props = this.props,
-            element = _this$props.element,
-            className = _this$props.className;
-        var actualClassName = (className || '') + ' type-ref';
-        var colId = is(element, 'dmn:LiteralExpression') ? element.$parent.id : element.id;
-        return createVNode(1, "th", actualClassName, element.typeRef, 0, {
-          "title": "Data Type",
-          "data-col-id": colId,
-          "onClick": this.onClick,
-          "onContextmenu": this.onContextmenu
-        });
+        var defaultLanguage = this._expressionLanguages.getDefault('inputHeadCell'),
+            expressionLanguages = this._expressionLanguages.getAll();
+
+        return createVNode(1, "div", "context-menu-container input-edit", createComponentVNode(2, InputEditor, {
+          "expressionLanguage": this.getValue('expressionLanguage'),
+          "expressionLanguages": expressionLanguages,
+          "defaultExpressionLanguage": defaultLanguage,
+          "inputVariable": this.getValue('inputVariable'),
+          "label": this.getValue('label'),
+          "text": this.getValue('text'),
+          "onChange": this.handleChange
+        }), 2);
       }
     }]);
 
-    return TypeRefCell;
+    return InputCellContextMenu;
   }(Component);
+  InputCellContextMenu.$inject = ['debounceInput', 'modeling', 'injector']; // helpers //////////////////////
+
+  function hasKeys(obj) {
+    return Object.keys(obj).length;
+  }
+
+  function _classCallCheck$11(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  var InputCellProvider = function InputCellProvider(components, contextMenu, eventBus, renderer) {
+    _classCallCheck$11(this, InputCellProvider);
+
+    components.onGetComponent('cell', function (_ref) {
+      var cellType = _ref.cellType;
+
+      if (cellType === 'input-header') {
+        return InputCell;
+      }
+    });
+    components.onGetComponent('context-menu', function () {
+      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      if (context.contextMenuType === 'input-edit') {
+        return InputCellContextMenu;
+      }
+    });
+    eventBus.on('input.edit', function (_ref2) {
+      var event = _ref2.event,
+          input = _ref2.input;
+      var target = event.target;
+      var node = closest(target, 'th', true);
+
+      var _node$getBoundingClie = node.getBoundingClientRect(),
+          left = _node$getBoundingClie.left,
+          top = _node$getBoundingClie.top,
+          width = _node$getBoundingClie.width,
+          height = _node$getBoundingClie.height;
+
+      var container = renderer.getContainer();
+      contextMenu.open({
+        x: left + container.parentNode.scrollLeft,
+        y: top + container.parentNode.scrollTop,
+        width: width,
+        height: height
+      }, {
+        contextMenuType: 'input-edit',
+        input: input,
+        offset: {
+          x: 4,
+          y: 4
+        }
+      });
+    });
+  };
+  InputCellProvider.$inject = ['components', 'contextMenu', 'eventBus', 'renderer'];
 
   function _typeof$B(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
@@ -45023,13 +46745,13 @@
     return _typeof$B(obj);
   }
 
-  function _classCallCheck$11(instance, Constructor) {
+  function _classCallCheck$12(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$R(target, props) {
+  function _defineProperties$S(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -45039,9 +46761,9 @@
     }
   }
 
-  function _createClass$R(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$R(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$R(Constructor, staticProps);
+  function _createClass$S(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$S(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$S(Constructor, staticProps);
     return Constructor;
   }
 
@@ -45092,6 +46814,192 @@
     return _setPrototypeOf$y(o, p);
   }
 
+  function _defineProperty$q(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var TypeRefCell =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$y(TypeRefCell, _Component);
+
+    function TypeRefCell(props, context) {
+      var _this;
+
+      _classCallCheck$12(this, TypeRefCell);
+
+      _this = _possibleConstructorReturn$y(this, _getPrototypeOf$y(TypeRefCell).call(this, props));
+
+      _defineProperty$q(_assertThisInitialized$y(_this), "onClick", function (event) {
+        var element = _this.getTypeRefTarget();
+
+        _this._eventBus.fire('typeRef.edit', {
+          event: event,
+          element: element
+        });
+      });
+
+      _defineProperty$q(_assertThisInitialized$y(_this), "onContextmenu", function (event) {
+        var element = _this.props.element;
+        var actualElement = element;
+
+        if (is(element, 'dmn:LiteralExpression')) {
+          actualElement = element.$parent;
+        }
+
+        _this._eventBus.fire('cell.contextmenu', {
+          event: event,
+          node: event.node,
+          id: actualElement.id
+        });
+      });
+
+      _defineProperty$q(_assertThisInitialized$y(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
+      });
+
+      _this._translate = context.injector.get('translate');
+      return _this;
+    }
+
+    _createClass$S(TypeRefCell, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var injector = this.context.injector;
+        this._changeSupport = this.context.changeSupport;
+        this._sheet = injector.get('sheet');
+        this._eventBus = injector.get('eventBus');
+        var target = this.getTypeRefTarget();
+
+        this._changeSupport.onElementsChanged(target.id, this.onElementsChanged);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var target = this.getTypeRefTarget();
+
+        this._changeSupport.offElementsChanged(target.id, this.onElementsChanged);
+      }
+    }, {
+      key: "getTypeRefTarget",
+      value: function getTypeRefTarget() {
+        var element = this.props.element;
+        return is(element, 'dmn:InputClause') ? element.inputExpression : element;
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this$props = this.props,
+            element = _this$props.element,
+            className = _this$props.className;
+        var actualClassName = (className || '') + ' type-ref';
+        var colId = is(element, 'dmn:LiteralExpression') ? element.$parent.id : element.id;
+        return createVNode(1, "th", actualClassName, element.typeRef, 0, {
+          "title": this._translate('Data Type'),
+          "data-col-id": colId,
+          "onClick": this.onClick,
+          "onContextmenu": this.onContextmenu
+        });
+      }
+    }]);
+
+    return TypeRefCell;
+  }(Component);
+
+  function _typeof$C(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$C = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$C = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$C(obj);
+  }
+
+  function _classCallCheck$13(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$T(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$T(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$T(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$T(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$z(self, call) {
+    if (call && (_typeof$C(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$z(self);
+  }
+
+  function _getPrototypeOf$z(o) {
+    _getPrototypeOf$z = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$z(o);
+  }
+
+  function _assertThisInitialized$z(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$z(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$z(subClass, superClass);
+  }
+
+  function _setPrototypeOf$z(o, p) {
+    _setPrototypeOf$z = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$z(o, p);
+  }
+
   function _defineProperty$r(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -45111,16 +47019,16 @@
   var TypeRefCellContextMenu =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$y(TypeRefCellContextMenu, _Component);
+    _inherits$z(TypeRefCellContextMenu, _Component);
 
     function TypeRefCellContextMenu(props, context) {
       var _this;
 
-      _classCallCheck$11(this, TypeRefCellContextMenu);
+      _classCallCheck$13(this, TypeRefCellContextMenu);
 
-      _this = _possibleConstructorReturn$y(this, _getPrototypeOf$y(TypeRefCellContextMenu).call(this, props));
+      _this = _possibleConstructorReturn$z(this, _getPrototypeOf$z(TypeRefCellContextMenu).call(this, props));
 
-      _defineProperty$r(_assertThisInitialized$y(_this), "onTypeChange", function (value) {
+      _defineProperty$r(_assertThisInitialized$z(_this), "onTypeChange", function (value) {
         var element = _this.props.context.element;
         var actualElement = is(element, 'dmn:LiteralExpression') ? element.$parent : element;
         var newProperties;
@@ -45140,11 +47048,12 @@
         _this._modeling.updateProperties(actualElement, newProperties);
       });
 
+      _this._translate = context.injector.get('translate');
       _this._modeling = context.injector.get('modeling');
       return _this;
     }
 
-    _createClass$R(TypeRefCellContextMenu, [{
+    _createClass$T(TypeRefCellContextMenu, [{
       key: "render",
       value: function render() {
         var element = this.props.context.element;
@@ -45155,7 +47064,7 @@
             value: t
           };
         });
-        return createVNode(1, "div", "type-ref-edit context-menu-container", [createVNode(1, "label", "dms-label", createTextVNode("Type:"), 2), createComponentVNode(2, InputSelect, {
+        return createVNode(1, "div", "type-ref-edit context-menu-container", [createVNode(1, "label", "dms-label", [this._translate('Type'), createTextVNode(":")], 0), createComponentVNode(2, InputSelect, {
           "className": "type-ref-edit-select",
           "onChange": this.onTypeChange,
           "options": typeRefOptions,
@@ -45167,14 +47076,14 @@
     return TypeRefCellContextMenu;
   }(Component);
 
-  function _classCallCheck$12(instance, Constructor) {
+  function _classCallCheck$14(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var TypeRef = function TypeRef(components, contextMenu, eventBus, renderer) {
-    _classCallCheck$12(this, TypeRef);
+    _classCallCheck$14(this, TypeRef);
 
     components.onGetComponent('cell', function (_ref) {
       var cellType = _ref.cellType;
@@ -45226,109 +47135,6 @@
     typeRefEditingProvider: ['type', TypeRef]
   };
 
-  function _typeof$C(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$C = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$C = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$C(obj);
-  }
-
-  function _classCallCheck$13(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _possibleConstructorReturn$z(self, call) {
-    if (call && (_typeof$C(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$z(self);
-  }
-
-  function _assertThisInitialized$z(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _getPrototypeOf$z(o) {
-    _getPrototypeOf$z = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$z(o);
-  }
-
-  function _inherits$z(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$z(subClass, superClass);
-  }
-
-  function _setPrototypeOf$z(o, p) {
-    _setPrototypeOf$z = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$z(o, p);
-  }
-  /**
-   * Makes sure allowed values are removed if type is set to
-   * something other than string.
-   */
-
-  var AllowedValuesUpdateBehavior =
-  /*#__PURE__*/
-  function (_CommandInterceptor) {
-    _inherits$z(AllowedValuesUpdateBehavior, _CommandInterceptor);
-
-    function AllowedValuesUpdateBehavior(eventBus, modeling) {
-      var _this;
-
-      _classCallCheck$13(this, AllowedValuesUpdateBehavior);
-
-      _this = _possibleConstructorReturn$z(this, _getPrototypeOf$z(AllowedValuesUpdateBehavior).call(this, eventBus));
-
-      _this.postExecuted('updateProperties', function (event) {
-        var _event$context = event.context,
-            element = _event$context.element,
-            properties = _event$context.properties;
-        var actualProperties = isInput(element) ? properties.inputExpression : properties;
-
-        if (actualProperties && actualProperties.typeRef && actualProperties.typeRef !== 'string') {
-          var target = is(element, 'dmn:LiteralExpression') ? element.$parent : element; // delete allowed values
-
-          modeling.editAllowedValues(target, null);
-        }
-      });
-
-      return _this;
-    }
-
-    return AllowedValuesUpdateBehavior;
-  }(CommandInterceptor);
-  AllowedValuesUpdateBehavior.$inject = ['eventBus', 'modeling'];
-
   function _typeof$D(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$D = function _typeof$1(obj) {
@@ -45343,26 +47149,10 @@
     return _typeof$D(obj);
   }
 
-  function _classCallCheck$14(instance, Constructor) {
+  function _classCallCheck$15(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
-  }
-
-  function _defineProperties$S(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$S(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$S(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$S(Constructor, staticProps);
-    return Constructor;
   }
 
   function _possibleConstructorReturn$A(self, call) {
@@ -45373,19 +47163,19 @@
     return _assertThisInitialized$A(self);
   }
 
-  function _getPrototypeOf$A(o) {
-    _getPrototypeOf$A = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$A(o);
-  }
-
   function _assertThisInitialized$A(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
 
     return self;
+  }
+
+  function _getPrototypeOf$A(o) {
+    _getPrototypeOf$A = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$A(o);
   }
 
   function _inherits$A(subClass, superClass) {
@@ -45410,6 +47200,125 @@
     };
 
     return _setPrototypeOf$A(o, p);
+  }
+  /**
+   * Makes sure allowed values are removed if type is set to
+   * something other than string.
+   */
+
+  var AllowedValuesUpdateBehavior =
+  /*#__PURE__*/
+  function (_CommandInterceptor) {
+    _inherits$A(AllowedValuesUpdateBehavior, _CommandInterceptor);
+
+    function AllowedValuesUpdateBehavior(eventBus, modeling) {
+      var _this;
+
+      _classCallCheck$15(this, AllowedValuesUpdateBehavior);
+
+      _this = _possibleConstructorReturn$A(this, _getPrototypeOf$A(AllowedValuesUpdateBehavior).call(this, eventBus));
+
+      _this.postExecuted('updateProperties', function (event) {
+        var _event$context = event.context,
+            element = _event$context.element,
+            properties = _event$context.properties;
+        var actualProperties = isInput(element) ? properties.inputExpression : properties;
+
+        if (actualProperties && actualProperties.typeRef && actualProperties.typeRef !== 'string') {
+          var target = is(element, 'dmn:LiteralExpression') ? element.$parent : element; // delete allowed values
+
+          modeling.editAllowedValues(target, null);
+        }
+      });
+
+      return _this;
+    }
+
+    return AllowedValuesUpdateBehavior;
+  }(CommandInterceptor);
+  AllowedValuesUpdateBehavior.$inject = ['eventBus', 'modeling'];
+
+  function _typeof$E(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$E = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$E = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$E(obj);
+  }
+
+  function _classCallCheck$16(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$U(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$U(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$U(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$U(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$B(self, call) {
+    if (call && (_typeof$E(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$B(self);
+  }
+
+  function _getPrototypeOf$B(o) {
+    _getPrototypeOf$B = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$B(o);
+  }
+
+  function _assertThisInitialized$B(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$B(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$B(subClass, superClass);
+  }
+
+  function _setPrototypeOf$B(o, p) {
+    _setPrototypeOf$B = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$B(o, p);
   }
 
   function _defineProperty$s(obj, key, value) {
@@ -45444,16 +47353,16 @@
   var List =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$A(List, _Component);
+    _inherits$B(List, _Component);
 
     function List(props, context) {
       var _this;
 
-      _classCallCheck$14(this, List);
+      _classCallCheck$16(this, List);
 
-      _this = _possibleConstructorReturn$A(this, _getPrototypeOf$A(List).call(this, props, context));
+      _this = _possibleConstructorReturn$B(this, _getPrototypeOf$B(List).call(this, props, context));
 
-      _defineProperty$s(_assertThisInitialized$A(_this), "getRemoveClickHandler", function (item) {
+      _defineProperty$s(_assertThisInitialized$B(_this), "getRemoveClickHandler", function (item) {
         return function (e) {
           e.stopPropagation();
 
@@ -45461,7 +47370,7 @@
         };
       });
 
-      _defineProperty$s(_assertThisInitialized$A(_this), "getToggleClickHandler", function (item) {
+      _defineProperty$s(_assertThisInitialized$B(_this), "getToggleClickHandler", function (item) {
         return function (e) {
           e.stopPropagation();
 
@@ -45469,7 +47378,7 @@
         };
       });
 
-      _defineProperty$s(_assertThisInitialized$A(_this), "removeItem", function (item) {
+      _defineProperty$s(_assertThisInitialized$B(_this), "removeItem", function (item) {
         var onChange = _this.props.onChange; // remove item
 
         var newItems = _this.state.items.filter(function (i) {
@@ -45483,7 +47392,7 @@
         onChange && onChange(newItems);
       });
 
-      _defineProperty$s(_assertThisInitialized$A(_this), "toggleItem", function (item) {
+      _defineProperty$s(_assertThisInitialized$B(_this), "toggleItem", function (item) {
         var _this$props = _this.props,
             onChange = _this$props.onChange,
             type = _this$props.type; // toggle item
@@ -45514,7 +47423,7 @@
       return _this;
     }
 
-    _createClass$S(List, [{
+    _createClass$U(List, [{
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(props) {
         var items = props.items;
@@ -45570,27 +47479,27 @@
     return entrys;
   }
 
-  function _typeof$E(obj) {
+  function _typeof$F(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$E = function _typeof$1(obj) {
+      _typeof$F = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$E = function _typeof$1(obj) {
+      _typeof$F = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$E(obj);
+    return _typeof$F(obj);
   }
 
-  function _classCallCheck$15(instance, Constructor) {
+  function _classCallCheck$17(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$T(target, props) {
+  function _defineProperties$V(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -45600,28 +47509,28 @@
     }
   }
 
-  function _createClass$T(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$T(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$T(Constructor, staticProps);
+  function _createClass$V(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$V(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$V(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$B(self, call) {
-    if (call && (_typeof$E(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$C(self, call) {
+    if (call && (_typeof$F(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$B(self);
+    return _assertThisInitialized$C(self);
   }
 
-  function _getPrototypeOf$B(o) {
-    _getPrototypeOf$B = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$C(o) {
+    _getPrototypeOf$C = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$B(o);
+    return _getPrototypeOf$C(o);
   }
 
-  function _assertThisInitialized$B(self) {
+  function _assertThisInitialized$C(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -45629,7 +47538,7 @@
     return self;
   }
 
-  function _inherits$B(subClass, superClass) {
+  function _inherits$C(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -45641,16 +47550,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$B(subClass, superClass);
+    if (superClass) _setPrototypeOf$C(subClass, superClass);
   }
 
-  function _setPrototypeOf$B(o, p) {
-    _setPrototypeOf$B = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$C(o, p) {
+    _setPrototypeOf$C = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$B(o, p);
+    return _setPrototypeOf$C(o, p);
   }
   /**
    * Input with optional validation.
@@ -45659,14 +47568,14 @@
   var ValidatedInput =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$B(ValidatedInput, _Component);
+    _inherits$C(ValidatedInput, _Component);
 
     function ValidatedInput(props, context) {
       var _this;
 
-      _classCallCheck$15(this, ValidatedInput);
+      _classCallCheck$17(this, ValidatedInput);
 
-      _this = _possibleConstructorReturn$B(this, _getPrototypeOf$B(ValidatedInput).call(this, props, context));
+      _this = _possibleConstructorReturn$C(this, _getPrototypeOf$C(ValidatedInput).call(this, props, context));
       var validate = props.validate,
           value = props.value;
       var validationWarning = validate ? validate(value || '') : undefined;
@@ -45674,13 +47583,13 @@
         validationWarning: validationWarning,
         value: value
       };
-      _this.onInput = _this.onInput.bind(_assertThisInitialized$B(_this));
-      _this.onKeyDown = _this.onKeyDown.bind(_assertThisInitialized$B(_this));
-      _this.onKeyUp = _this.onKeyUp.bind(_assertThisInitialized$B(_this));
+      _this.onInput = _this.onInput.bind(_assertThisInitialized$C(_this));
+      _this.onKeyDown = _this.onKeyDown.bind(_assertThisInitialized$C(_this));
+      _this.onKeyUp = _this.onKeyUp.bind(_assertThisInitialized$C(_this));
       return _this;
     }
 
-    _createClass$T(ValidatedInput, [{
+    _createClass$V(ValidatedInput, [{
       key: "componentWillReceiveProps",
       value: function componentWillReceiveProps(props) {
         var validate = props.validate,
@@ -45824,305 +47733,6 @@
     });
   }
 
-  function _typeof$F(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$F = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$F = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$F(obj);
-  }
-
-  function _classCallCheck$16(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$U(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$U(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$U(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$U(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$C(self, call) {
-    if (call && (_typeof$F(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$C(self);
-  }
-
-  function _getPrototypeOf$C(o) {
-    _getPrototypeOf$C = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$C(o);
-  }
-
-  function _assertThisInitialized$C(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$C(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$C(subClass, superClass);
-  }
-
-  function _setPrototypeOf$C(o, p) {
-    _setPrototypeOf$C = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$C(o, p);
-  }
-
-  function _defineProperty$t(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var AllowedValuesEditing =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$C(AllowedValuesEditing, _Component);
-
-    function AllowedValuesEditing(props, context) {
-      var _this;
-
-      _classCallCheck$16(this, AllowedValuesEditing);
-
-      _this = _possibleConstructorReturn$C(this, _getPrototypeOf$C(AllowedValuesEditing).call(this, props, context));
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "setPredefinedValues", function (values) {
-        // inputClause or outputClause
-        var target = _this.getAllowedValuesTarget();
-
-        _this.setState({
-          values: values
-        });
-
-        _this._modeling.editAllowedValues(target, values && getValuesArray(values));
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "onListChange", function (values) {
-        _this.setPredefinedValues(values);
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "onInput", function (_ref) {
-        var isValid = _ref.isValid,
-            value = _ref.value;
-
-        _this.setState({
-          inputValue: value
-        });
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "onKeyDown", function (_ref2) {
-        var isValid = _ref2.isValid,
-            event = _ref2.event;
-
-        if (!isEnter(event.keyCode)) {
-          return;
-        }
-
-        event.stopPropagation();
-        event.preventDefault();
-
-        if (isValid) {
-          var _this$state = _this.state,
-              inputValue = _this$state.inputValue,
-              values = _this$state.values;
-          var parsedString = parseString(inputValue);
-
-          _this.onListChange((values || []).concat(parsedString.values.map(function (value) {
-            return {
-              value: value,
-              isCheckable: false,
-              isRemovable: true,
-              group: 'Predefined Values'
-            };
-          })));
-
-          _this.setState({
-            inputValue: ''
-          });
-        }
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "handleRemovePredifinedValuesClick", function (e) {
-        e.stopPropagation();
-
-        _this.removePredefinedValues();
-      });
-
-      _defineProperty$t(_assertThisInitialized$C(_this), "removePredefinedValues", function () {
-        _this.setPredefinedValues(null);
-      });
-
-      _this._modeling = context.injector.get('modeling');
-      _this._changeSupport = context.changeSupport;
-
-      var _target = _this.getAllowedValuesTarget();
-
-      var _parsedString = parseString(_target.inputValues && _target.inputValues.text || _target.outputValues && _target.outputValues.text || '');
-
-      if (_parsedString) {
-        _this.state = {
-          values: _parsedString.values.map(function (value) {
-            return {
-              value: value,
-              isCheckable: false,
-              isRemovable: true,
-              group: 'Predefined Values'
-            };
-          }),
-          inputValue: ''
-        };
-      } else {
-        _this.state = {
-          values: null,
-          inputValue: ''
-        };
-      }
-
-      return _this;
-    }
-
-    _createClass$U(AllowedValuesEditing, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        var target = this.getAllowedValuesTarget();
-
-        this._changeSupport.onElementsChanged(target.id, this.onElementsChanged);
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        var target = this.getAllowedValuesTarget();
-
-        this._changeSupport.offElementsChanged(target.id, this.onElementsChanged);
-      }
-    }, {
-      key: "getAllowedValuesTarget",
-      value: function getAllowedValuesTarget() {
-        var element = this.props.context.element;
-
-        if (is(element, 'dmn:LiteralExpression')) {
-          return element.$parent;
-        } else {
-          return element;
-        }
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        var element = this.props.context.element;
-        var _this$state2 = this.state,
-            inputValue = _this$state2.inputValue,
-            values = _this$state2.values;
-        return element.typeRef === 'string' ? createVNode(1, "div", "context-menu-container allowed-values-edit", [createVNode(1, "hr", "dms-hrule"), !isNull$1(values) && values.length > 0 && createComponentVNode(2, List, {
-          "items": values,
-          "onChange": this.onListChange
-        }), !isNull$1(values) && !values.length && createVNode(1, "div", null, [createVNode(1, "h4", "dms-heading", createTextVNode("Predefined Values"), 2), createVNode(1, "span", "placeholder", createTextVNode("No values"), 2)], 4), !isNull$1(values) && createVNode(1, "p", "dms-hint", createVNode(1, "button", "del-values", createTextVNode("Clear predefined values."), 2, {
-          "type": "button",
-          "onClick": this.handleRemovePredifinedValuesClick
-        }), 2), createVNode(1, "h4", "dms-heading", createTextVNode("Add Predefined Values"), 2), createComponentVNode(2, ValidatedInput, {
-          "onInput": this.onInput,
-          "onKeyDown": this.onKeyDown,
-          "placeholder": '"value", "value", ...',
-          "type": "text",
-          "validate": function validate(value) {
-            if (!parseString(value)) {
-              return 'Strings must be in double quotes.';
-            }
-          },
-          "value": inputValue
-        })], 0) : null;
-      }
-    }]);
-
-    return AllowedValuesEditing;
-  }(Component); // helpers //////////////////////
-
-  function isEnter(keyCode) {
-    return keyCode === 13;
-  }
-
-  function isNull$1(value) {
-    return value === null;
-  }
-
-  function _classCallCheck$17(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-  var LOW_PRIORITY$b = 500;
-
-  var InputOutputValues = function InputOutputValues(components) {
-    _classCallCheck$17(this, InputOutputValues);
-
-    components.onGetComponent('context-menu', LOW_PRIORITY$b, function () {
-      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-      if (context.contextMenuType && context.contextMenuType === 'type-ref-edit') {
-        return AllowedValuesEditing;
-      }
-    });
-  };
-  InputOutputValues.$inject = ['components'];
-
-  var AllowedValuesEditing$1 = {
-    __init__: ['allowedValuesUpdateBehavior', 'allowedValuesEditingProvider'],
-    allowedValuesUpdateBehavior: ['type', AllowedValuesUpdateBehavior],
-    allowedValuesEditingProvider: ['type', InputOutputValues]
-  };
-
   function _typeof$G(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$G = function _typeof$1(obj) {
@@ -46143,7 +47753,7 @@
     }
   }
 
-  function _defineProperties$V(target, props) {
+  function _defineProperties$W(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -46153,9 +47763,9 @@
     }
   }
 
-  function _createClass$V(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$V(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$V(Constructor, staticProps);
+  function _createClass$W(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$W(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$W(Constructor, staticProps);
     return Constructor;
   }
 
@@ -46206,7 +47816,7 @@
     return _setPrototypeOf$D(o, p);
   }
 
-  function _defineProperty$u(obj, key, value) {
+  function _defineProperty$t(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
         value: value,
@@ -46221,81 +47831,209 @@
     return obj;
   }
 
-  var AddInput =
+  var AllowedValuesEditing =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$D(AddInput, _Component);
+    _inherits$D(AllowedValuesEditing, _Component);
 
-    function AddInput(props, context) {
+    function AllowedValuesEditing(props, context) {
       var _this;
 
-      _classCallCheck$18(this, AddInput);
+      _classCallCheck$18(this, AllowedValuesEditing);
 
-      _this = _possibleConstructorReturn$D(this, _getPrototypeOf$D(AddInput).call(this, props, context));
+      _this = _possibleConstructorReturn$D(this, _getPrototypeOf$D(AllowedValuesEditing).call(this, props, context));
 
-      _defineProperty$u(_assertThisInitialized$D(_this), "onElementsChanged", function () {
+      _defineProperty$t(_assertThisInitialized$D(_this), "onElementsChanged", function () {
         _this.forceUpdate();
       });
 
-      _defineProperty$u(_assertThisInitialized$D(_this), "handleClick", function (e) {
+      _defineProperty$t(_assertThisInitialized$D(_this), "setPredefinedValues", function (values) {
+        // inputClause or outputClause
+        var target = _this.getAllowedValuesTarget();
+
+        _this.setState({
+          values: values
+        });
+
+        _this._modeling.editAllowedValues(target, values && getValuesArray(values));
+      });
+
+      _defineProperty$t(_assertThisInitialized$D(_this), "onListChange", function (values) {
+        _this.setPredefinedValues(values);
+      });
+
+      _defineProperty$t(_assertThisInitialized$D(_this), "onInput", function (_ref) {
+        var isValid = _ref.isValid,
+            value = _ref.value;
+
+        _this.setState({
+          inputValue: value
+        });
+      });
+
+      _defineProperty$t(_assertThisInitialized$D(_this), "onKeyDown", function (_ref2) {
+        var isValid = _ref2.isValid,
+            event = _ref2.event;
+
+        if (!isEnter(event.keyCode)) {
+          return;
+        }
+
+        event.stopPropagation();
+        event.preventDefault();
+
+        if (isValid) {
+          var _this$state = _this.state,
+              inputValue = _this$state.inputValue,
+              values = _this$state.values;
+          var parsedString = parseString(inputValue);
+
+          _this.onListChange((values || []).concat(parsedString.values.map(function (value) {
+            return {
+              value: value,
+              isCheckable: false,
+              isRemovable: true,
+              group: 'Predefined Values'
+            };
+          })));
+
+          _this.setState({
+            inputValue: ''
+          });
+        }
+      });
+
+      _defineProperty$t(_assertThisInitialized$D(_this), "handleRemovePredifinedValuesClick", function (e) {
         e.stopPropagation();
 
-        _this.add();
+        _this.removePredefinedValues();
       });
 
-      _defineProperty$u(_assertThisInitialized$D(_this), "add", function () {
-        _this._eventBus.fire('addInput');
+      _defineProperty$t(_assertThisInitialized$D(_this), "removePredefinedValues", function () {
+        _this.setPredefinedValues(null);
       });
 
-      _this._sheet = context.injector.get('sheet');
-      _this._eventBus = context.injector.get('eventBus');
+      _this._translate = context.injector.get('translate');
+      _this._modeling = context.injector.get('modeling');
       _this._changeSupport = context.changeSupport;
+
+      var _target = _this.getAllowedValuesTarget();
+
+      var _parsedString = parseString(_target.inputValues && _target.inputValues.text || _target.outputValues && _target.outputValues.text || '');
+
+      if (_parsedString) {
+        _this.state = {
+          values: _parsedString.values.map(function (value) {
+            return {
+              value: value,
+              isCheckable: false,
+              isRemovable: true,
+              group: 'Predefined Values'
+            };
+          }),
+          inputValue: ''
+        };
+      } else {
+        _this.state = {
+          values: null,
+          inputValue: ''
+        };
+      }
+
       return _this;
     }
 
-    _createClass$V(AddInput, [{
+    _createClass$W(AllowedValuesEditing, [{
       key: "componentWillMount",
       value: function componentWillMount() {
-        var root = this.getRoot();
+        var target = this.getAllowedValuesTarget();
 
-        this._changeSupport.onElementsChanged(root.id, this.onElementsChanged);
+        this._changeSupport.onElementsChanged(target.id, this.onElementsChanged);
       }
     }, {
       key: "componentWillUnmount",
       value: function componentWillUnmount() {
-        var root = this.getRoot();
+        var target = this.getAllowedValuesTarget();
 
-        this._changeSupport.offElementsChanged(root.id, this.onElementsChanged);
+        this._changeSupport.offElementsChanged(target.id, this.onElementsChanged);
       }
     }, {
-      key: "getRoot",
-      value: function getRoot() {
-        return this._sheet.getRoot();
+      key: "getAllowedValuesTarget",
+      value: function getAllowedValuesTarget() {
+        var element = this.props.context.element;
+
+        if (is(element, 'dmn:LiteralExpression')) {
+          return element.$parent;
+        } else {
+          return element;
+        }
       }
     }, {
       key: "render",
       value: function render() {
-        var _this$getRoot = this.getRoot(),
-            businessObject = _this$getRoot.businessObject;
+        var _this2 = this;
 
-        var inputs = businessObject.input;
-
-        if (!inputs || !inputs.length) {
-          return null;
-        }
-
-        var colspan = inputs.length;
-        return createVNode(1, "th", "input-cell inputs-label actionable add-input header", [createTextVNode("Input "), createVNode(1, "span", "add-input dmn-icon-plus action-icon", null, 1, {
-          "title": "Add Input"
-        })], 4, {
-          "onClick": this.handleClick,
-          "colspan": colspan
-        });
+        var element = this.props.context.element;
+        var _this$state2 = this.state,
+            inputValue = _this$state2.inputValue,
+            values = _this$state2.values;
+        return element.typeRef === 'string' ? createVNode(1, "div", "context-menu-container allowed-values-edit", [createVNode(1, "hr", "dms-hrule"), !isNull$1(values) && values.length > 0 && createComponentVNode(2, List, {
+          "items": values,
+          "onChange": this.onListChange
+        }), !isNull$1(values) && !values.length && createVNode(1, "div", null, [createVNode(1, "h4", "dms-heading", this._translate('Predefined Values'), 0), createVNode(1, "span", "placeholder", this._translate('No values'), 0)], 4), !isNull$1(values) && createVNode(1, "p", "dms-hint", createVNode(1, "button", "del-values", this._translate('Clear predefined values.'), 0, {
+          "type": "button",
+          "onClick": this.handleRemovePredifinedValuesClick
+        }), 2), createVNode(1, "h4", "dms-heading", this._translate('Add Predefined Values'), 0), createComponentVNode(2, ValidatedInput, {
+          "onInput": this.onInput,
+          "onKeyDown": this.onKeyDown,
+          "placeholder": '"value", "value", ...',
+          "type": "text",
+          "validate": function validate(value) {
+            if (!parseString(value)) {
+              return _this2._translate('Strings must be in double quotes.');
+            }
+          },
+          "value": inputValue
+        })], 0) : null;
       }
     }]);
 
-    return AddInput;
-  }(Component);
+    return AllowedValuesEditing;
+  }(Component); // helpers //////////////////////
+
+  function isEnter(keyCode) {
+    return keyCode === 13;
+  }
+
+  function isNull$1(value) {
+    return value === null;
+  }
+
+  function _classCallCheck$19(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+  var LOW_PRIORITY$c = 500;
+
+  var InputOutputValues = function InputOutputValues(components) {
+    _classCallCheck$19(this, InputOutputValues);
+
+    components.onGetComponent('context-menu', LOW_PRIORITY$c, function () {
+      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      if (context.contextMenuType && context.contextMenuType === 'type-ref-edit') {
+        return AllowedValuesEditing;
+      }
+    });
+  };
+  InputOutputValues.$inject = ['components'];
+
+  var AllowedValuesEditing$1 = {
+    __init__: ['allowedValuesUpdateBehavior', 'allowedValuesEditingProvider'],
+    allowedValuesUpdateBehavior: ['type', AllowedValuesUpdateBehavior],
+    allowedValuesEditingProvider: ['type', InputOutputValues]
+  };
 
   function _typeof$H(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
@@ -46311,13 +48049,13 @@
     return _typeof$H(obj);
   }
 
-  function _classCallCheck$19(instance, Constructor) {
+  function _classCallCheck$1a(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$W(target, props) {
+  function _defineProperties$X(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -46327,9 +48065,9 @@
     }
   }
 
-  function _createClass$W(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$W(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$W(Constructor, staticProps);
+  function _createClass$X(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$X(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$X(Constructor, staticProps);
     return Constructor;
   }
 
@@ -46380,6 +48118,181 @@
     return _setPrototypeOf$E(o, p);
   }
 
+  function _defineProperty$u(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var AddInput =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$E(AddInput, _Component);
+
+    function AddInput(props, context) {
+      var _this;
+
+      _classCallCheck$1a(this, AddInput);
+
+      _this = _possibleConstructorReturn$E(this, _getPrototypeOf$E(AddInput).call(this, props, context));
+
+      _defineProperty$u(_assertThisInitialized$E(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
+      });
+
+      _defineProperty$u(_assertThisInitialized$E(_this), "handleClick", function (e) {
+        e.stopPropagation();
+
+        _this.add();
+      });
+
+      _defineProperty$u(_assertThisInitialized$E(_this), "add", function () {
+        _this._eventBus.fire('addInput');
+      });
+
+      _this._sheet = context.injector.get('sheet');
+      _this._eventBus = context.injector.get('eventBus');
+      _this._changeSupport = context.changeSupport;
+      _this._translate = context.injector.get('translate');
+      return _this;
+    }
+
+    _createClass$X(AddInput, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        var root = this.getRoot();
+
+        this._changeSupport.onElementsChanged(root.id, this.onElementsChanged);
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var root = this.getRoot();
+
+        this._changeSupport.offElementsChanged(root.id, this.onElementsChanged);
+      }
+    }, {
+      key: "getRoot",
+      value: function getRoot() {
+        return this._sheet.getRoot();
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this$getRoot = this.getRoot(),
+            businessObject = _this$getRoot.businessObject;
+
+        var inputs = businessObject.input;
+
+        if (!inputs || !inputs.length) {
+          return null;
+        }
+
+        var colspan = inputs.length;
+        return createVNode(1, "th", "input-cell inputs-label actionable add-input header", [this._translate('Input'), createTextVNode(" "), createVNode(1, "span", "add-input dmn-icon-plus action-icon", null, 1, {
+          "title": this._translate('Add Input')
+        })], 0, {
+          "onClick": this.handleClick,
+          "colspan": colspan
+        });
+      }
+    }]);
+
+    return AddInput;
+  }(Component);
+
+  function _typeof$I(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$I = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$I = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$I(obj);
+  }
+
+  function _classCallCheck$1b(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$Y(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$Y(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$Y(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$Y(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$F(self, call) {
+    if (call && (_typeof$I(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$F(self);
+  }
+
+  function _getPrototypeOf$F(o) {
+    _getPrototypeOf$F = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$F(o);
+  }
+
+  function _assertThisInitialized$F(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$F(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$F(subClass, superClass);
+  }
+
+  function _setPrototypeOf$F(o, p) {
+    _setPrototypeOf$F = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$F(o, p);
+  }
+
   function _defineProperty$v(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -46398,36 +48311,37 @@
   var AddOutput =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$E(AddOutput, _Component);
+    _inherits$F(AddOutput, _Component);
 
     function AddOutput(props, context) {
       var _this;
 
-      _classCallCheck$19(this, AddOutput);
+      _classCallCheck$1b(this, AddOutput);
 
-      _this = _possibleConstructorReturn$E(this, _getPrototypeOf$E(AddOutput).call(this, props, context));
+      _this = _possibleConstructorReturn$F(this, _getPrototypeOf$F(AddOutput).call(this, props, context));
 
-      _defineProperty$v(_assertThisInitialized$E(_this), "onElementsChanged", function () {
+      _defineProperty$v(_assertThisInitialized$F(_this), "onElementsChanged", function () {
         _this.forceUpdate();
       });
 
-      _defineProperty$v(_assertThisInitialized$E(_this), "handleClick", function (e) {
+      _defineProperty$v(_assertThisInitialized$F(_this), "handleClick", function (e) {
         e.stopPropagation();
 
         _this.add();
       });
 
-      _defineProperty$v(_assertThisInitialized$E(_this), "add", function () {
+      _defineProperty$v(_assertThisInitialized$F(_this), "add", function () {
         _this._eventBus.fire('addOutput');
       });
 
       _this._sheet = context.injector.get('sheet');
       _this._eventBus = context.injector.get('eventBus');
       _this._changeSupport = context.changeSupport;
+      _this._translate = context.injector.get('translate');
       return _this;
     }
 
-    _createClass$W(AddOutput, [{
+    _createClass$Y(AddOutput, [{
       key: "componentWillMount",
       value: function componentWillMount() {
         var root = this.getRoot();
@@ -46453,9 +48367,9 @@
             businessObject = _this$getRoot.businessObject;
 
         var colspan = businessObject.output.length;
-        return createVNode(1, "th", "output-cell outputs-label add-output actionable header", [createTextVNode("Output "), createVNode(1, "span", "add-output dmn-icon-plus action-icon", null, 1, {
-          "title": "Add Output"
-        })], 4, {
+        return createVNode(1, "th", "output-cell outputs-label add-output actionable header", [this._translate('Output'), createTextVNode(" "), createVNode(1, "span", "add-output dmn-icon-plus action-icon", null, 1, {
+          "title": this._translate('Add Output')
+        })], 0, {
           "onClick": this.handleClick,
           "colspan": colspan
         });
@@ -46493,19 +48407,19 @@
   };
 
   var tableHeadEditorModule = {
-    __depends__: [AddInputOutput, AllowedValuesEditing$1, contextMenuModule, DebounceInput, TypeRefEditing],
+    __depends__: [AddInputOutput, AllowedValuesEditing$1, contextMenuModule, DebounceInput, ExpressionLanguagesModule, TypeRefEditing],
     __init__: ['inputEditingProvider', 'outputEditingProvider'],
     inputEditingProvider: ['type', InputCellProvider],
     outputEditingProvider: ['type', OutputEditingProvider]
   };
 
-  function _classCallCheck$1a(instance, Constructor) {
+  function _classCallCheck$1c(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$X(target, props) {
+  function _defineProperties$Z(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -46515,9 +48429,9 @@
     }
   }
 
-  function _createClass$X(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$X(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$X(Constructor, staticProps);
+  function _createClass$Z(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$Z(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$Z(Constructor, staticProps);
     return Constructor;
   }
 
@@ -46543,7 +48457,7 @@
     function DragAndDrop(eventBus, renderer, modeling, sheet) {
       var _this = this;
 
-      _classCallCheck$1a(this, DragAndDrop);
+      _classCallCheck$1c(this, DragAndDrop);
 
       _defineProperty$w(this, "handleDragOver", function (event) {
         // we're taking over (!)
@@ -46636,7 +48550,7 @@
       });
     }
 
-    _createClass$X(DragAndDrop, [{
+    _createClass$Z(DragAndDrop, [{
       key: "_bindListeners",
       value: function _bindListeners() {
         componentEvent.bind(document, 'dragover', this.handleDragOver);
@@ -46695,13 +48609,13 @@
     dragAndDrop: ['type', DragAndDrop]
   };
 
-  function _classCallCheck$1b(instance, Constructor) {
+  function _classCallCheck$1d(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$Y(target, props) {
+  function _defineProperties$_(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -46711,9 +48625,9 @@
     }
   }
 
-  function _createClass$Y(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$Y(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$Y(Constructor, staticProps);
+  function _createClass$_(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$_(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$_(Constructor, staticProps);
     return Constructor;
   }
 
@@ -46742,7 +48656,7 @@
     function DragAndDrop(components, elementRegistry, eventBus, dragAndDrop, renderer, rules, sheet) {
       var _this = this;
 
-      _classCallCheck$1b(this, DragAndDrop);
+      _classCallCheck$1d(this, DragAndDrop);
 
       _defineProperty$x(this, "_cleanup", function () {
         var container = _this._renderer.getContainer();
@@ -46940,7 +48854,7 @@
       eventBus.on('dragAndDrop.dragEnd', this._cleanup);
     }
 
-    _createClass$Y(DragAndDrop, [{
+    _createClass$_(DragAndDrop, [{
       key: "startDrag",
       value: function startDrag(element, event) {
         var container = this._renderer.getContainer();
@@ -47146,532 +49060,6 @@
     dmnDragAndDrop: ['type', DragAndDrop$2]
   };
 
-  function _typeof$I(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$I = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$I = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$I(obj);
-  }
-
-  function _classCallCheck$1c(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$Z(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$Z(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$Z(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$Z(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$F(self, call) {
-    if (call && (_typeof$I(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$F(self);
-  }
-
-  function _getPrototypeOf$F(o) {
-    _getPrototypeOf$F = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$F(o);
-  }
-
-  function _assertThisInitialized$F(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$F(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$F(subClass, superClass);
-  }
-
-  function _setPrototypeOf$F(o, p) {
-    _setPrototypeOf$F = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$F(o, p);
-  }
-
-  function _defineProperty$y(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  var DescriptionEditor =
-  /*#__PURE__*/
-  function (_Component) {
-    _inherits$F(DescriptionEditor, _Component);
-
-    function DescriptionEditor(props, context) {
-      var _this;
-
-      _classCallCheck$1c(this, DescriptionEditor);
-
-      _this = _possibleConstructorReturn$F(this, _getPrototypeOf$F(DescriptionEditor).call(this, props, context));
-
-      _defineProperty$y(_assertThisInitialized$F(_this), "onElementsChanged", function () {
-        _this.forceUpdate();
-      });
-
-      _defineProperty$y(_assertThisInitialized$F(_this), "changeDescription", function (value) {
-        _this._modeling.updateProperties(_this._element, {
-          description: value
-        });
-      });
-
-      _this._elementRegistry = context.injector.get('elementRegistry');
-      _this._modeling = context.injector.get('modeling');
-      _this._changeSupport = _this.context.changeSupport;
-      var id = _this.props.context.id;
-      _this._element = _this._elementRegistry.get(id);
-      return _this;
-    }
-
-    _createClass$Z(DescriptionEditor, [{
-      key: "componentWillMount",
-      value: function componentWillMount() {
-        if (this._element) {
-          this._changeSupport.onElementsChanged(this._element.id, this.onElementsChanged);
-        }
-      }
-    }, {
-      key: "componentDidMount",
-      value: function componentDidMount() {
-        var autoFocus = this.props.context.autoFocus;
-
-        if (autoFocus && this.node) {
-          var editor = getEditor(this.node);
-          editor.focus();
-        }
-      }
-    }, {
-      key: "componentWillUnmount",
-      value: function componentWillUnmount() {
-        if (this._element) {
-          this._changeSupport.offElementsChanged(this._element.id, this.onElementsChanged);
-
-          var businessObject = this._element.businessObject;
-          var description = businessObject.description; // if empty description remove description
-
-          if (isString(description) && !description.length) {
-            this.changeDescription(null);
-          }
-        }
-      }
-    }, {
-      key: "render",
-      value: function render() {
-        var _this2 = this;
-
-        if (!this._element) {
-          return;
-        }
-
-        var businessObject = this._element.businessObject;
-        var description = businessObject.description;
-
-        if (!isString(description)) {
-          return;
-        }
-
-        return createVNode(1, "div", "context-menu-container description-editor", createComponentVNode(2, Editor, {
-          "className": "dms-input",
-          "onChange": this.changeDescription,
-          "value": description
-        }), 2, null, null, function (node) {
-          return _this2.node = node;
-        });
-      }
-    }]);
-
-    return DescriptionEditor;
-  }(Component);
-
-  var Editor =
-  /*#__PURE__*/
-  function (_EditableComponent) {
-    _inherits$F(Editor, _EditableComponent);
-
-    function Editor() {
-      _classCallCheck$1c(this, Editor);
-
-      return _possibleConstructorReturn$F(this, _getPrototypeOf$F(Editor).apply(this, arguments));
-    }
-
-    _createClass$Z(Editor, [{
-      key: "render",
-      value: function render() {
-        return createVNode(1, "div", this.getClassName(), this.getEditor(), 0);
-      }
-    }]);
-
-    return Editor;
-  }(EditableComponent); // helpers //////////
-
-
-  function getEditor(container) {
-    return query('.content-editable', container);
-  }
-
-  function _classCallCheck$1d(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperty$z(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-  var LOW_PRIORITY$c = 500;
-  var LOWER_PRIORITY = 750;
-  var OFFSET_X = 26;
-
-  var Description = function Description(components, contextMenu, elementRegistry, eventBus, modeling, renderer) {
-    var _this = this;
-
-    _classCallCheck$1d(this, Description);
-
-    _defineProperty$z(this, "addDescription", function (cell) {
-      _this._modeling.updateProperties(cell, {
-        description: ''
-      });
-
-      var container = _this._renderer.getContainer();
-
-      var node = getNodeById(cell.id, container);
-      var bounds = node.getBoundingClientRect();
-      var position = getPosition(container, bounds);
-
-      _this._contextMenu.open(position, {
-        contextMenuType: 'cell-description',
-        id: cell.id,
-        autoFocus: true,
-        offset: {
-          x: 4,
-          y: 4
-        }
-      });
-    });
-
-    _defineProperty$z(this, "removeDescription", function (cell) {
-      _this._modeling.updateProperties(cell, {
-        description: null
-      });
-
-      _this._contextMenu.close();
-    });
-
-    this._contextMenu = contextMenu;
-    this._modeling = modeling;
-    this._renderer = renderer;
-    eventBus.on('cell.click', LOWER_PRIORITY, function (event) {
-      if (event.defaultPrevented) {
-        return;
-      }
-
-      var target = event.target,
-          id = event.id;
-      var element = elementRegistry.get(id);
-
-      if (!element) {
-        return;
-      }
-
-      var description = getDescription(element);
-
-      if (!description) {
-        // prevent focus
-        event.preventDefault();
-      }
-
-      var container = renderer.getContainer(),
-          bounds = target.getBoundingClientRect();
-      var position = getPosition(container, bounds);
-      contextMenu.open(position, {
-        contextMenuType: 'cell-description',
-        autoFocus: false,
-        id: id,
-        offset: {
-          x: 4,
-          y: 4
-        }
-      });
-    });
-    components.onGetComponent('context-menu', function () {
-      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-      if (context.contextMenuType && context.contextMenuType === 'cell-description') {
-        var element = elementRegistry.get(context.id);
-        var description = getDescription(element);
-
-        if (isString(description)) {
-          return DescriptionEditor;
-        }
-      }
-    });
-    components.onGetComponent('context-menu-cell-additional', LOW_PRIORITY$c, function () {
-      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-      if (context.contextMenuType && context.contextMenuType === 'context-menu') {
-        var id = context.id;
-
-        if (!id) {
-          return;
-        }
-
-        var element = elementRegistry.get(id); // element might not be in element registry (e.g. cut)
-
-        if (!element) {
-          return;
-        }
-
-        var businessObject = element.businessObject;
-        var description = businessObject.description;
-        var existingDescription = isString(description);
-        var className = existingDescription ? 'remove-description' : 'add-description';
-        var onClick = existingDescription ? function () {
-          return _this.removeDescription(element);
-        } : function () {
-          return _this.addDescription(element);
-        };
-        var icon = existingDescription ? 'dmn-icon-clear' : 'dmn-icon-plus';
-        return createVNode(1, "div", "context-menu-group-entry ".concat(className), [createVNode(1, "span", "context-menu-group-entry-icon ".concat(icon)), isString(description) ? 'Remove' : 'Add', createTextVNode(" Description")], 0, {
-          "onClick": onClick
-        });
-      }
-    });
-  };
-  Description.$inject = ['components', 'contextMenu', 'elementRegistry', 'eventBus', 'modeling', 'renderer']; // helpers //////////
-
-  function getPosition(container, bounds) {
-    var top = bounds.top,
-        left = bounds.left,
-        width = bounds.width,
-        height = bounds.height;
-    return {
-      x: left + container.parentNode.scrollLeft - OFFSET_X,
-      y: top + container.parentNode.scrollTop,
-      width: width + 2 * OFFSET_X,
-      height: height
-    };
-  }
-
-  function getDescription(element) {
-    return element && element.businessObject && element.businessObject.description;
-  }
-
-  var descriptionModule = {
-    __depends__: [contextMenuModule, interactionEventsModule],
-    __init__: ['description'],
-    description: ['type', Description]
-  };
-
-  function _classCallCheck$1e(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$_(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$_(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$_(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$_(Constructor, staticProps);
-    return Constructor;
-  }
-  var INPUT_EXPRESSION_LANGUAGE_OPTIONS = [{
-    label: 'FEEL',
-    value: 'feel'
-  }, {
-    label: 'JUEL',
-    value: 'juel'
-  }, {
-    label: 'JavaScript',
-    value: 'javascript'
-  }, {
-    label: 'Groovy',
-    value: 'groovy'
-  }, {
-    label: 'Python',
-    value: 'python'
-  }, {
-    label: 'JRuby',
-    value: 'jruby'
-  }];
-
-  var ExpressionLanguage =
-  /*#__PURE__*/
-  function () {
-    function ExpressionLanguage(components, elementRegistry, modeling) {
-      var _this = this;
-
-      _classCallCheck$1e(this, ExpressionLanguage);
-
-      this._modeling = modeling;
-      components.onGetComponent('context-menu-cell-additional', function () {
-        var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-        if (context.contextMenuType && context.contextMenuType === 'context-menu') {
-          var id = context.id;
-
-          if (!id) {
-            return;
-          }
-
-          var element = elementRegistry.get(id); // element might not be in element registry (e.g. cut)
-
-          if (!element) {
-            return;
-          }
-
-          var expressionLanguage = element.businessObject.expressionLanguage || (isInput(element.col) ? 'feel' : 'juel');
-          return createVNode(1, "div", "context-menu-group-entry context-menu-entry-set-expression-language", [createVNode(1, "div", null, [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-file-code"), createTextVNode("Expression Language")], 4), createComponentVNode(2, InputSelect, {
-            "className": "expression-language",
-            "onChange": function onChange(value) {
-              return _this.onChange(element, value);
-            },
-            "options": INPUT_EXPRESSION_LANGUAGE_OPTIONS,
-            "value": expressionLanguage
-          })], 4);
-        }
-      });
-    }
-
-    _createClass$_(ExpressionLanguage, [{
-      key: "onChange",
-      value: function onChange(cell, expressionLanguage) {
-        this._modeling.editExpressionLanguage(cell.businessObject, expressionLanguage);
-      }
-    }]);
-
-    return ExpressionLanguage;
-  }();
-  ExpressionLanguage.$inject = ['components', 'elementRegistry', 'modeling'];
-
-  var expressionLanguageModule = {
-    __init__: ['expressionLanguage'],
-    expressionLanguage: ['type', ExpressionLanguage]
-  };
-
-  var SPACE_REGEX = /\s/; // for QName validation as per http://www.w3.org/TR/REC-xml/#NT-NameChar
-
-  var QNAME_REGEX = /^([a-z][\w-.]*:)?[a-z_][\w-.]*$/i; // for ID validation as per BPMN Schema (QName - Namespace)
-
-  var ID_REGEX = /^[a-z_][\w-.]*$/i;
-  var PLACEHOLDER_REGEX = /\$\{([^}]*)\}/g;
-  /**
-   * Validates an ID.
-   *
-   * @param {ModdleElement} businessObject
-   * @param {String} id
-   *
-   * @return {String} error message
-   */
-
-  function validateId(businessObject, id) {
-    var assigned = businessObject.$model.ids.assigned(id);
-    var idExists = assigned && assigned !== businessObject;
-
-    if (!id || idExists) {
-      return 'Element must have an unique id.';
-    }
-
-    return validateIdFormat(id);
-  }
-
-  function validateIdFormat(id) {
-    id = stripPlaceholders(id);
-
-    if (containsSpace(id)) {
-      return 'Id must not contain spaces.';
-    }
-
-    if (!ID_REGEX.test(id)) {
-      if (QNAME_REGEX.test(id)) {
-        return 'Id must not contain prefix.';
-      }
-
-      return 'Id must be a valid QName.';
-    }
-  }
-
-  function containsSpace(value) {
-    return SPACE_REGEX.test(value);
-  }
-
-  function stripPlaceholders(id) {
-    // replace expression e.g. ${VERSION_TAG}
-    // use only the content between ${}
-    // for the REGEX check
-    return id.replace(PLACEHOLDER_REGEX, '$1');
-  }
-
   function _typeof$J(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
       _typeof$J = function _typeof$1(obj) {
@@ -47686,7 +49074,7 @@
     return _typeof$J(obj);
   }
 
-  function _classCallCheck$1f(instance, Constructor) {
+  function _classCallCheck$1e(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
@@ -47755,6 +49143,517 @@
     return _setPrototypeOf$G(o, p);
   }
 
+  function _defineProperty$y(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  var DescriptionEditor =
+  /*#__PURE__*/
+  function (_Component) {
+    _inherits$G(DescriptionEditor, _Component);
+
+    function DescriptionEditor(props, context) {
+      var _this;
+
+      _classCallCheck$1e(this, DescriptionEditor);
+
+      _this = _possibleConstructorReturn$G(this, _getPrototypeOf$G(DescriptionEditor).call(this, props, context));
+
+      _defineProperty$y(_assertThisInitialized$G(_this), "onElementsChanged", function () {
+        _this.forceUpdate();
+      });
+
+      _defineProperty$y(_assertThisInitialized$G(_this), "changeDescription", function (value) {
+        _this._modeling.updateProperties(_this._element, {
+          description: value
+        });
+      });
+
+      _this._elementRegistry = context.injector.get('elementRegistry');
+      _this._modeling = context.injector.get('modeling');
+      _this._changeSupport = _this.context.changeSupport;
+      var id = _this.props.context.id;
+      _this._element = _this._elementRegistry.get(id);
+      return _this;
+    }
+
+    _createClass$$(DescriptionEditor, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        if (this._element) {
+          this._changeSupport.onElementsChanged(this._element.id, this.onElementsChanged);
+        }
+      }
+    }, {
+      key: "componentDidMount",
+      value: function componentDidMount() {
+        var autoFocus = this.props.context.autoFocus;
+
+        if (autoFocus && this.node) {
+          var editor = getEditor(this.node);
+          editor.focus();
+        }
+      }
+    }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        if (this._element) {
+          this._changeSupport.offElementsChanged(this._element.id, this.onElementsChanged);
+
+          var businessObject = this._element.businessObject;
+          var description = businessObject.description; // if empty description remove description
+
+          if (isString(description) && !description.length) {
+            this.changeDescription(null);
+          }
+        }
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this2 = this;
+
+        if (!this._element) {
+          return;
+        }
+
+        var businessObject = this._element.businessObject;
+        var description = businessObject.description;
+
+        if (!isString(description)) {
+          return;
+        }
+
+        return createVNode(1, "div", "context-menu-container description-editor", createComponentVNode(2, Editor, {
+          "className": "dms-input",
+          "onChange": this.changeDescription,
+          "value": description
+        }), 2, null, null, function (node) {
+          return _this2.node = node;
+        });
+      }
+    }]);
+
+    return DescriptionEditor;
+  }(Component);
+
+  var Editor =
+  /*#__PURE__*/
+  function (_EditableComponent) {
+    _inherits$G(Editor, _EditableComponent);
+
+    function Editor() {
+      _classCallCheck$1e(this, Editor);
+
+      return _possibleConstructorReturn$G(this, _getPrototypeOf$G(Editor).apply(this, arguments));
+    }
+
+    _createClass$$(Editor, [{
+      key: "render",
+      value: function render() {
+        return createVNode(1, "div", this.getClassName(), this.getEditor(), 0);
+      }
+    }]);
+
+    return Editor;
+  }(EditableComponent); // helpers //////////
+
+
+  function getEditor(container) {
+    return query('.content-editable', container);
+  }
+
+  function _classCallCheck$1f(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperty$z(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+  var LOW_PRIORITY$d = 500;
+  var LOWER_PRIORITY$1 = 750;
+  var OFFSET_X = 26;
+
+  var Description = function Description(components, contextMenu, elementRegistry, eventBus, modeling, renderer, translate) {
+    var _this = this;
+
+    _classCallCheck$1f(this, Description);
+
+    _defineProperty$z(this, "addDescription", function (cell) {
+      _this._modeling.updateProperties(cell, {
+        description: ''
+      });
+
+      var container = _this._renderer.getContainer();
+
+      var node = getNodeById(cell.id, container);
+      var bounds = node.getBoundingClientRect();
+      var position = getPosition(container, bounds);
+
+      _this._contextMenu.open(position, {
+        contextMenuType: 'cell-description',
+        id: cell.id,
+        autoFocus: true,
+        offset: {
+          x: 4,
+          y: 4
+        }
+      });
+    });
+
+    _defineProperty$z(this, "removeDescription", function (cell) {
+      _this._modeling.updateProperties(cell, {
+        description: null
+      });
+
+      _this._contextMenu.close();
+    });
+
+    this._contextMenu = contextMenu;
+    this._modeling = modeling;
+    this._renderer = renderer;
+    this._translate = translate;
+    eventBus.on('cell.click', LOWER_PRIORITY$1, function (event) {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      var target = event.target,
+          id = event.id;
+      var element = elementRegistry.get(id);
+
+      if (!element) {
+        return;
+      }
+
+      var description = getDescription(element);
+
+      if (!description) {
+        // prevent focus
+        event.preventDefault();
+      }
+
+      var container = renderer.getContainer(),
+          bounds = target.getBoundingClientRect();
+      var position = getPosition(container, bounds);
+      contextMenu.open(position, {
+        contextMenuType: 'cell-description',
+        autoFocus: false,
+        id: id,
+        offset: {
+          x: 4,
+          y: 4
+        }
+      });
+    });
+    components.onGetComponent('context-menu', function () {
+      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      if (context.contextMenuType && context.contextMenuType === 'cell-description') {
+        var element = elementRegistry.get(context.id);
+        var description = getDescription(element);
+
+        if (isString(description)) {
+          return DescriptionEditor;
+        }
+      }
+    });
+    components.onGetComponent('context-menu-cell-additional', LOW_PRIORITY$d, function () {
+      var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      if (context.contextMenuType && context.contextMenuType === 'context-menu') {
+        var id = context.id;
+
+        if (!id) {
+          return;
+        }
+
+        var element = elementRegistry.get(id); // element might not be in element registry (e.g. cut)
+
+        if (!element) {
+          return;
+        }
+
+        var businessObject = element.businessObject;
+        var description = businessObject.description;
+        var existingDescription = isString(description);
+        var className = existingDescription ? 'remove-description' : 'add-description';
+        var onClick = existingDescription ? function () {
+          return _this.removeDescription(element);
+        } : function () {
+          return _this.addDescription(element);
+        };
+        var icon = existingDescription ? 'dmn-icon-clear' : 'dmn-icon-plus';
+        return createVNode(1, "div", "context-menu-group-entry ".concat(className), [createVNode(1, "span", "context-menu-group-entry-icon ".concat(icon)), isString(description) ? _this._translate('Remove') : _this._translate('Add'), _this._translate('Description')], 0, {
+          "onClick": onClick
+        });
+      }
+    });
+  };
+  Description.$inject = ['components', 'contextMenu', 'elementRegistry', 'eventBus', 'modeling', 'renderer', 'translate']; // helpers //////////
+
+  function getPosition(container, bounds) {
+    var top = bounds.top,
+        left = bounds.left,
+        width = bounds.width,
+        height = bounds.height;
+    return {
+      x: left + container.parentNode.scrollLeft - OFFSET_X,
+      y: top + container.parentNode.scrollTop,
+      width: width + 2 * OFFSET_X,
+      height: height
+    };
+  }
+
+  function getDescription(element) {
+    return element && element.businessObject && element.businessObject.description;
+  }
+
+  var descriptionModule = {
+    __depends__: [contextMenuModule, interactionEventsModule],
+    __init__: ['description'],
+    description: ['type', Description]
+  };
+
+  function _classCallCheck$1g(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$10(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$10(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$10(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$10(Constructor, staticProps);
+    return Constructor;
+  }
+
+  var ExpressionLanguage =
+  /*#__PURE__*/
+  function () {
+    function ExpressionLanguage(components, elementRegistry, modeling, expressionLanguages, translate) {
+      var _this = this;
+
+      _classCallCheck$1g(this, ExpressionLanguage);
+
+      this._modeling = modeling;
+      this._translate = translate;
+      components.onGetComponent('context-menu-cell-additional', function () {
+        var context = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+        if (context.contextMenuType && context.contextMenuType === 'context-menu') {
+          var id = context.id;
+
+          if (!id) {
+            return;
+          }
+
+          var element = elementRegistry.get(id); // element might not be in element registry (e.g. cut)
+
+          if (!element) {
+            return;
+          }
+
+          var expressionLanguage = element.businessObject.expressionLanguage || expressionLanguages.getDefault(isInput(element.col) ? 'inputCell' : 'outputCell').value;
+          var options = expressionLanguages.getAll();
+          return createVNode(1, "div", "context-menu-group-entry context-menu-entry-set-expression-language", [createVNode(1, "div", null, [createVNode(1, "span", "context-menu-group-entry-icon dmn-icon-file-code"), _this._translate('Expression Language')], 0), createComponentVNode(2, InputSelect, {
+            "className": "expression-language",
+            "onChange": function onChange(value) {
+              return _this.onChange(element, value);
+            },
+            "options": options,
+            "value": expressionLanguage
+          })], 4);
+        }
+      });
+    }
+
+    _createClass$10(ExpressionLanguage, [{
+      key: "onChange",
+      value: function onChange(cell, expressionLanguage) {
+        this._modeling.editExpressionLanguage(cell.businessObject, expressionLanguage);
+      }
+    }]);
+
+    return ExpressionLanguage;
+  }();
+  ExpressionLanguage.$inject = ['components', 'elementRegistry', 'modeling', 'expressionLanguages', 'translate'];
+
+  var expressionLanguageModule = {
+    __depends__: [ExpressionLanguagesModule],
+    __init__: ['expressionLanguage'],
+    expressionLanguage: ['type', ExpressionLanguage]
+  };
+
+  var SPACE_REGEX = /\s/; // for QName validation as per http://www.w3.org/TR/REC-xml/#NT-NameChar
+
+  var QNAME_REGEX = /^([a-z][\w-.]*:)?[a-z_][\w-.]*$/i; // for ID validation as per BPMN Schema (QName - Namespace)
+
+  var ID_REGEX = /^[a-z_][\w-.]*$/i;
+  var PLACEHOLDER_REGEX = /\$\{([^}]*)\}/g;
+  /**
+   * Validates an ID.
+   *
+   * @param {ModdleElement} businessObject
+   * @param {String} id
+   *
+   * @return {String} error message
+   */
+
+  function validateId(businessObject, id) {
+    var assigned = businessObject.$model.ids.assigned(id);
+    var idExists = assigned && assigned !== businessObject;
+
+    if (!id || idExists) {
+      return 'Element must have an unique id.';
+    }
+
+    return validateIdFormat(id);
+  }
+
+  function validateIdFormat(id) {
+    id = stripPlaceholders(id);
+
+    if (containsSpace(id)) {
+      return 'Id must not contain spaces.';
+    }
+
+    if (!ID_REGEX.test(id)) {
+      if (QNAME_REGEX.test(id)) {
+        return 'Id must not contain prefix.';
+      }
+
+      return 'Id must be a valid QName.';
+    }
+  }
+
+  function containsSpace(value) {
+    return SPACE_REGEX.test(value);
+  }
+
+  function stripPlaceholders(id) {
+    // replace expression e.g. ${VERSION_TAG}
+    // use only the content between ${}
+    // for the REGEX check
+    return id.replace(PLACEHOLDER_REGEX, '$1');
+  }
+
+  function _typeof$K(obj) {
+    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
+      _typeof$K = function _typeof$1(obj) {
+        return _typeof(obj);
+      };
+    } else {
+      _typeof$K = function _typeof$1(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
+      };
+    }
+
+    return _typeof$K(obj);
+  }
+
+  function _classCallCheck$1h(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties$11(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass$11(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$11(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$11(Constructor, staticProps);
+    return Constructor;
+  }
+
+  function _possibleConstructorReturn$H(self, call) {
+    if (call && (_typeof$K(call) === "object" || typeof call === "function")) {
+      return call;
+    }
+
+    return _assertThisInitialized$H(self);
+  }
+
+  function _getPrototypeOf$H(o) {
+    _getPrototypeOf$H = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+      return o.__proto__ || Object.getPrototypeOf(o);
+    };
+    return _getPrototypeOf$H(o);
+  }
+
+  function _assertThisInitialized$H(self) {
+    if (self === void 0) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return self;
+  }
+
+  function _inherits$H(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) _setPrototypeOf$H(subClass, superClass);
+  }
+
+  function _setPrototypeOf$H(o, p) {
+    _setPrototypeOf$H = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+      o.__proto__ = p;
+      return o;
+    };
+
+    return _setPrototypeOf$H(o, p);
+  }
+
   function _defineProperty$A(obj, key, value) {
     if (key in obj) {
       Object.defineProperty(obj, key, {
@@ -47773,24 +49672,24 @@
   var DecisionTablePropertiesComponent$1 =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$G(DecisionTablePropertiesComponent, _Component);
+    _inherits$H(DecisionTablePropertiesComponent, _Component);
 
     function DecisionTablePropertiesComponent(props, context) {
       var _this;
 
-      _classCallCheck$1f(this, DecisionTablePropertiesComponent);
+      _classCallCheck$1h(this, DecisionTablePropertiesComponent);
 
-      _this = _possibleConstructorReturn$G(this, _getPrototypeOf$G(DecisionTablePropertiesComponent).call(this, props, context));
+      _this = _possibleConstructorReturn$H(this, _getPrototypeOf$H(DecisionTablePropertiesComponent).call(this, props, context));
 
-      _defineProperty$A(_assertThisInitialized$G(_this), "onElementsChanged", function () {
+      _defineProperty$A(_assertThisInitialized$H(_this), "onElementsChanged", function () {
         _this.forceUpdate();
       });
 
-      _defineProperty$A(_assertThisInitialized$G(_this), "setDecisionTableName", function (name) {
+      _defineProperty$A(_assertThisInitialized$H(_this), "setDecisionTableName", function (name) {
         _this.modeling.editDecisionTableName(name);
       });
 
-      _defineProperty$A(_assertThisInitialized$G(_this), "setDecisionTableId", function (id) {
+      _defineProperty$A(_assertThisInitialized$H(_this), "setDecisionTableId", function (id) {
         var oldId = _this.getBusinessObject().id;
 
         if (oldId === id) {
@@ -47800,17 +49699,17 @@
         _this.modeling.editDecisionTableId(id);
       });
 
-      _defineProperty$A(_assertThisInitialized$G(_this), "validateId", function (id) {
+      _defineProperty$A(_assertThisInitialized$H(_this), "validateId", function (id) {
         var bo = _this.getBusinessObject();
 
         return validateId(bo, id);
       });
 
-      inject(_assertThisInitialized$G(_this));
+      inject(_assertThisInitialized$H(_this));
       return _this;
     }
 
-    _createClass$$(DecisionTablePropertiesComponent, [{
+    _createClass$11(DecisionTablePropertiesComponent, [{
       key: "componentWillMount",
       value: function componentWillMount() {
         var injector = this.context.injector;
@@ -47878,19 +49777,19 @@
   var DecisionTableName =
   /*#__PURE__*/
   function (_EditableComponent) {
-    _inherits$G(DecisionTableName, _EditableComponent);
+    _inherits$H(DecisionTableName, _EditableComponent);
 
     function DecisionTableName(props, context) {
       var _this2;
 
-      _classCallCheck$1f(this, DecisionTableName);
+      _classCallCheck$1h(this, DecisionTableName);
 
-      _this2 = _possibleConstructorReturn$G(this, _getPrototypeOf$G(DecisionTableName).call(this, props, context));
-      mixin(_assertThisInitialized$G(_this2), SelectionAware);
+      _this2 = _possibleConstructorReturn$H(this, _getPrototypeOf$H(DecisionTableName).call(this, props, context));
+      mixin(_assertThisInitialized$H(_this2), SelectionAware);
       return _this2;
     }
 
-    _createClass$$(DecisionTableName, [{
+    _createClass$11(DecisionTableName, [{
       key: "render",
       value: function render() {
         var className = classNames(this.getSelectionClasses(), this.getClassName());
@@ -47908,19 +49807,19 @@
   var DecisionTableId =
   /*#__PURE__*/
   function (_EditableComponent2) {
-    _inherits$G(DecisionTableId, _EditableComponent2);
+    _inherits$H(DecisionTableId, _EditableComponent2);
 
     function DecisionTableId(props, context) {
       var _this3;
 
-      _classCallCheck$1f(this, DecisionTableId);
+      _classCallCheck$1h(this, DecisionTableId);
 
-      _this3 = _possibleConstructorReturn$G(this, _getPrototypeOf$G(DecisionTableId).call(this, props, context));
-      mixin(_assertThisInitialized$G(_this3), SelectionAware);
+      _this3 = _possibleConstructorReturn$H(this, _getPrototypeOf$H(DecisionTableId).call(this, props, context));
+      mixin(_assertThisInitialized$H(_this3), SelectionAware);
       return _this3;
     }
 
-    _createClass$$(DecisionTableId, [{
+    _createClass$11(DecisionTableId, [{
       key: "render",
       value: function render() {
         var className = classNames(this.getSelectionClasses(), this.getClassName());
@@ -47935,14 +49834,14 @@
     return DecisionTableId;
   }(EditableComponent);
 
-  function _classCallCheck$1g(instance, Constructor) {
+  function _classCallCheck$1i(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var DecisionTableProperties$1 = function DecisionTableProperties(components) {
-    _classCallCheck$1g(this, DecisionTableProperties);
+    _classCallCheck$1i(this, DecisionTableProperties);
 
     components.onGetComponent('table.before', function () {
       return DecisionTablePropertiesComponent$1;
@@ -47956,27 +49855,27 @@
     decisionTableProperties: ['type', DecisionTableProperties$1]
   };
 
-  function _typeof$K(obj) {
+  function _typeof$L(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$K = function _typeof$1(obj) {
+      _typeof$L = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$K = function _typeof$1(obj) {
+      _typeof$L = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$K(obj);
+    return _typeof$L(obj);
   }
 
-  function _classCallCheck$1h(instance, Constructor) {
+  function _classCallCheck$1j(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$10(target, props) {
+  function _defineProperties$12(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -47986,28 +49885,28 @@
     }
   }
 
-  function _createClass$10(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$10(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$10(Constructor, staticProps);
+  function _createClass$12(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$12(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$12(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$H(self, call) {
-    if (call && (_typeof$K(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$I(self, call) {
+    if (call && (_typeof$L(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$H(self);
+    return _assertThisInitialized$I(self);
   }
 
-  function _getPrototypeOf$H(o) {
-    _getPrototypeOf$H = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$I(o) {
+    _getPrototypeOf$I = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$H(o);
+    return _getPrototypeOf$I(o);
   }
 
-  function _assertThisInitialized$H(self) {
+  function _assertThisInitialized$I(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -48015,7 +49914,7 @@
     return self;
   }
 
-  function _inherits$H(subClass, superClass) {
+  function _inherits$I(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -48027,16 +49926,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$H(subClass, superClass);
+    if (superClass) _setPrototypeOf$I(subClass, superClass);
   }
 
-  function _setPrototypeOf$H(o, p) {
-    _setPrototypeOf$H = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$I(o, p) {
+    _setPrototypeOf$I = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$H(o, p);
+    return _setPrototypeOf$I(o, p);
   }
 
   function _defineProperty$B(obj, key, value) {
@@ -48057,30 +49956,30 @@
   var EditableHitPolicyCell =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$H(EditableHitPolicyCell, _Component);
+    _inherits$I(EditableHitPolicyCell, _Component);
 
     function EditableHitPolicyCell(props, context) {
       var _this;
 
-      _classCallCheck$1h(this, EditableHitPolicyCell);
+      _classCallCheck$1j(this, EditableHitPolicyCell);
 
-      _this = _possibleConstructorReturn$H(this, _getPrototypeOf$H(EditableHitPolicyCell).call(this, props, context));
+      _this = _possibleConstructorReturn$I(this, _getPrototypeOf$I(EditableHitPolicyCell).call(this, props, context));
 
-      _defineProperty$B(_assertThisInitialized$H(_this), "onClick", function (event) {
+      _defineProperty$B(_assertThisInitialized$I(_this), "onClick", function (event) {
         _this.eventBus.fire('hitPolicy.edit', {
           event: event
         });
       });
 
-      _defineProperty$B(_assertThisInitialized$H(_this), "onElementsChanged", function () {
+      _defineProperty$B(_assertThisInitialized$I(_this), "onElementsChanged", function () {
         _this.forceUpdate();
       });
 
-      inject(_assertThisInitialized$H(_this));
+      inject(_assertThisInitialized$I(_this));
       return _this;
     }
 
-    _createClass$10(EditableHitPolicyCell, [{
+    _createClass$12(EditableHitPolicyCell, [{
       key: "getRoot",
       value: function getRoot() {
         return this.sheet.getRoot();
@@ -48136,27 +50035,27 @@
     }
   }
 
-  function _typeof$L(obj) {
+  function _typeof$M(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$L = function _typeof$1(obj) {
+      _typeof$M = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$L = function _typeof$1(obj) {
+      _typeof$M = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$L(obj);
+    return _typeof$M(obj);
   }
 
-  function _classCallCheck$1i(instance, Constructor) {
+  function _classCallCheck$1k(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$11(target, props) {
+  function _defineProperties$13(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -48166,28 +50065,28 @@
     }
   }
 
-  function _createClass$11(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$11(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$11(Constructor, staticProps);
+  function _createClass$13(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$13(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$13(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$I(self, call) {
-    if (call && (_typeof$L(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$J(self, call) {
+    if (call && (_typeof$M(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$I(self);
+    return _assertThisInitialized$J(self);
   }
 
-  function _getPrototypeOf$I(o) {
-    _getPrototypeOf$I = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$J(o) {
+    _getPrototypeOf$J = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$I(o);
+    return _getPrototypeOf$J(o);
   }
 
-  function _assertThisInitialized$I(self) {
+  function _assertThisInitialized$J(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -48195,7 +50094,7 @@
     return self;
   }
 
-  function _inherits$I(subClass, superClass) {
+  function _inherits$J(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -48207,16 +50106,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$I(subClass, superClass);
+    if (superClass) _setPrototypeOf$J(subClass, superClass);
   }
 
-  function _setPrototypeOf$I(o, p) {
-    _setPrototypeOf$I = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$J(o, p) {
+    _setPrototypeOf$J = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$I(o, p);
+    return _setPrototypeOf$J(o, p);
   }
   var HIT_POLICIES = ['UNIQUE', 'FIRST', 'PRIORITY', 'ANY', 'COLLECT', 'RULE ORDER', 'OUTPUT ORDER'];
   var DEFAULT_AGGREGATION = 'NO LIST AGGREGATION';
@@ -48225,21 +50124,21 @@
   var HitPolicyCellContextMenu =
   /*#__PURE__*/
   function (_Component) {
-    _inherits$I(HitPolicyCellContextMenu, _Component);
+    _inherits$J(HitPolicyCellContextMenu, _Component);
 
     function HitPolicyCellContextMenu(props, context) {
       var _this;
 
-      _classCallCheck$1i(this, HitPolicyCellContextMenu);
+      _classCallCheck$1k(this, HitPolicyCellContextMenu);
 
-      _this = _possibleConstructorReturn$I(this, _getPrototypeOf$I(HitPolicyCellContextMenu).call(this, props, context));
-      _this.onHitPolicyChange = _this.onHitPolicyChange.bind(_assertThisInitialized$I(_this));
-      _this.onAggregationChange = _this.onAggregationChange.bind(_assertThisInitialized$I(_this));
-      _this.onElementsChanged = _this.onElementsChanged.bind(_assertThisInitialized$I(_this));
+      _this = _possibleConstructorReturn$J(this, _getPrototypeOf$J(HitPolicyCellContextMenu).call(this, props, context));
+      _this.onHitPolicyChange = _this.onHitPolicyChange.bind(_assertThisInitialized$J(_this));
+      _this.onAggregationChange = _this.onAggregationChange.bind(_assertThisInitialized$J(_this));
+      _this.onElementsChanged = _this.onElementsChanged.bind(_assertThisInitialized$J(_this));
       return _this;
     }
 
-    _createClass$11(HitPolicyCellContextMenu, [{
+    _createClass$13(HitPolicyCellContextMenu, [{
       key: "onHitPolicyChange",
       value: function onHitPolicyChange(hitPolicy) {
         var root = this._sheet.getRoot(),
@@ -48372,13 +50271,13 @@
     hitPolicyProvider: ['type', HitPolicyEditingProvider]
   };
 
-  function _classCallCheck$1j(instance, Constructor) {
+  function _classCallCheck$1l(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$12(target, props) {
+  function _defineProperties$14(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -48388,9 +50287,9 @@
     }
   }
 
-  function _createClass$12(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$12(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$12(Constructor, staticProps);
+  function _createClass$14(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$14(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$14(Constructor, staticProps);
     return Constructor;
   }
 
@@ -48437,7 +50336,7 @@
     function Keyboard(config, eventBus, editorActions) {
       var _this = this;
 
-      _classCallCheck$1j(this, Keyboard);
+      _classCallCheck$1l(this, Keyboard);
 
       _defineProperty$C(this, "_init", function () {
         _this._registerDefaultBindings();
@@ -48495,7 +50394,7 @@
       eventBus.on('detach', this.unbind);
     }
 
-    _createClass$12(Keyboard, [{
+    _createClass$14(Keyboard, [{
       key: "bind",
       value: function bind(node) {
         // make sure that the keyboard is only bound once to the DOM
@@ -48594,27 +50493,27 @@
     keyboard: ['type', Keyboard$1]
   };
 
-  function _typeof$M(obj) {
+  function _typeof$N(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$M = function _typeof$1(obj) {
+      _typeof$N = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$M = function _typeof$1(obj) {
+      _typeof$N = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$M(obj);
+    return _typeof$N(obj);
   }
 
-  function _classCallCheck$1k(instance, Constructor) {
+  function _classCallCheck$1m(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$13(target, props) {
+  function _defineProperties$15(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -48624,21 +50523,21 @@
     }
   }
 
-  function _createClass$13(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$13(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$13(Constructor, staticProps);
+  function _createClass$15(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$15(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$15(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$J(self, call) {
-    if (call && (_typeof$M(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$K(self, call) {
+    if (call && (_typeof$N(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$J(self);
+    return _assertThisInitialized$K(self);
   }
 
-  function _assertThisInitialized$J(self) {
+  function _assertThisInitialized$K(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -48646,14 +50545,14 @@
     return self;
   }
 
-  function _getPrototypeOf$J(o) {
-    _getPrototypeOf$J = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$K(o) {
+    _getPrototypeOf$K = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$J(o);
+    return _getPrototypeOf$K(o);
   }
 
-  function _inherits$J(subClass, superClass) {
+  function _inherits$K(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -48665,16 +50564,16 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$J(subClass, superClass);
+    if (superClass) _setPrototypeOf$K(subClass, superClass);
   }
 
-  function _setPrototypeOf$J(o, p) {
-    _setPrototypeOf$J = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$K(o, p) {
+    _setPrototypeOf$K = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$J(o, p);
+    return _setPrototypeOf$K(o, p);
   }
   /**
    * A handler responsible for updating the underlying DMN
@@ -48684,14 +50583,14 @@
   var DmnUpdater =
   /*#__PURE__*/
   function (_CommandInterceptor) {
-    _inherits$J(DmnUpdater, _CommandInterceptor);
+    _inherits$K(DmnUpdater, _CommandInterceptor);
 
     function DmnUpdater(eventBus, sheet) {
       var _this;
 
-      _classCallCheck$1k(this, DmnUpdater);
+      _classCallCheck$1m(this, DmnUpdater);
 
-      _this = _possibleConstructorReturn$J(this, _getPrototypeOf$J(DmnUpdater).call(this, eventBus));
+      _this = _possibleConstructorReturn$K(this, _getPrototypeOf$K(DmnUpdater).call(this, eventBus));
 
       _this.executed(['row.add', 'row.remove', 'col.add', 'col.remove'], ifDmn(function (e) {
         var context = e.context;
@@ -48710,7 +50609,7 @@
       return _this;
     }
 
-    _createClass$13(DmnUpdater, [{
+    _createClass$15(DmnUpdater, [{
       key: "updateRoot",
       value: function updateRoot(element, oldRoot) {
         var _this2 = this;
@@ -48890,13 +50789,13 @@
     };
   }
 
-  function _classCallCheck$1l(instance, Constructor) {
+  function _classCallCheck$1n(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$14(target, props) {
+  function _defineProperties$16(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -48906,9 +50805,9 @@
     }
   }
 
-  function _createClass$14(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$14(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$14(Constructor, staticProps);
+  function _createClass$16(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$16(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$16(Constructor, staticProps);
     return Constructor;
   }
 
@@ -48916,12 +50815,12 @@
   /*#__PURE__*/
   function () {
     function DmnFactory(moddle) {
-      _classCallCheck$1l(this, DmnFactory);
+      _classCallCheck$1n(this, DmnFactory);
 
       this._model = moddle;
     }
 
-    _createClass$14(DmnFactory, [{
+    _createClass$16(DmnFactory, [{
       key: "create",
       value: function create(type) {
         var attrs = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
@@ -48973,18 +50872,18 @@
   }();
   DmnFactory.$inject = ['moddle'];
 
-  function _typeof$N(obj) {
+  function _typeof$O(obj) {
     if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$N = function _typeof$1(obj) {
+      _typeof$O = function _typeof$1(obj) {
         return _typeof(obj);
       };
     } else {
-      _typeof$N = function _typeof$1(obj) {
+      _typeof$O = function _typeof$1(obj) {
         return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
       };
     }
 
-    return _typeof$N(obj);
+    return _typeof$O(obj);
   }
 
   function ownKeys$a(object, enumerableOnly) {
@@ -49072,13 +50971,13 @@
     return target;
   }
 
-  function _classCallCheck$1m(instance, Constructor) {
+  function _classCallCheck$1o(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$15(target, props) {
+  function _defineProperties$17(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49088,21 +50987,21 @@
     }
   }
 
-  function _createClass$15(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$15(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$15(Constructor, staticProps);
+  function _createClass$17(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$17(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$17(Constructor, staticProps);
     return Constructor;
   }
 
-  function _possibleConstructorReturn$K(self, call) {
-    if (call && (_typeof$N(call) === "object" || typeof call === "function")) {
+  function _possibleConstructorReturn$L(self, call) {
+    if (call && (_typeof$O(call) === "object" || typeof call === "function")) {
       return call;
     }
 
-    return _assertThisInitialized$K(self);
+    return _assertThisInitialized$L(self);
   }
 
-  function _assertThisInitialized$K(self) {
+  function _assertThisInitialized$L(self) {
     if (self === void 0) {
       throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
@@ -49133,21 +51032,21 @@
 
   function _superPropBase$2(object, property) {
     while (!Object.prototype.hasOwnProperty.call(object, property)) {
-      object = _getPrototypeOf$K(object);
+      object = _getPrototypeOf$L(object);
       if (object === null) break;
     }
 
     return object;
   }
 
-  function _getPrototypeOf$K(o) {
-    _getPrototypeOf$K = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
+  function _getPrototypeOf$L(o) {
+    _getPrototypeOf$L = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
       return o.__proto__ || Object.getPrototypeOf(o);
     };
-    return _getPrototypeOf$K(o);
+    return _getPrototypeOf$L(o);
   }
 
-  function _inherits$K(subClass, superClass) {
+  function _inherits$L(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
     }
@@ -49159,34 +51058,34 @@
         configurable: true
       }
     });
-    if (superClass) _setPrototypeOf$K(subClass, superClass);
+    if (superClass) _setPrototypeOf$L(subClass, superClass);
   }
 
-  function _setPrototypeOf$K(o, p) {
-    _setPrototypeOf$K = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+  function _setPrototypeOf$L(o, p) {
+    _setPrototypeOf$L = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
       return o;
     };
 
-    return _setPrototypeOf$K(o, p);
+    return _setPrototypeOf$L(o, p);
   }
 
   var ElementFactory$3 =
   /*#__PURE__*/
   function (_BaseElementFactory) {
-    _inherits$K(ElementFactory, _BaseElementFactory);
+    _inherits$L(ElementFactory, _BaseElementFactory);
 
     function ElementFactory(dmnFactory) {
       var _this;
 
-      _classCallCheck$1m(this, ElementFactory);
+      _classCallCheck$1o(this, ElementFactory);
 
-      _this = _possibleConstructorReturn$K(this, _getPrototypeOf$K(ElementFactory).call(this));
+      _this = _possibleConstructorReturn$L(this, _getPrototypeOf$L(ElementFactory).call(this));
       _this._dmnFactory = dmnFactory;
       return _this;
     }
 
-    _createClass$15(ElementFactory, [{
+    _createClass$17(ElementFactory, [{
       key: "create",
       value: function create(tType, attrs) {
         var dmnFactory = this._dmnFactory;
@@ -49219,7 +51118,7 @@
           businessObject = dmnFactory.create(type);
         }
 
-        return _get$2(_getPrototypeOf$K(ElementFactory.prototype), "create", this).call(this, tType, _objectSpread$a({
+        return _get$2(_getPrototypeOf$L(ElementFactory.prototype), "create", this).call(this, tType, _objectSpread$a({
           businessObject: businessObject,
           id: businessObject.id
         }, additionalAttrs));
@@ -49230,27 +51129,13 @@
   }(ElementFactory$2);
   ElementFactory$3.$inject = ['dmnFactory'];
 
-  function _typeof$O(obj) {
-    if (typeof Symbol === "function" && _typeof(Symbol.iterator) === "symbol") {
-      _typeof$O = function _typeof$1(obj) {
-        return _typeof(obj);
-      };
-    } else {
-      _typeof$O = function _typeof$1(obj) {
-        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : _typeof(obj);
-      };
-    }
-
-    return _typeof$O(obj);
-  }
-
-  function _classCallCheck$1n(instance, Constructor) {
+  function _classCallCheck$1p(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$16(target, props) {
+  function _defineProperties$18(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49260,194 +51145,9 @@
     }
   }
 
-  function _createClass$16(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$16(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$16(Constructor, staticProps);
-    return Constructor;
-  }
-
-  function _possibleConstructorReturn$L(self, call) {
-    if (call && (_typeof$O(call) === "object" || typeof call === "function")) {
-      return call;
-    }
-
-    return _assertThisInitialized$L(self);
-  }
-
-  function _getPrototypeOf$L(o) {
-    _getPrototypeOf$L = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf$L(o);
-  }
-
-  function _assertThisInitialized$L(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _inherits$L(subClass, superClass) {
-    if (typeof superClass !== "function" && superClass !== null) {
-      throw new TypeError("Super expression must either be null or a function");
-    }
-
-    subClass.prototype = Object.create(superClass && superClass.prototype, {
-      constructor: {
-        value: subClass,
-        writable: true,
-        configurable: true
-      }
-    });
-    if (superClass) _setPrototypeOf$L(subClass, superClass);
-  }
-
-  function _setPrototypeOf$L(o, p) {
-    _setPrototypeOf$L = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
-      o.__proto__ = p;
-      return o;
-    };
-
-    return _setPrototypeOf$L(o, p);
-  }
-  var ID$1 = 'id';
-
-  var IdChangeBehavior =
-  /*#__PURE__*/
-  function (_CommandInterceptor) {
-    _inherits$L(IdChangeBehavior, _CommandInterceptor);
-
-    function IdChangeBehavior(eventBus) {
-      var _this;
-
-      _classCallCheck$1n(this, IdChangeBehavior);
-
-      _this = _possibleConstructorReturn$L(this, _getPrototypeOf$L(IdChangeBehavior).call(this, eventBus));
-
-      _this.executed('updateProperties', _this.updateIds.bind(_assertThisInitialized$L(_this)));
-
-      return _this;
-    }
-
-    _createClass$16(IdChangeBehavior, [{
-      key: "updateIds",
-      value: function updateIds(_ref) {
-        var context = _ref.context;
-        var element = context.element,
-            oldProperties = context.oldProperties,
-            properties = context.properties;
-
-        if (!is(element, 'dmn:DRGElement') || !isIdChange$2(oldProperties, properties)) {
-          return;
-        }
-
-        var drgElements = getDrgElements(element);
-        drgElements.forEach(function (drgElement) {
-          updateElementReferences(drgElement, oldProperties.id, properties.id);
-          updateEdges(drgElement, oldProperties.id, properties.id);
-        });
-      }
-    }]);
-
-    return IdChangeBehavior;
-  }(CommandInterceptor);
-  IdChangeBehavior.$inject = ['eventBus']; // helpers //////////////////////
-
-  function isIdChange$2(oldProperties, properties) {
-    return ID$1 in oldProperties && ID$1 in properties;
-  }
-
-  function getDrgElements(element) {
-    var definitions = element.$parent;
-    var drgElements = definitions.drgElements;
-    return drgElements;
-  }
-
-  function updateElementReferences(element, oldId, id) {
-    var handlers = {
-      authorityRequirement: function authorityRequirement() {
-        element.authorityRequirement.forEach(function (authorityRequirement) {
-          var requiredAuthority = authorityRequirement.requiredAuthority,
-              requiredDecision = authorityRequirement.requiredDecision,
-              requiredInput = authorityRequirement.requiredInput;
-
-          if (requiredAuthority && requiredAuthority.href === "#".concat(oldId)) {
-            requiredAuthority.href = "#".concat(id);
-          }
-
-          if (requiredDecision && requiredDecision.href === "#".concat(oldId)) {
-            requiredDecision.href = "#".concat(id);
-          }
-
-          if (requiredInput && requiredInput.href === "#".concat(oldId)) {
-            requiredInput.href = "#".concat(id);
-          }
-        });
-      },
-      informationRequirement: function informationRequirement() {
-        element.informationRequirement.forEach(function (informationRequirement) {
-          var requiredDecision = informationRequirement.requiredDecision,
-              requiredInput = informationRequirement.requiredInput;
-
-          if (requiredDecision && requiredDecision.href === "#".concat(oldId)) {
-            requiredDecision.href = "#".concat(id);
-          }
-
-          if (requiredInput && requiredInput.href === "#".concat(oldId)) {
-            requiredInput.href = "#".concat(id);
-          }
-        });
-      },
-      knowledgeRequirement: function knowledgeRequirement() {
-        element.knowledgeRequirement.forEach(function (knowledgeRequirement) {
-          var requiredKnowledge = knowledgeRequirement.requiredKnowledge;
-
-          if (requiredKnowledge && requiredKnowledge.href === "#".concat(oldId)) {
-            requiredKnowledge.href = "#".concat(id);
-          }
-        });
-      }
-    };
-    forEach(handlers, function (handler, key) {
-      if (element[key]) {
-        handler();
-      }
-    });
-  }
-
-  function updateEdges(element, oldId, id) {
-    if (element.extensionElements) {
-      element.extensionElements.values.forEach(function (extensionElement) {
-        if (is(extensionElement, 'biodi:Edge')) {
-          if (extensionElement.source === oldId) {
-            extensionElement.source = id;
-          }
-        }
-      });
-    }
-  }
-
-  function _classCallCheck$1o(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties$17(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass$17(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$17(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$17(Constructor, staticProps);
+  function _createClass$18(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$18(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$18(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49459,7 +51159,7 @@
   /*#__PURE__*/
   function () {
     function AddRowHandler(sheet, elementFactory) {
-      _classCallCheck$1o(this, AddRowHandler);
+      _classCallCheck$1p(this, AddRowHandler);
 
       this._sheet = sheet;
       this._elementFactory = elementFactory;
@@ -49469,7 +51169,7 @@
      */
 
 
-    _createClass$17(AddRowHandler, [{
+    _createClass$18(AddRowHandler, [{
       key: "execute",
       value: function execute(context) {
         var sheet = this._sheet,
@@ -49515,13 +51215,13 @@
   }();
   AddRowHandler.$inject = ['sheet', 'elementFactory'];
 
-  function _classCallCheck$1p(instance, Constructor) {
+  function _classCallCheck$1q(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$18(target, props) {
+  function _defineProperties$19(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49531,9 +51231,9 @@
     }
   }
 
-  function _createClass$18(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$18(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$18(Constructor, staticProps);
+  function _createClass$19(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$19(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$19(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49545,7 +51245,7 @@
   /*#__PURE__*/
   function () {
     function RemoveRowHandler(sheet) {
-      _classCallCheck$1p(this, RemoveRowHandler);
+      _classCallCheck$1q(this, RemoveRowHandler);
 
       this._sheet = sheet;
     }
@@ -49554,7 +51254,7 @@
      */
 
 
-    _createClass$18(RemoveRowHandler, [{
+    _createClass$19(RemoveRowHandler, [{
       key: "execute",
       value: function execute(context) {
         var sheet = this._sheet,
@@ -49590,13 +51290,13 @@
   }();
   RemoveRowHandler.$inject = ['sheet'];
 
-  function _classCallCheck$1q(instance, Constructor) {
+  function _classCallCheck$1r(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$19(target, props) {
+  function _defineProperties$1a(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49606,9 +51306,9 @@
     }
   }
 
-  function _createClass$19(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$19(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$19(Constructor, staticProps);
+  function _createClass$1a(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1a(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1a(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49620,7 +51320,7 @@
   /*#__PURE__*/
   function () {
     function MoveRowHandler(modeling) {
-      _classCallCheck$1q(this, MoveRowHandler);
+      _classCallCheck$1r(this, MoveRowHandler);
 
       this._modeling = modeling;
     }
@@ -49629,7 +51329,7 @@
      */
 
 
-    _createClass$19(MoveRowHandler, [{
+    _createClass$1a(MoveRowHandler, [{
       key: "preExecute",
       value: function preExecute(context) {
         var row = context.row;
@@ -49654,13 +51354,13 @@
   }();
   MoveRowHandler.$inject = ['modeling'];
 
-  function _classCallCheck$1r(instance, Constructor) {
+  function _classCallCheck$1s(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1a(target, props) {
+  function _defineProperties$1b(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49670,9 +51370,9 @@
     }
   }
 
-  function _createClass$1a(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1a(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1a(Constructor, staticProps);
+  function _createClass$1b(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1b(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1b(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49684,7 +51384,7 @@
   /*#__PURE__*/
   function () {
     function AddColHandler(sheet, elementFactory) {
-      _classCallCheck$1r(this, AddColHandler);
+      _classCallCheck$1s(this, AddColHandler);
 
       this._sheet = sheet;
       this._elementFactory = elementFactory;
@@ -49694,7 +51394,7 @@
      */
 
 
-    _createClass$1a(AddColHandler, [{
+    _createClass$1b(AddColHandler, [{
       key: "execute",
       value: function execute(context) {
         var sheet = this._sheet,
@@ -49740,13 +51440,13 @@
   }();
   AddColHandler.$inject = ['sheet', 'elementFactory'];
 
-  function _classCallCheck$1s(instance, Constructor) {
+  function _classCallCheck$1t(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1b(target, props) {
+  function _defineProperties$1c(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49756,9 +51456,9 @@
     }
   }
 
-  function _createClass$1b(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1b(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1b(Constructor, staticProps);
+  function _createClass$1c(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1c(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1c(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49770,7 +51470,7 @@
   /*#__PURE__*/
   function () {
     function RemoveColHandler(sheet, elementFactory) {
-      _classCallCheck$1s(this, RemoveColHandler);
+      _classCallCheck$1t(this, RemoveColHandler);
 
       this._sheet = sheet;
       this._elementFactory = elementFactory;
@@ -49780,7 +51480,7 @@
      */
 
 
-    _createClass$1b(RemoveColHandler, [{
+    _createClass$1c(RemoveColHandler, [{
       key: "execute",
       value: function execute(context) {
         var sheet = this._sheet;
@@ -49815,13 +51515,13 @@
   }();
   RemoveColHandler.$inject = ['sheet', 'elementFactory'];
 
-  function _classCallCheck$1t(instance, Constructor) {
+  function _classCallCheck$1u(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1c(target, props) {
+  function _defineProperties$1d(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49831,9 +51531,9 @@
     }
   }
 
-  function _createClass$1c(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1c(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1c(Constructor, staticProps);
+  function _createClass$1d(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1d(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1d(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49845,7 +51545,7 @@
   /*#__PURE__*/
   function () {
     function MoveColHandler(modeling) {
-      _classCallCheck$1t(this, MoveColHandler);
+      _classCallCheck$1u(this, MoveColHandler);
 
       this._modeling = modeling;
     }
@@ -49854,7 +51554,7 @@
      */
 
 
-    _createClass$1c(MoveColHandler, [{
+    _createClass$1d(MoveColHandler, [{
       key: "preExecute",
       value: function preExecute(context) {
         var col = context.col;
@@ -49879,13 +51579,13 @@
   }();
   MoveColHandler.$inject = ['modeling'];
 
-  function _classCallCheck$1u(instance, Constructor) {
+  function _classCallCheck$1v(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1d(target, props) {
+  function _defineProperties$1e(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -49895,9 +51595,9 @@
     }
   }
 
-  function _createClass$1d(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1d(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1d(Constructor, staticProps);
+  function _createClass$1e(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1e(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1e(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -49914,10 +51614,10 @@
   /*#__PURE__*/
   function () {
     function EditCellHandler() {
-      _classCallCheck$1u(this, EditCellHandler);
+      _classCallCheck$1v(this, EditCellHandler);
     }
 
-    _createClass$1d(EditCellHandler, [{
+    _createClass$1e(EditCellHandler, [{
       key: "execute",
 
       /**
@@ -49990,13 +51690,13 @@
     return obj;
   }
 
-  function _classCallCheck$1v(instance, Constructor) {
+  function _classCallCheck$1w(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1e(target, props) {
+  function _defineProperties$1f(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50006,9 +51706,9 @@
     }
   }
 
-  function _createClass$1e(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1e(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1e(Constructor, staticProps);
+  function _createClass$1f(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1f(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1f(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -50025,7 +51725,7 @@
     function Modeling(eventBus, elementFactory, commandStack) {
       var _this = this;
 
-      _classCallCheck$1v(this, Modeling);
+      _classCallCheck$1w(this, Modeling);
 
       this._eventBus = eventBus;
       this._elementFactory = elementFactory;
@@ -50036,7 +51736,7 @@
       });
     }
 
-    _createClass$1e(Modeling, [{
+    _createClass$1f(Modeling, [{
       key: "getHandlers",
       value: function getHandlers() {
         return Modeling._getHandlers();
@@ -50154,13 +51854,13 @@
     });
   }
 
-  function _classCallCheck$1w(instance, Constructor) {
+  function _classCallCheck$1x(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1f(target, props) {
+  function _defineProperties$1g(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50170,9 +51870,9 @@
     }
   }
 
-  function _createClass$1f(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1f(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1f(Constructor, staticProps);
+  function _createClass$1g(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1g(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1g(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -50183,7 +51883,7 @@
   /*#__PURE__*/
   function () {
     function UpdateAllowedValuesHandler(dmnFactory, moddle, modeling) {
-      _classCallCheck$1w(this, UpdateAllowedValuesHandler);
+      _classCallCheck$1x(this, UpdateAllowedValuesHandler);
 
       this._dmnFactory = dmnFactory;
       this._moddle = moddle;
@@ -50194,7 +51894,7 @@
      */
 
 
-    _createClass$1f(UpdateAllowedValuesHandler, [{
+    _createClass$1g(UpdateAllowedValuesHandler, [{
       key: "execute",
       value: function execute(context) {
         var element = context.element,
@@ -50361,13 +52061,13 @@
     }
   }
 
-  function _classCallCheck$1x(instance, Constructor) {
+  function _classCallCheck$1y(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1g(target, props) {
+  function _defineProperties$1h(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50377,9 +52077,9 @@
     }
   }
 
-  function _createClass$1g(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1g(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1g(Constructor, staticProps);
+  function _createClass$1h(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1h(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1h(Constructor, staticProps);
     return Constructor;
   }
   var ID$2 = 'id';
@@ -50391,7 +52091,7 @@
   /*#__PURE__*/
   function () {
     function EditPropertiesHandler(elementRegistry, moddle) {
-      _classCallCheck$1x(this, EditPropertiesHandler);
+      _classCallCheck$1y(this, EditPropertiesHandler);
 
       this._elementRegistry = elementRegistry;
       this._moddle = moddle;
@@ -50401,7 +52101,7 @@
      */
 
 
-    _createClass$1g(EditPropertiesHandler, [{
+    _createClass$1h(EditPropertiesHandler, [{
       key: "execute",
       value: function execute(context) {
         var element = context.element,
@@ -50500,13 +52200,13 @@
     return isDefined(o) && isObject(o);
   }
 
-  function _classCallCheck$1y(instance, Constructor) {
+  function _classCallCheck$1z(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1h(target, props) {
+  function _defineProperties$1i(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50516,9 +52216,9 @@
     }
   }
 
-  function _createClass$1h(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1h(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1h(Constructor, staticProps);
+  function _createClass$1i(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1i(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1i(Constructor, staticProps);
     return Constructor;
   }
 
@@ -50526,7 +52226,7 @@
   /*#__PURE__*/
   function () {
     function IdClaimHandler(moddle) {
-      _classCallCheck$1y(this, IdClaimHandler);
+      _classCallCheck$1z(this, IdClaimHandler);
 
       this._moddle = moddle;
     }
@@ -50535,7 +52235,7 @@
      */
 
 
-    _createClass$1h(IdClaimHandler, [{
+    _createClass$1i(IdClaimHandler, [{
       key: "execute",
       value: function execute(context) {
         var ids = this._moddle.ids,
@@ -50587,13 +52287,13 @@
     return _typeof$P(obj);
   }
 
-  function _classCallCheck$1z(instance, Constructor) {
+  function _classCallCheck$1A(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1i(target, props) {
+  function _defineProperties$1j(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50603,9 +52303,9 @@
     }
   }
 
-  function _createClass$1i(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1i(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1i(Constructor, staticProps);
+  function _createClass$1j(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1j(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1j(Constructor, staticProps);
     return Constructor;
   }
 
@@ -50694,7 +52394,7 @@
     function Modeling(eventBus, elementFactory, commandStack, sheet) {
       var _this;
 
-      _classCallCheck$1z(this, Modeling);
+      _classCallCheck$1A(this, Modeling);
 
       _this = _possibleConstructorReturn$M(this, _getPrototypeOf$M(Modeling).call(this, eventBus, elementFactory, commandStack));
       _this._eventBus = eventBus;
@@ -50704,7 +52404,7 @@
       return _this;
     }
 
-    _createClass$1i(Modeling, [{
+    _createClass$1j(Modeling, [{
       key: "getHandlers",
       value: function getHandlers() {
         return Modeling._getHandlers();
@@ -50909,13 +52609,13 @@
     return _typeof$Q(obj);
   }
 
-  function _classCallCheck$1A(instance, Constructor) {
+  function _classCallCheck$1B(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1j(target, props) {
+  function _defineProperties$1k(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -50925,9 +52625,9 @@
     }
   }
 
-  function _createClass$1j(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1j(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1j(Constructor, staticProps);
+  function _createClass$1k(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1k(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1k(Constructor, staticProps);
     return Constructor;
   }
 
@@ -50986,7 +52686,7 @@
     function IdClaimBehavior(eventBus, moddle, modeling) {
       var _this;
 
-      _classCallCheck$1A(this, IdClaimBehavior);
+      _classCallCheck$1B(this, IdClaimBehavior);
 
       _this = _possibleConstructorReturn$N(this, _getPrototypeOf$N(IdClaimBehavior).call(this, eventBus));
       _this._ids = moddle.ids;
@@ -51008,7 +52708,7 @@
       return _this;
     }
 
-    _createClass$1j(IdClaimBehavior, [{
+    _createClass$1k(IdClaimBehavior, [{
       key: "claimId",
       value: function claimId(businessObject) {
         var _this2 = this;
@@ -51057,13 +52757,13 @@
     return _typeof$R(obj);
   }
 
-  function _classCallCheck$1B(instance, Constructor) {
+  function _classCallCheck$1C(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1k(target, props) {
+  function _defineProperties$1l(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -51073,9 +52773,9 @@
     }
   }
 
-  function _createClass$1k(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1k(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1k(Constructor, staticProps);
+  function _createClass$1l(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1l(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1l(Constructor, staticProps);
     return Constructor;
   }
 
@@ -51134,7 +52834,7 @@
     function IdUnclaimBehavior(eventBus, modeling) {
       var _this;
 
-      _classCallCheck$1B(this, IdUnclaimBehavior);
+      _classCallCheck$1C(this, IdUnclaimBehavior);
 
       _this = _possibleConstructorReturn$O(this, _getPrototypeOf$O(IdUnclaimBehavior).call(this, eventBus));
       _this._modeling = modeling;
@@ -51155,7 +52855,7 @@
       return _this;
     }
 
-    _createClass$1k(IdUnclaimBehavior, [{
+    _createClass$1l(IdUnclaimBehavior, [{
       key: "unclaimId",
       value: function unclaimId(businessObject) {
         var _this2 = this;
@@ -51220,13 +52920,13 @@
     return _typeof$S(obj);
   }
 
-  function _classCallCheck$1C(instance, Constructor) {
+  function _classCallCheck$1D(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1l(target, props) {
+  function _defineProperties$1m(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -51236,9 +52936,9 @@
     }
   }
 
-  function _createClass$1l(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1l(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1l(Constructor, staticProps);
+  function _createClass$1m(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1m(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1m(Constructor, staticProps);
     return Constructor;
   }
 
@@ -51288,14 +52988,6 @@
 
     return _setPrototypeOf$P(o, p);
   }
-  var EXPRESSION_LANGUAGE_LABELS = {
-    feel: 'FEEL',
-    juel: 'JUEL',
-    python: 'Python',
-    javascript: 'JavaScript',
-    groovy: 'Groovy',
-    jruby: 'JRuby'
-  };
 
   var DecisionRulesEditorCellComponent =
   /*#__PURE__*/
@@ -51305,7 +52997,7 @@
     function DecisionRulesEditorCellComponent(props, context) {
       var _this;
 
-      _classCallCheck$1C(this, DecisionRulesEditorCellComponent);
+      _classCallCheck$1D(this, DecisionRulesEditorCellComponent);
 
       _this = _possibleConstructorReturn$P(this, _getPrototypeOf$P(DecisionRulesEditorCellComponent).call(this, props, context));
       _this.state = {
@@ -51318,7 +53010,7 @@
       return _this;
     }
 
-    _createClass$1l(DecisionRulesEditorCellComponent, [{
+    _createClass$1m(DecisionRulesEditorCellComponent, [{
       key: "onElementsChanged",
       value: function onElementsChanged() {
         this.forceUpdate();
@@ -51370,16 +53062,17 @@
             col = _this$props.col,
             colIndex = _this$props.colIndex;
         var isFocussed = this.state.isFocussed;
-        var className = is(cell, 'dmn:UnaryTests') ? 'input-cell' : 'output-cell';
+        var isUnaryTest = is(cell, 'dmn:UnaryTests');
         var businessObject = cell.businessObject;
         return createComponentVNode(2, HeaderCell, {
-          "className": className,
+          "className": isUnaryTest ? 'input-cell' : 'output-cell',
           "elementId": cell.id,
           "coords": "".concat(rowIndex, ":").concat(colIndex),
           "data-row-id": row.id,
           "data-col-id": col.id,
           children: createComponentVNode(2, TableCellEditor, {
             "className": "cell-editor",
+            "placeholder": isUnaryTest ? '-' : '',
             "ctrlForNewline": true,
             "onFocus": this.onFocus,
             "onBlur": this.onBlur,
@@ -51400,27 +53093,23 @@
   function (_EditableComponent) {
     _inherits$P(TableCellEditor, _EditableComponent);
 
-    function TableCellEditor() {
-      _classCallCheck$1C(this, TableCellEditor);
+    function TableCellEditor(props, context) {
+      var _this2;
 
-      return _possibleConstructorReturn$P(this, _getPrototypeOf$P(TableCellEditor).apply(this, arguments));
+      _classCallCheck$1D(this, TableCellEditor);
+
+      _this2 = _possibleConstructorReturn$P(this, _getPrototypeOf$P(TableCellEditor).call(this, props, context));
+      _this2._expressionLanguages = context.injector.get('expressionLanguages');
+      _this2._translate = context.injector.get('translate');
+      return _this2;
     }
 
-    _createClass$1l(TableCellEditor, [{
+    _createClass$1m(TableCellEditor, [{
       key: "isDefaultExpressionLanguage",
       value: function isDefaultExpressionLanguage(businessObject) {
         var expressionLanguage = businessObject.expressionLanguage;
-        var isInput = is(businessObject, 'dmn:UnaryTests');
-
-        var _this$context$injecto = this.context.injector.get('config'),
-            defaultInputExpressionLanguage = _this$context$injecto.defaultInputExpressionLanguage,
-            defaultOutputExpressionLanguage = _this$context$injecto.defaultOutputExpressionLanguage;
-
-        if (isInput) {
-          return !expressionLanguage && !defaultInputExpressionLanguage || expressionLanguage === (defaultInputExpressionLanguage || 'feel');
-        } else {
-          return !expressionLanguage && !defaultOutputExpressionLanguage || expressionLanguage === (defaultOutputExpressionLanguage || 'juel');
-        }
+        var defaultExpressionLanguage = this.getDefaultExpressionLanguage(businessObject).value;
+        return !expressionLanguage || expressionLanguage === defaultExpressionLanguage;
       }
     }, {
       key: "getDescription",
@@ -51431,18 +53120,30 @@
       key: "getExpressionLanguageLabel",
       value: function getExpressionLanguageLabel(businessObject) {
         var expressionLanguage = businessObject.expressionLanguage;
-        var isInput = is(businessObject, 'dmn:UnaryTests');
-
-        if (isInput) {
-          return expressionLanguage ? EXPRESSION_LANGUAGE_LABELS[businessObject.expressionLanguage.toLowerCase()] : 'FEEL';
-        } else {
-          return expressionLanguage ? EXPRESSION_LANGUAGE_LABELS[businessObject.expressionLanguage.toLowerCase()] : 'JUEL';
-        }
+        var defaultExpressionLanguage = this.getDefaultExpressionLanguage(businessObject);
+        return this._expressionLanguages.getLabel(expressionLanguage) || defaultExpressionLanguage.label;
       }
     }, {
       key: "isScript",
       value: function isScript(businessObject) {
-        return is(businessObject, 'dmn:UnaryTests') && ((businessObject.expressionLanguage || 'FEEL') !== 'FEEL' || businessObject.text.indexOf('\n') !== -1);
+        var defaultExpressionLanguage = this.getDefaultExpressionLanguage(businessObject);
+        var isInputCell = is(businessObject, 'dmn:UnaryTests');
+
+        if (!isInputCell) {
+          return false;
+        }
+
+        if (businessObject.text.indexOf('\n') !== -1) {
+          return true;
+        }
+
+        return businessObject.expressionLanguage && businessObject.expressionLanguage !== defaultExpressionLanguage;
+      }
+    }, {
+      key: "getDefaultExpressionLanguage",
+      value: function getDefaultExpressionLanguage(businessObject) {
+        var elementType = is(businessObject, 'dmn:UnaryTests') ? 'inputCell' : 'outputCell';
+        return this._expressionLanguages.getDefault(elementType);
       }
     }, {
       key: "render",
@@ -51452,12 +53153,14 @@
             isFocussed = _this$props2.isFocussed;
         var description = this.getDescription(businessObject);
         var isDefaultExpressionLanguage = this.isDefaultExpressionLanguage(businessObject);
-        var expressionLanguageLabel = this.getExpressionLanguageLabel(businessObject) || businessObject.expressionLanguage;
+        var expressionLanguageLabel = this.getExpressionLanguageLabel(businessObject);
         var isScript = this.isScript(businessObject);
         return createVNode(1, "div", this.getClassName(), [isString(description) && !isFocussed && createVNode(1, "div", "description-indicator"), this.getEditor({
           className: isScript ? 'script-editor' : null
         }), !isDefaultExpressionLanguage && !isFocussed && createVNode(1, "span", "dms-badge dmn-expression-language", [createVNode(1, "span", "dms-badge-icon dmn-icon-file-code"), createVNode(1, "span", "dms-badge-label", expressionLanguageLabel, 0)], 4, {
-          "title": "Expression Language = ".concat(expressionLanguageLabel)
+          "title": this._translate('Expression Language = {expressionLanguageLabel}', {
+            expressionLanguageLabel: expressionLanguageLabel
+          })
         })], 0);
       }
     }]);
@@ -51465,17 +53168,17 @@
     return TableCellEditor;
   }(EditableComponent);
 
-  function _classCallCheck$1D(instance, Constructor) {
+  function _classCallCheck$1E(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var HIGH_PRIORITY$6 = 1500;
+  var HIGH_PRIORITY$7 = 1500;
 
   var RulesEditor = function RulesEditor(components) {
-    _classCallCheck$1D(this, RulesEditor);
+    _classCallCheck$1E(this, RulesEditor);
 
-    components.onGetComponent('cell', HIGH_PRIORITY$6, function (_ref) {
+    components.onGetComponent('cell', HIGH_PRIORITY$7, function (_ref) {
       var cellType = _ref.cellType;
 
       if (cellType === 'rule') {
@@ -51505,13 +53208,13 @@
     return _typeof$T(obj);
   }
 
-  function _classCallCheck$1E(instance, Constructor) {
+  function _classCallCheck$1F(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1m(target, props) {
+  function _defineProperties$1n(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -51521,9 +53224,9 @@
     }
   }
 
-  function _createClass$1m(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1m(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1m(Constructor, staticProps);
+  function _createClass$1n(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1n(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1n(Constructor, staticProps);
     return Constructor;
   }
 
@@ -51583,7 +53286,7 @@
     function SimpleModeButtonComponent(props, context) {
       var _this;
 
-      _classCallCheck$1E(this, SimpleModeButtonComponent);
+      _classCallCheck$1F(this, SimpleModeButtonComponent);
 
       _this = _possibleConstructorReturn$Q(this, _getPrototypeOf$Q(SimpleModeButtonComponent).call(this, props, context));
       _this.state = {
@@ -51595,7 +53298,8 @@
       var injector = context.injector;
       var eventBus = _this._eventBus = injector.get('eventBus'),
           simpleMode = injector.get('simpleMode'),
-          elementRegistry = context.injector.get('elementRegistry');
+          elementRegistry = context.injector.get('elementRegistry'),
+          expressionLanguages = context.injector.get('expressionLanguages');
       _this._renderer = injector.get('renderer');
       _this._selection = context.injector.get('selection');
       _this.updatePosition = _this.updatePosition.bind(_assertThisInitialized$Q(_this));
@@ -51617,7 +53321,7 @@
         }, _this.updatePosition);
 
         var expressionLanguage = getExpressionLanguage(selection);
-        var isDisabled = !isDefaultExpressionLanguage(selection, expressionLanguage);
+        var isDisabled = !isDefaultExpressionLanguage(selection, expressionLanguage, expressionLanguages);
 
         _this.setState({
           isVisible: true,
@@ -51630,7 +53334,7 @@
     } // position button always on opposite site of context menu
 
 
-    _createClass$1m(SimpleModeButtonComponent, [{
+    _createClass$1n(SimpleModeButtonComponent, [{
       key: "updatePosition",
       value: function updatePosition() {
         var selection = this.state.selection;
@@ -51723,21 +53427,25 @@
     return cell.businessObject.expressionLanguage;
   }
 
-  function isDefaultExpressionLanguage(cell, expressionLanguage) {
+  function isDefaultExpressionLanguage(cell, expressionLanguage, expressionLanguages) {
+    return !expressionLanguage || expressionLanguage === getDefaultExpressionLanguage(cell, expressionLanguages);
+  }
+
+  function getDefaultExpressionLanguage(cell, expressionLanguages) {
     if (isInput(cell.col)) {
-      return !expressionLanguage || expressionLanguage === 'feel';
+      return expressionLanguages.getDefault('inputCell').value;
     } else if (isOutput(cell.col)) {
-      return !expressionLanguage || expressionLanguage === 'juel';
+      return expressionLanguages.getDefault('outputCell').value;
     }
   }
 
-  function _classCallCheck$1F(instance, Constructor) {
+  function _classCallCheck$1G(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1n(target, props) {
+  function _defineProperties$1o(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -51747,9 +53455,9 @@
     }
   }
 
-  function _createClass$1n(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1n(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1n(Constructor, staticProps);
+  function _createClass$1o(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1o(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1o(Constructor, staticProps);
     return Constructor;
   }
 
@@ -51757,7 +53465,7 @@
   /*#__PURE__*/
   function () {
     function SimpleMode(components, contextMenu, elementRegistry, eventBus, renderer) {
-      _classCallCheck$1F(this, SimpleMode);
+      _classCallCheck$1G(this, SimpleMode);
 
       this._providers = [];
       components.onGetComponent('table.before', function () {
@@ -51809,7 +53517,7 @@
       });
     }
 
-    _createClass$1n(SimpleMode, [{
+    _createClass$1o(SimpleMode, [{
       key: "registerProvider",
       value: function registerProvider(provider) {
         this._providers.push(provider);
@@ -51838,7 +53546,7 @@
   }
 
   var simpleModeModule = {
-    __depends__: [contextMenuModule, cellSelectionModule],
+    __depends__: [contextMenuModule, cellSelectionModule, ExpressionLanguagesModule],
     __init__: ['simpleMode'],
     simpleMode: ['type', SimpleMode]
   };
@@ -51871,13 +53579,13 @@
     return _typeof$U(obj);
   }
 
-  function _classCallCheck$1G(instance, Constructor) {
+  function _classCallCheck$1H(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1o(target, props) {
+  function _defineProperties$1p(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -51887,9 +53595,9 @@
     }
   }
 
-  function _createClass$1o(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1o(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1o(Constructor, staticProps);
+  function _createClass$1p(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1p(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1p(Constructor, staticProps);
     return Constructor;
   }
 
@@ -51951,7 +53659,7 @@
     function BooleanEdit(props, context) {
       var _this;
 
-      _classCallCheck$1G(this, BooleanEdit);
+      _classCallCheck$1H(this, BooleanEdit);
 
       _this = _possibleConstructorReturn$R(this, _getPrototypeOf$R(BooleanEdit).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -51965,7 +53673,7 @@
       return _this;
     }
 
-    _createClass$1o(BooleanEdit, [{
+    _createClass$1p(BooleanEdit, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -52006,14 +53714,14 @@
     return BooleanEdit;
   }(Component);
 
-  function _classCallCheck$1H(instance, Constructor) {
+  function _classCallCheck$1I(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var SimpleBooleanEdit = function SimpleBooleanEdit(components, simpleMode) {
-    _classCallCheck$1H(this, SimpleBooleanEdit);
+    _classCallCheck$1I(this, SimpleBooleanEdit);
 
     simpleMode.registerProvider(function (element) {
       return (isInput(element.col) || isOutput(element.col)) && getTypeRef(element) === 'boolean';
@@ -52135,13 +53843,13 @@
     return _typeof$V(obj);
   }
 
-  function _classCallCheck$1I(instance, Constructor) {
+  function _classCallCheck$1J(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1p(target, props) {
+  function _defineProperties$1q(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -52151,9 +53859,9 @@
     }
   }
 
-  function _createClass$1p(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1p(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1p(Constructor, staticProps);
+  function _createClass$1q(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1q(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1q(Constructor, staticProps);
     return Constructor;
   }
 
@@ -52216,7 +53924,7 @@
     function InputDateEdit(props, context) {
       var _this;
 
-      _classCallCheck$1I(this, InputDateEdit);
+      _classCallCheck$1J(this, InputDateEdit);
 
       _this = _possibleConstructorReturn$S(this, _getPrototypeOf$S(InputDateEdit).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -52256,7 +53964,7 @@
       return _this;
     }
 
-    _createClass$1p(InputDateEdit, [{
+    _createClass$1q(InputDateEdit, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -52403,13 +54111,13 @@
     return _typeof$W(obj);
   }
 
-  function _classCallCheck$1J(instance, Constructor) {
+  function _classCallCheck$1K(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1q(target, props) {
+  function _defineProperties$1r(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -52419,9 +54127,9 @@
     }
   }
 
-  function _createClass$1q(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1q(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1q(Constructor, staticProps);
+  function _createClass$1r(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1r(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1r(Constructor, staticProps);
     return Constructor;
   }
 
@@ -52480,7 +54188,7 @@
     function OutputDateEdit(props, context) {
       var _this;
 
-      _classCallCheck$1J(this, OutputDateEdit);
+      _classCallCheck$1K(this, OutputDateEdit);
 
       _this = _possibleConstructorReturn$T(this, _getPrototypeOf$T(OutputDateEdit).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -52497,7 +54205,7 @@
       return _this;
     }
 
-    _createClass$1q(OutputDateEdit, [{
+    _createClass$1r(OutputDateEdit, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -52546,14 +54254,14 @@
     return OutputDateEdit;
   }(Component);
 
-  function _classCallCheck$1K(instance, Constructor) {
+  function _classCallCheck$1L(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var SimpleDateEdit = function SimpleDateEdit(components, simpleMode) {
-    _classCallCheck$1K(this, SimpleDateEdit);
+    _classCallCheck$1L(this, SimpleDateEdit);
 
     simpleMode.registerProvider(function (element) {
       var typeRef = getTypeRef$1(element);
@@ -52690,13 +54398,13 @@
     return _typeof$X(obj);
   }
 
-  function _classCallCheck$1L(instance, Constructor) {
+  function _classCallCheck$1M(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1r(target, props) {
+  function _defineProperties$1s(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -52706,9 +54414,9 @@
     }
   }
 
-  function _createClass$1r(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1r(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1r(Constructor, staticProps);
+  function _createClass$1s(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1s(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1s(Constructor, staticProps);
     return Constructor;
   }
 
@@ -52769,7 +54477,7 @@
     function InputNumberEdit(props, context) {
       var _this;
 
-      _classCallCheck$1L(this, InputNumberEdit);
+      _classCallCheck$1M(this, InputNumberEdit);
 
       _this = _possibleConstructorReturn$U(this, _getPrototypeOf$U(InputNumberEdit).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -52811,7 +54519,7 @@
       return _this;
     }
 
-    _createClass$1r(InputNumberEdit, [{
+    _createClass$1s(InputNumberEdit, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -53043,13 +54751,13 @@
     return _typeof$Y(obj);
   }
 
-  function _classCallCheck$1M(instance, Constructor) {
+  function _classCallCheck$1N(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1s(target, props) {
+  function _defineProperties$1t(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -53059,9 +54767,9 @@
     }
   }
 
-  function _createClass$1s(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1s(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1s(Constructor, staticProps);
+  function _createClass$1t(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1t(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1t(Constructor, staticProps);
     return Constructor;
   }
 
@@ -53120,7 +54828,7 @@
     function OutputNumberEdit(props, context) {
       var _this;
 
-      _classCallCheck$1M(this, OutputNumberEdit);
+      _classCallCheck$1N(this, OutputNumberEdit);
 
       _this = _possibleConstructorReturn$V(this, _getPrototypeOf$V(OutputNumberEdit).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -53144,7 +54852,7 @@
       return _this;
     }
 
-    _createClass$1s(OutputNumberEdit, [{
+    _createClass$1t(OutputNumberEdit, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -53173,14 +54881,14 @@
     return OutputNumberEdit;
   }(Component);
 
-  function _classCallCheck$1N(instance, Constructor) {
+  function _classCallCheck$1O(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var SimpleNumberEdit = function SimpleNumberEdit(components, simpleMode) {
-    _classCallCheck$1N(this, SimpleNumberEdit);
+    _classCallCheck$1O(this, SimpleNumberEdit);
 
     simpleMode.registerProvider(function (element) {
       var typeRef = getTypeRef$2(element);
@@ -53329,13 +55037,13 @@
     return _typeof$Z(obj);
   }
 
-  function _classCallCheck$1O(instance, Constructor) {
+  function _classCallCheck$1P(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1t(target, props) {
+  function _defineProperties$1u(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -53345,9 +55053,9 @@
     }
   }
 
-  function _createClass$1t(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1t(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1t(Constructor, staticProps);
+  function _createClass$1u(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1u(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1u(Constructor, staticProps);
     return Constructor;
   }
 
@@ -53411,9 +55119,10 @@
     function SimpleStringEditContextMenuComponent(props, context) {
       var _this;
 
-      _classCallCheck$1O(this, SimpleStringEditContextMenuComponent);
+      _classCallCheck$1P(this, SimpleStringEditContextMenuComponent);
 
       _this = _possibleConstructorReturn$W(this, _getPrototypeOf$W(SimpleStringEditContextMenuComponent).call(this, props, context));
+      _this._translate = context.injector.get('translate');
       _this._modeling = context.injector.get('modeling');
       var parsedString = parseString$4(props.context.element.businessObject.text); // could not parse
 
@@ -53473,7 +55182,7 @@
       return _this;
     }
 
-    _createClass$1t(SimpleStringEditContextMenuComponent, [{
+    _createClass$1u(SimpleStringEditContextMenuComponent, [{
       key: "editCell",
       value: function editCell(cell, text) {
         this._modeling.editCell(cell, text);
@@ -53661,7 +55370,7 @@
         var isInputClause = isInput(element.col);
         var isNegation = unaryTestsType === NEGATION;
         var showRadio = !isInputClause && items.length > 0;
-        return createVNode(1, "div", "simple-string-edit context-menu-container", [createVNode(1, "h3", "dms-heading", createTextVNode("Edit String"), 2), isInputClause && createVNode(1, "p", null, createComponentVNode(2, InputSelect, {
+        return createVNode(1, "div", "simple-string-edit context-menu-container", [createVNode(1, "h3", "dms-heading", this._translate('Edit String'), 0), isInputClause && createVNode(1, "p", null, createComponentVNode(2, InputSelect, {
           "noInput": true,
           "onChange": this.onUnaryTestsTypeChange,
           "options": options,
@@ -53672,7 +55381,7 @@
           "onChange": this.onUnaryTestsListChanged,
           "items": items,
           "type": isInputClause ? 'checkbox' : 'radio'
-        }), isInputClause ? createVNode(1, "h4", "dms-heading", createTextVNode("Add Values"), 2) : createVNode(1, "h4", "dms-heading", createTextVNode("Set Value"), 2), createVNode(1, "div", "dms-fill-row", [showRadio && createVNode(64, "input", "cursor-pointer", null, 1, {
+        }), isInputClause ? createVNode(1, "h4", "dms-heading", this._translate('Add Values'), 0) : createVNode(1, "h4", "dms-heading", this._translate('Set Value'), 0), createVNode(1, "div", "dms-fill-row", [showRadio && createVNode(64, "input", "cursor-pointer", null, 1, {
           "checked": isOutputValueInputChecked,
           "onClick": this.onOutputValueInputClick,
           "type": "radio",
@@ -53687,7 +55396,7 @@
           "type": "text",
           "validate": function validate(value) {
             if (!parseString$4(value)) {
-              return 'Strings must be in double quotes.';
+              return _this2._translate('Strings must be in double quotes.');
             }
           },
           "value": inputValue
@@ -53720,14 +55429,14 @@
     return array.indexOf(value) !== -1;
   }
 
-  function _classCallCheck$1P(instance, Constructor) {
+  function _classCallCheck$1Q(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var SimpleStringEdit = function SimpleStringEdit(components, simpleMode) {
-    _classCallCheck$1P(this, SimpleStringEdit);
+    _classCallCheck$1Q(this, SimpleStringEdit);
 
     simpleMode.registerProvider(function (element) {
       return (isInput(element.col) || isOutput(element.col)) && getTypeRef$3(element) === 'string';
@@ -53800,13 +55509,13 @@
     }
   }
 
-  function _classCallCheck$1Q(instance, Constructor) {
+  function _classCallCheck$1R(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1u(target, props) {
+  function _defineProperties$1v(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -53816,9 +55525,9 @@
     }
   }
 
-  function _createClass$1u(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1u(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1u(Constructor, staticProps);
+  function _createClass$1v(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1v(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1v(Constructor, staticProps);
     return Constructor;
   }
 
@@ -53875,12 +55584,12 @@
     _inherits$X(Editor, _Viewer);
 
     function Editor() {
-      _classCallCheck$1Q(this, Editor);
+      _classCallCheck$1R(this, Editor);
 
       return _possibleConstructorReturn$X(this, _getPrototypeOf$X(Editor).apply(this, arguments));
     }
 
-    _createClass$1u(Editor, [{
+    _createClass$1v(Editor, [{
       key: "getModules",
       value: function getModules() {
         return [].concat(_toConsumableArray$9(Viewer$1._getModules()), _toConsumableArray$9(Editor._getModules()));
@@ -53888,20 +55597,20 @@
     }], [{
       key: "_getModules",
       value: function _getModules() {
-        return [addRuleModule, annotationsEditorModule, cellSelectionModule, contextMenuModule, copyCutPasteModule, copyCutPasteKeybindingsModule, createInputsModule, decisionTableContextMenu, decisionTableEditorActionsModule, tableHeadEditorModule, dragAndDropModule, descriptionModule, expressionLanguageModule, keyboardModule, tableHeadEditorModule, tablePropertiesEditorModule, editorActionsModule, hitPolicyEditorModule, interactionEventsModule, modelingModule, decisionRulesEditorModule, selectionModule, simpleModeModule, simpleBooleanEditModule, simpleDateEditModule, simpleNumberEditModule, simpleStringEditModule];
+        return [addRuleModule, annotationsEditorModule, cellSelectionModule, contextMenuModule, copyCutPasteModule, copyCutPasteKeybindingsModule, createInputsModule, decisionTableContextMenu, decisionTableEditorActionsModule, tableHeadEditorModule, dragAndDropModule, descriptionModule, expressionLanguageModule, ExpressionLanguagesModule, keyboardModule, tableHeadEditorModule, tablePropertiesEditorModule, editorActionsModule, hitPolicyEditorModule, interactionEventsModule, modelingModule, decisionRulesEditorModule, selectionModule, simpleModeModule, simpleBooleanEditModule, simpleDateEditModule, simpleNumberEditModule, simpleStringEditModule];
       }
     }]);
 
     return Editor;
   }(Viewer$1);
 
-  function _classCallCheck$1R(instance, Constructor) {
+  function _classCallCheck$1S(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1v(target, props) {
+  function _defineProperties$1w(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -53911,9 +55620,9 @@
     }
   }
 
-  function _createClass$1v(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1v(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1v(Constructor, staticProps);
+  function _createClass$1w(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1w(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1w(Constructor, staticProps);
     return Constructor;
   }
 
@@ -53923,7 +55632,7 @@
     function ChangeSupport(eventBus) {
       var _this = this;
 
-      _classCallCheck$1R(this, ChangeSupport);
+      _classCallCheck$1S(this, ChangeSupport);
 
       this._listeners = {};
       eventBus.on('elements.changed', function (_ref) {
@@ -53939,7 +55648,7 @@
       });
     }
 
-    _createClass$1v(ChangeSupport, [{
+    _createClass$1w(ChangeSupport, [{
       key: "elementsChanged",
       value: function elementsChanged(elements) {
         var invoked = {};
@@ -54004,13 +55713,13 @@
   }();
   ChangeSupport$2.$inject = ['eventBus'];
 
-  function _classCallCheck$1S(instance, Constructor) {
+  function _classCallCheck$1T(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1w(target, props) {
+  function _defineProperties$1x(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54020,9 +55729,9 @@
     }
   }
 
-  function _createClass$1w(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1w(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1w(Constructor, staticProps);
+  function _createClass$1x(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1x(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1x(Constructor, staticProps);
     return Constructor;
   }
   var DEFAULT_PRIORITY$7 = 1000;
@@ -54031,12 +55740,12 @@
   /*#__PURE__*/
   function () {
     function Components() {
-      _classCallCheck$1S(this, Components);
+      _classCallCheck$1T(this, Components);
 
       this._listeners = {};
     }
 
-    _createClass$1w(Components, [{
+    _createClass$1x(Components, [{
       key: "getComponent",
       value: function getComponent(type, context) {
         var listeners = this._listeners[type];
@@ -54164,13 +55873,13 @@
     return _typeof$$(obj);
   }
 
-  function _classCallCheck$1T(instance, Constructor) {
+  function _classCallCheck$1U(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1x(target, props) {
+  function _defineProperties$1y(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54180,9 +55889,9 @@
     }
   }
 
-  function _createClass$1x(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1x(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1x(Constructor, staticProps);
+  function _createClass$1y(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1y(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1y(Constructor, staticProps);
     return Constructor;
   }
 
@@ -54241,7 +55950,7 @@
     function ViewerComponent(props) {
       var _this;
 
-      _classCallCheck$1T(this, ViewerComponent);
+      _classCallCheck$1U(this, ViewerComponent);
 
       _this = _possibleConstructorReturn$Y(this, _getPrototypeOf$Y(ViewerComponent).call(this, props));
       var injector = _this._injector = props.injector;
@@ -54251,7 +55960,7 @@
       return _this;
     }
 
-    _createClass$1x(ViewerComponent, [{
+    _createClass$1y(ViewerComponent, [{
       key: "getChildContext",
       value: function getChildContext() {
         return {
@@ -54275,13 +55984,13 @@
     return ViewerComponent;
   }(Component);
 
-  function _classCallCheck$1U(instance, Constructor) {
+  function _classCallCheck$1V(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1y(target, props) {
+  function _defineProperties$1z(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54291,9 +56000,9 @@
     }
   }
 
-  function _createClass$1y(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1y(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1y(Constructor, staticProps);
+  function _createClass$1z(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1z(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1z(Constructor, staticProps);
     return Constructor;
   }
 
@@ -54301,7 +56010,7 @@
   /*#__PURE__*/
   function () {
     function Renderer(changeSupport, components, config, eventBus, injector) {
-      _classCallCheck$1U(this, Renderer);
+      _classCallCheck$1V(this, Renderer);
 
       var container = config.container;
       this._container = container;
@@ -54315,7 +56024,7 @@
       });
     }
 
-    _createClass$1y(Renderer, [{
+    _createClass$1z(Renderer, [{
       key: "getContainer",
       value: function getContainer() {
         return this._container;
@@ -54370,13 +56079,13 @@
     return target;
   }
 
-  function _classCallCheck$1V(instance, Constructor) {
+  function _classCallCheck$1W(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1z(target, props) {
+  function _defineProperties$1A(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54386,9 +56095,9 @@
     }
   }
 
-  function _createClass$1z(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1z(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1z(Constructor, staticProps);
+  function _createClass$1A(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1A(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1A(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -54401,7 +56110,7 @@
     function Viewer() {
       var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      _classCallCheck$1V(this, Viewer);
+      _classCallCheck$1W(this, Viewer);
 
       var injector = options.injector;
 
@@ -54426,7 +56135,7 @@
      */
 
 
-    _createClass$1z(Viewer, [{
+    _createClass$1A(Viewer, [{
       key: "_init",
       value: function _init(options) {
         var modules = options.modules,
@@ -54513,13 +56222,13 @@
     return bootstrap$2(bootstrapModules);
   }
 
-  function _classCallCheck$1W(instance, Constructor) {
+  function _classCallCheck$1X(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1A(target, props) {
+  function _defineProperties$1B(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54529,9 +56238,9 @@
     }
   }
 
-  function _createClass$1A(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1A(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1A(Constructor, staticProps);
+  function _createClass$1B(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1B(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1B(Constructor, staticProps);
     return Constructor;
   }
   /**
@@ -54546,13 +56255,13 @@
   /*#__PURE__*/
   function () {
     function ElementRegistry(viewer, eventBus) {
-      _classCallCheck$1W(this, ElementRegistry);
+      _classCallCheck$1X(this, ElementRegistry);
 
       this._eventBus = eventBus;
       this._viewer = viewer;
     }
 
-    _createClass$1A(ElementRegistry, [{
+    _createClass$1B(ElementRegistry, [{
       key: "getDecision",
       value: function getDecision() {
         return this._viewer.getDecision();
@@ -54598,13 +56307,13 @@
     return _typeof$10(obj);
   }
 
-  function _classCallCheck$1X(instance, Constructor) {
+  function _classCallCheck$1Y(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1B(target, props) {
+  function _defineProperties$1C(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54614,9 +56323,9 @@
     }
   }
 
-  function _createClass$1B(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1B(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1B(Constructor, staticProps);
+  function _createClass$1C(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1C(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1C(Constructor, staticProps);
     return Constructor;
   }
 
@@ -54675,14 +56384,14 @@
     function DecisionPropertiesComponent(props, context) {
       var _this;
 
-      _classCallCheck$1X(this, DecisionPropertiesComponent);
+      _classCallCheck$1Y(this, DecisionPropertiesComponent);
 
       _this = _possibleConstructorReturn$Z(this, _getPrototypeOf$Z(DecisionPropertiesComponent).call(this, props, context));
       _this._viewer = context.injector.get('viewer');
       return _this;
     }
 
-    _createClass$1B(DecisionPropertiesComponent, [{
+    _createClass$1C(DecisionPropertiesComponent, [{
       key: "render",
       value: function render() {
         // there is only one single element
@@ -54697,17 +56406,17 @@
     return DecisionPropertiesComponent;
   }(Component);
 
-  function _classCallCheck$1Y(instance, Constructor) {
+  function _classCallCheck$1Z(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var HIGH_PRIORITY$7 = 2000;
+  var HIGH_PRIORITY$8 = 2000;
 
   var DecisionProperties = function DecisionProperties(components) {
-    _classCallCheck$1Y(this, DecisionProperties);
+    _classCallCheck$1Z(this, DecisionProperties);
 
-    components.onGetComponent('viewer', HIGH_PRIORITY$7, function () {
+    components.onGetComponent('viewer', HIGH_PRIORITY$8, function () {
       return DecisionPropertiesComponent;
     });
   };
@@ -54732,13 +56441,13 @@
     return _typeof$11(obj);
   }
 
-  function _classCallCheck$1Z(instance, Constructor) {
+  function _classCallCheck$1_(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1C(target, props) {
+  function _defineProperties$1D(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54748,9 +56457,9 @@
     }
   }
 
-  function _createClass$1C(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1C(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1C(Constructor, staticProps);
+  function _createClass$1D(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1D(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1D(Constructor, staticProps);
     return Constructor;
   }
 
@@ -54809,14 +56518,14 @@
     function LiteralExpressionPropertiesComponent(props, context) {
       var _this;
 
-      _classCallCheck$1Z(this, LiteralExpressionPropertiesComponent);
+      _classCallCheck$1_(this, LiteralExpressionPropertiesComponent);
 
       _this = _possibleConstructorReturn$_(this, _getPrototypeOf$_(LiteralExpressionPropertiesComponent).call(this, props, context));
       _this._viewer = context.injector.get('viewer');
       return _this;
     }
 
-    _createClass$1C(LiteralExpressionPropertiesComponent, [{
+    _createClass$1D(LiteralExpressionPropertiesComponent, [{
       key: "render",
       value: function render() {
         var _this$_viewer$getDeci = this._viewer.getDecision(),
@@ -54830,23 +56539,24 @@
     return LiteralExpressionPropertiesComponent;
   }(Component);
 
-  function _classCallCheck$1_(instance, Constructor) {
+  function _classCallCheck$1$(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var LOW_PRIORITY$d = 500;
+  var LOW_PRIORITY$e = 500;
 
   var DecisionProperties$1 = function DecisionProperties(components) {
-    _classCallCheck$1_(this, DecisionProperties);
+    _classCallCheck$1$(this, DecisionProperties);
 
-    components.onGetComponent('viewer', LOW_PRIORITY$d, function () {
+    components.onGetComponent('viewer', LOW_PRIORITY$e, function () {
       return LiteralExpressionPropertiesComponent;
     });
   };
   DecisionProperties$1.$inject = ['components'];
 
   var LiteralExpressionPropertiesModule = {
+    __depends__: [ExpressionLanguagesModule],
     __init__: ['literalExpressionProperties'],
     literalExpressionProperties: ['type', DecisionProperties$1]
   };
@@ -54865,13 +56575,13 @@
     return _typeof$12(obj);
   }
 
-  function _classCallCheck$1$(instance, Constructor) {
+  function _classCallCheck$20(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1D(target, props) {
+  function _defineProperties$1E(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -54881,9 +56591,9 @@
     }
   }
 
-  function _createClass$1D(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1D(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1D(Constructor, staticProps);
+  function _createClass$1E(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1E(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1E(Constructor, staticProps);
     return Constructor;
   }
 
@@ -54959,7 +56669,7 @@
     function PoweredByLogoComponent(props, context) {
       var _this;
 
-      _classCallCheck$1$(this, PoweredByLogoComponent);
+      _classCallCheck$20(this, PoweredByLogoComponent);
 
       _this = _possibleConstructorReturn$$(this, _getPrototypeOf$$(PoweredByLogoComponent).call(this, props, context));
 
@@ -54972,7 +56682,7 @@
       return _this;
     }
 
-    _createClass$1D(PoweredByLogoComponent, [{
+    _createClass$1E(PoweredByLogoComponent, [{
       key: "render",
       value: function render() {
         var _this2 = this;
@@ -55005,13 +56715,13 @@
     return _typeof$13(obj);
   }
 
-  function _classCallCheck$20(instance, Constructor) {
+  function _classCallCheck$21(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1E(target, props) {
+  function _defineProperties$1F(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55021,9 +56731,9 @@
     }
   }
 
-  function _createClass$1E(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1E(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1E(Constructor, staticProps);
+  function _createClass$1F(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1F(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1F(Constructor, staticProps);
     return Constructor;
   }
 
@@ -55084,7 +56794,7 @@
     function PoweredByOverlayComponent(props) {
       var _this;
 
-      _classCallCheck$20(this, PoweredByOverlayComponent);
+      _classCallCheck$21(this, PoweredByOverlayComponent);
 
       _this = _possibleConstructorReturn$10(this, _getPrototypeOf$10(PoweredByOverlayComponent).call(this, props));
       _this.state = {
@@ -55095,7 +56805,7 @@
       return _this;
     }
 
-    _createClass$1E(PoweredByOverlayComponent, [{
+    _createClass$1F(PoweredByOverlayComponent, [{
       key: "onClick",
       value: function onClick() {
         this.setState({
@@ -55142,17 +56852,17 @@
     return PoweredByOverlayComponent;
   }(Component);
 
-  function _classCallCheck$21(instance, Constructor) {
+  function _classCallCheck$22(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var HIGHER_PRIORITY$1 = 2000;
+  var HIGHER_PRIORITY$3 = 2000;
 
   var PoweredBy$1 = function PoweredBy(components, eventBus) {
-    _classCallCheck$21(this, PoweredBy);
+    _classCallCheck$22(this, PoweredBy);
 
-    components.onGetComponent('viewer', HIGHER_PRIORITY$1, function () {
+    components.onGetComponent('viewer', HIGHER_PRIORITY$3, function () {
       return PoweredByLogoComponent$1;
     });
     components.onGetComponent('viewer', function () {
@@ -55180,13 +56890,13 @@
     return _typeof$14(obj);
   }
 
-  function _classCallCheck$22(instance, Constructor) {
+  function _classCallCheck$23(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1F(target, props) {
+  function _defineProperties$1G(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55196,9 +56906,9 @@
     }
   }
 
-  function _createClass$1F(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1F(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1F(Constructor, staticProps);
+  function _createClass$1G(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1G(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1G(Constructor, staticProps);
     return Constructor;
   }
 
@@ -55257,14 +56967,14 @@
     function TextareaComponent(props, context) {
       var _this;
 
-      _classCallCheck$22(this, TextareaComponent);
+      _classCallCheck$23(this, TextareaComponent);
 
       _this = _possibleConstructorReturn$11(this, _getPrototypeOf$11(TextareaComponent).call(this, props, context));
       _this._viewer = context.injector.get('viewer');
       return _this;
     }
 
-    _createClass$1F(TextareaComponent, [{
+    _createClass$1G(TextareaComponent, [{
       key: "render",
       value: function render() {
         var text = this._viewer.getDecision().literalExpression.text;
@@ -55276,14 +56986,14 @@
     return TextareaComponent;
   }(Component);
 
-  function _classCallCheck$23(instance, Constructor) {
+  function _classCallCheck$24(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var Textarea = function Textarea(components) {
-    _classCallCheck$23(this, Textarea);
+    _classCallCheck$24(this, Textarea);
 
     components.onGetComponent('viewer', function () {
       return TextareaComponent;
@@ -55310,13 +57020,13 @@
     return _typeof$15(obj);
   }
 
-  function _classCallCheck$24(instance, Constructor) {
+  function _classCallCheck$25(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1G(target, props) {
+  function _defineProperties$1H(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55326,9 +57036,9 @@
     }
   }
 
-  function _createClass$1G(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1G(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1G(Constructor, staticProps);
+  function _createClass$1H(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1H(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1H(Constructor, staticProps);
     return Constructor;
   }
 
@@ -55402,7 +57112,7 @@
     function ViewDrdComponent(props, context) {
       var _this;
 
-      _classCallCheck$24(this, ViewDrdComponent);
+      _classCallCheck$25(this, ViewDrdComponent);
 
       _this = _possibleConstructorReturn$12(this, _getPrototypeOf$12(ViewDrdComponent).call(this, props, context));
 
@@ -55415,7 +57125,7 @@
       return _this;
     }
 
-    _createClass$1G(ViewDrdComponent, [{
+    _createClass$1H(ViewDrdComponent, [{
       key: "render",
       value: function render() {
         var _this2 = this;
@@ -55431,13 +57141,13 @@
     return ViewDrdComponent;
   }(Component);
 
-  function _classCallCheck$25(instance, Constructor) {
+  function _classCallCheck$26(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1H(target, props) {
+  function _defineProperties$1I(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55447,12 +57157,12 @@
     }
   }
 
-  function _createClass$1H(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1H(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1H(Constructor, staticProps);
+  function _createClass$1I(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1I(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1I(Constructor, staticProps);
     return Constructor;
   }
-  var HIGH_PRIORITY$8 = 1500;
+  var HIGH_PRIORITY$9 = 1500;
 
   var ViewDrd$1 =
   /*#__PURE__*/
@@ -55460,11 +57170,11 @@
     function ViewDrd(components, viewer, eventBus, injector) {
       var _this = this;
 
-      _classCallCheck$25(this, ViewDrd);
+      _classCallCheck$26(this, ViewDrd);
 
       this._injector = injector;
       this._viewer = viewer;
-      components.onGetComponent('viewer', HIGH_PRIORITY$8, function () {
+      components.onGetComponent('viewer', HIGH_PRIORITY$9, function () {
         if (_this.canViewDrd()) {
           return ViewDrdComponent$1;
         }
@@ -55480,7 +57190,7 @@
       });
     }
 
-    _createClass$1H(ViewDrd, [{
+    _createClass$1I(ViewDrd, [{
       key: "canViewDrd",
       value: function canViewDrd() {
         var parent = this._injector.get('_parent', false);
@@ -55586,13 +57296,13 @@
     return target;
   }
 
-  function _classCallCheck$26(instance, Constructor) {
+  function _classCallCheck$27(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1I(target, props) {
+  function _defineProperties$1J(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55602,9 +57312,9 @@
     }
   }
 
-  function _createClass$1I(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1I(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1I(Constructor, staticProps);
+  function _createClass$1J(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1J(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1J(Constructor, staticProps);
     return Constructor;
   }
 
@@ -55695,7 +57405,7 @@
 
       var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      _classCallCheck$26(this, Viewer);
+      _classCallCheck$27(this, Viewer);
 
       var container = Viewer._createContainer();
 
@@ -55708,7 +57418,7 @@
       return _this;
     }
 
-    _createClass$1I(Viewer, [{
+    _createClass$1J(Viewer, [{
       key: "open",
       value: function open(decision, done) {
         var err; // use try/catch to not swallow synchronous exceptions
@@ -55892,13 +57602,13 @@
     return _typeof$17(obj);
   }
 
-  function _classCallCheck$27(instance, Constructor) {
+  function _classCallCheck$28(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1J(target, props) {
+  function _defineProperties$1K(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -55908,9 +57618,9 @@
     }
   }
 
-  function _createClass$1J(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1J(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1J(Constructor, staticProps);
+  function _createClass$1K(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1K(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1K(Constructor, staticProps);
     return Constructor;
   }
 
@@ -55984,7 +57694,7 @@
     function DecisionPropertiesEditorComponent(props, context) {
       var _this;
 
-      _classCallCheck$27(this, DecisionPropertiesEditorComponent);
+      _classCallCheck$28(this, DecisionPropertiesEditorComponent);
 
       _this = _possibleConstructorReturn$14(this, _getPrototypeOf$14(DecisionPropertiesEditorComponent).call(this, props, context));
 
@@ -56020,7 +57730,7 @@
       return _this;
     }
 
-    _createClass$1J(DecisionPropertiesEditorComponent, [{
+    _createClass$1K(DecisionPropertiesEditorComponent, [{
       key: "componentWillUnmount",
       value: function componentWillUnmount() {
         this.setupChangeListeners({
@@ -56076,12 +57786,12 @@
     _inherits$14(DecisionName, _EditableComponent);
 
     function DecisionName() {
-      _classCallCheck$27(this, DecisionName);
+      _classCallCheck$28(this, DecisionName);
 
       return _possibleConstructorReturn$14(this, _getPrototypeOf$14(DecisionName).apply(this, arguments));
     }
 
-    _createClass$1J(DecisionName, [{
+    _createClass$1K(DecisionName, [{
       key: "render",
       value: function render() {
         return createVNode(1, "h3", this.getClassName(), this.getEditor(), 0);
@@ -56097,12 +57807,12 @@
     _inherits$14(DecisionId, _EditableComponent2);
 
     function DecisionId() {
-      _classCallCheck$27(this, DecisionId);
+      _classCallCheck$28(this, DecisionId);
 
       return _possibleConstructorReturn$14(this, _getPrototypeOf$14(DecisionId).apply(this, arguments));
     }
 
-    _createClass$1J(DecisionId, [{
+    _createClass$1K(DecisionId, [{
       key: "render",
       value: function render() {
         return createVNode(1, "h5", this.getClassName(), this.getEditor(), 0);
@@ -56112,17 +57822,17 @@
     return DecisionId;
   }(EditableComponent);
 
-  function _classCallCheck$28(instance, Constructor) {
+  function _classCallCheck$29(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var HIGH_PRIORITY$9 = 2000;
+  var HIGH_PRIORITY$a = 2000;
 
   var DecisionPropertiesEditor = function DecisionPropertiesEditor(components) {
-    _classCallCheck$28(this, DecisionPropertiesEditor);
+    _classCallCheck$29(this, DecisionPropertiesEditor);
 
-    components.onGetComponent('viewer', HIGH_PRIORITY$9, function () {
+    components.onGetComponent('viewer', HIGH_PRIORITY$a, function () {
       return DecisionPropertiesEditorComponent;
     });
   };
@@ -56134,13 +57844,13 @@
     decisionProperties: ['type', DecisionPropertiesEditor]
   };
 
-  function _classCallCheck$29(instance, Constructor) {
+  function _classCallCheck$2a(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1K(target, props) {
+  function _defineProperties$1L(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -56150,9 +57860,9 @@
     }
   }
 
-  function _createClass$1K(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1K(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1K(Constructor, staticProps);
+  function _createClass$1L(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1L(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1L(Constructor, staticProps);
     return Constructor;
   }
   var NOT_REGISTERED_ERROR$2 = 'is not a registered action',
@@ -56170,7 +57880,7 @@
   /*#__PURE__*/
   function () {
     function EditorActions(commandStack, eventBus) {
-      _classCallCheck$29(this, EditorActions);
+      _classCallCheck$2a(this, EditorActions);
 
       this._actions = {
         undo: function undo() {
@@ -56191,7 +57901,7 @@
      */
 
 
-    _createClass$1K(EditorActions, [{
+    _createClass$1L(EditorActions, [{
       key: "trigger",
       value: function trigger(action, opts) {
         if (!this._actions[action]) {
@@ -56292,13 +58002,13 @@
     return modifiers.shiftKey;
   }
 
-  function _classCallCheck$2a(instance, Constructor) {
+  function _classCallCheck$2b(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1L(target, props) {
+  function _defineProperties$1M(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -56308,9 +58018,9 @@
     }
   }
 
-  function _createClass$1L(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1L(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1L(Constructor, staticProps);
+  function _createClass$1M(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1M(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1M(Constructor, staticProps);
     return Constructor;
   }
 
@@ -56357,7 +58067,7 @@
     function Keyboard(config, eventBus, editorActions) {
       var _this = this;
 
-      _classCallCheck$2a(this, Keyboard);
+      _classCallCheck$2b(this, Keyboard);
 
       _defineProperty$J(this, "_init", function () {
         _this._registerDefaultBindings();
@@ -56415,7 +58125,7 @@
       eventBus.on('detach', this.unbind);
     }
 
-    _createClass$1L(Keyboard, [{
+    _createClass$1M(Keyboard, [{
       key: "bind",
       value: function bind(node) {
         // make sure that the keyboard is only bound once to the DOM
@@ -56512,13 +58222,13 @@
     return _typeof$18(obj);
   }
 
-  function _classCallCheck$2b(instance, Constructor) {
+  function _classCallCheck$2c(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1M(target, props) {
+  function _defineProperties$1N(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -56528,9 +58238,9 @@
     }
   }
 
-  function _createClass$1M(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1M(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1M(Constructor, staticProps);
+  function _createClass$1N(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1N(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1N(Constructor, staticProps);
     return Constructor;
   }
 
@@ -56580,25 +58290,6 @@
 
     return _setPrototypeOf$15(o, p);
   }
-  var EXPRESSION_LANGUAGE_OPTIONS = [{
-    label: 'FEEL',
-    value: 'feel'
-  }, {
-    label: 'JUEL',
-    value: 'juel'
-  }, {
-    label: 'JavaScript',
-    value: 'javascript'
-  }, {
-    label: 'Groovy',
-    value: 'groovy'
-  }, {
-    label: 'Python',
-    value: 'python'
-  }, {
-    label: 'JRuby',
-    value: 'jruby'
-  }];
   var TYPE_REF_OPTIONS = [{
     label: 'string',
     value: 'string'
@@ -56627,11 +58318,12 @@
     function LiteralExpressionPropertiesComponent(props, context) {
       var _this;
 
-      _classCallCheck$2b(this, LiteralExpressionPropertiesComponent);
+      _classCallCheck$2c(this, LiteralExpressionPropertiesComponent);
 
       _this = _possibleConstructorReturn$15(this, _getPrototypeOf$15(LiteralExpressionPropertiesComponent).call(this, props, context));
       _this._viewer = context.injector.get('viewer');
       _this._modeling = context.injector.get('modeling');
+      _this._expressionLanguages = context.injector.get('expressionLanguages');
 
       var decision = _this._viewer.getDecision();
 
@@ -56646,7 +58338,7 @@
       return _this;
     }
 
-    _createClass$1M(LiteralExpressionPropertiesComponent, [{
+    _createClass$1N(LiteralExpressionPropertiesComponent, [{
       key: "setVariableName",
       value: function setVariableName(name) {
         this._modeling.editVariableName(name);
@@ -56696,6 +58388,9 @@
             expressionLanguage = _this$state.expressionLanguage,
             name = _this$state.name,
             typeRef = _this$state.typeRef;
+
+        var languageOptions = this._expressionLanguages.getAll();
+
         return createVNode(1, "div", "literal-expression-properties", createVNode(1, "table", null, [createVNode(1, "tr", null, [createVNode(1, "td", null, createTextVNode("Variable Name:"), 2), createVNode(1, "td", null, createComponentVNode(2, Input, {
           "className": "variable-name-input",
           "onInput": this.setVariableName,
@@ -56708,7 +58403,7 @@
           "className": "variable-type-select dms-block"
         }), 2), 2)], 4), createVNode(1, "tr", null, [createVNode(1, "td", null, createTextVNode("Expression Language:"), 2), createVNode(1, "td", null, createVNode(1, "div", "dms-fill-row", createComponentVNode(2, InputSelect, {
           "onChange": this.setExpressionLanguage,
-          "options": EXPRESSION_LANGUAGE_OPTIONS,
+          "options": languageOptions,
           "value": expressionLanguage,
           "className": "expression-language-select dms-block"
         }), 2), 2)], 4)], 4), 2);
@@ -56722,17 +58417,17 @@
     return literalExpression && literalExpression.expressionLanguage ? literalExpression.expressionLanguage.toLowerCase() : undefined;
   }
 
-  function _classCallCheck$2c(instance, Constructor) {
+  function _classCallCheck$2d(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
-  var LOW_PRIORITY$e = 500;
+  var LOW_PRIORITY$f = 500;
 
   var LiteralExpressionPropertiesEditor = function LiteralExpressionPropertiesEditor(components) {
-    _classCallCheck$2c(this, LiteralExpressionPropertiesEditor);
+    _classCallCheck$2d(this, LiteralExpressionPropertiesEditor);
 
-    components.onGetComponent('viewer', LOW_PRIORITY$e, function () {
+    components.onGetComponent('viewer', LOW_PRIORITY$f, function () {
       return LiteralExpressionPropertiesComponent$1;
     });
   };
@@ -56744,13 +58439,13 @@
     literalExpressionProperties: ['type', LiteralExpressionPropertiesEditor]
   };
 
-  function _classCallCheck$2d(instance, Constructor) {
+  function _classCallCheck$2e(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1N(target, props) {
+  function _defineProperties$1O(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -56760,9 +58455,9 @@
     }
   }
 
-  function _createClass$1N(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1N(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1N(Constructor, staticProps);
+  function _createClass$1O(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1O(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1O(Constructor, staticProps);
     return Constructor;
   }
 
@@ -56772,7 +58467,7 @@
     function Modeling(commandStack, viewer, eventBus) {
       var _this = this;
 
-      _classCallCheck$2d(this, Modeling);
+      _classCallCheck$2e(this, Modeling);
 
       this._commandStack = commandStack;
       this._viewer = viewer;
@@ -56783,7 +58478,7 @@
       });
     }
 
-    _createClass$1N(Modeling, [{
+    _createClass$1O(Modeling, [{
       key: "getHandlers",
       value: function getHandlers() {
         return Modeling._getHandlers();
@@ -56922,13 +58617,13 @@
     return _typeof$19(obj);
   }
 
-  function _classCallCheck$2e(instance, Constructor) {
+  function _classCallCheck$2f(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1O(target, props) {
+  function _defineProperties$1P(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -56938,9 +58633,9 @@
     }
   }
 
-  function _createClass$1O(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1O(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1O(Constructor, staticProps);
+  function _createClass$1P(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1P(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1P(Constructor, staticProps);
     return Constructor;
   }
 
@@ -56999,7 +58694,7 @@
     function TextareaEditorComponent(props, context) {
       var _this;
 
-      _classCallCheck$2e(this, TextareaEditorComponent);
+      _classCallCheck$2f(this, TextareaEditorComponent);
 
       _this = _possibleConstructorReturn$16(this, _getPrototypeOf$16(TextareaEditorComponent).call(this, props, context));
       _this._modeling = context.injector.get('modeling');
@@ -57014,7 +58709,7 @@
       return _this;
     }
 
-    _createClass$1O(TextareaEditorComponent, [{
+    _createClass$1P(TextareaEditorComponent, [{
       key: "getLiteralExpression",
       value: function getLiteralExpression() {
         return this._viewer.getDecision().literalExpression;
@@ -57053,12 +58748,12 @@
     _inherits$16(Editor, _EditableComponent);
 
     function Editor() {
-      _classCallCheck$2e(this, Editor);
+      _classCallCheck$2f(this, Editor);
 
       return _possibleConstructorReturn$16(this, _getPrototypeOf$16(Editor).apply(this, arguments));
     }
 
-    _createClass$1O(Editor, [{
+    _createClass$1P(Editor, [{
       key: "render",
       value: function render() {
         return createVNode(1, "div", this.getClassName(), this.getEditor(), 0);
@@ -57068,14 +58763,14 @@
     return Editor;
   }(EditableComponent);
 
-  function _classCallCheck$2f(instance, Constructor) {
+  function _classCallCheck$2g(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
   var Textarea$1 = function Textarea(components) {
-    _classCallCheck$2f(this, Textarea);
+    _classCallCheck$2g(this, Textarea);
 
     components.onGetComponent('viewer', function () {
       return TextareaEditorComponent;
@@ -57125,13 +58820,13 @@
     }
   }
 
-  function _classCallCheck$2g(instance, Constructor) {
+  function _classCallCheck$2h(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  function _defineProperties$1P(target, props) {
+  function _defineProperties$1Q(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
       descriptor.enumerable = descriptor.enumerable || false;
@@ -57141,9 +58836,9 @@
     }
   }
 
-  function _createClass$1P(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties$1P(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties$1P(Constructor, staticProps);
+  function _createClass$1Q(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties$1Q(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties$1Q(Constructor, staticProps);
     return Constructor;
   }
 
@@ -57200,12 +58895,12 @@
     _inherits$17(Editor, _Viewer);
 
     function Editor() {
-      _classCallCheck$2g(this, Editor);
+      _classCallCheck$2h(this, Editor);
 
       return _possibleConstructorReturn$17(this, _getPrototypeOf$17(Editor).apply(this, arguments));
     }
 
-    _createClass$1P(Editor, [{
+    _createClass$1Q(Editor, [{
       key: "getModules",
       value: function getModules() {
         return [].concat(_toConsumableArray$b(Viewer$3._getModules()), _toConsumableArray$b(Editor._getModules()));
@@ -57213,7 +58908,7 @@
     }], [{
       key: "_getModules",
       value: function _getModules() {
-        return [DecisionPropertiesEditorModule, KeyboardModule$2, LiteralExpressionPropertiesEditorModule, ModelingModule$1, TextareaEditorComponent$1];
+        return [DecisionPropertiesEditorModule, KeyboardModule$2, LiteralExpressionPropertiesEditorModule, ModelingModule$1, ExpressionLanguagesModule, TextareaEditorComponent$1];
       }
     }]);
 
