@@ -9,7 +9,7 @@ import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
 @Injectable()
 export class SessionDataService {
 
-    private _sessionData = new Map<string, Map<String, Subject<Object>>>();
+    private _sessionData = new Map<string, Map<String, BehaviorSubject<Object>>>();
     private _permanentData = new Map<string, Subject<Object>>();
 
     private _artefactId = merge(
@@ -41,12 +41,12 @@ export class SessionDataService {
         this._permanentData.get(key).next(value);
     }
 
-    public getValue(key: string, optionalDefault?: unknown) {
+    public getValue(key: string, optionalDefault?: Object) {
         return this._artefactId
             .pipe(
                 switchMap(artefactId => {
                     this.initializeSessionIfNotPresent(artefactId, key, optionalDefault);
-                    return this._sessionData.get(artefactId).get(key);
+                    return this._sessionData.get(artefactId).get(key).asObservable();
                 })
             );
     }
@@ -56,10 +56,10 @@ export class SessionDataService {
         return this._permanentData.get(key).asObservable();
     }
 
-    private initializeSessionIfNotPresent(artefactId: string, key: string, optionalDefault: unknown) {
+    private initializeSessionIfNotPresent(artefactId: string, key: string, optionalDefault: Object) {
         if (!this._sessionData.has(artefactId)) { this._sessionData.set(artefactId, new Map()); }
         if (!this._sessionData.get(artefactId).has(key)) {
-            this._sessionData.get(artefactId).set(key, new BehaviorSubject(optionalDefault));
+            this._sessionData.get(artefactId).set(key, new BehaviorSubject<Object>(optionalDefault));
         }
     }
 
