@@ -4,7 +4,6 @@ import { tap, filter, map, switchMap, take, catchError } from 'rxjs/operators';
 import { FileService } from '../../services/fileService';
 import { DmnProjectService } from '../../services/dmnProjectService';
 import { FsResultType, FileSystemAccessResult } from '../../model/fileSystemAccessResult';
-import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
@@ -68,7 +67,6 @@ export class AppComponent implements OnInit {
 
     public constructor(private _fileService: FileService,
                        private _projectService: DmnProjectService,
-                       private _testDecisionService: TestDecisionService,
                        private _eventService: EventService,
                        private _electronService: ElectronService,
                        private _appConfiguration: AppConfigurationService,
