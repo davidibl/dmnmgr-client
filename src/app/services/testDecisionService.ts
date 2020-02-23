@@ -64,22 +64,12 @@ export class TestDecisionService {
             ).subscribe(response => this._resultSubject.next(response));
     }
 
-    public deployDecision(): Observable<DeploymentResponse> {
-        return this.dmnXmlService
-            .getXmlModels('editor')
-            .pipe(
-                take(1),
-                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
-                switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml }))
-            );
-    }
-
-    public testDecision(test: Test, requirementsId?: string, tableId?: string) {
+    public testDecision(test: Test, xml?: string, tableId?: string) {
         const request = {
             dmnTableId: (tableId) ? tableId : this._currentArtefactId,
             variables: test.data,
-            expectedData: test.expectedData,
-            decisionRequirementsId: requirementsId
+            xml: xml,
+            expectedData: test.expectedData
         };
         return this.getUrl('decision/test')
             .pipe( switchMap(url => this._http.post<Object>(url, request)) );
@@ -90,18 +80,9 @@ export class TestDecisionService {
             .getXmlModels('editor')
             .pipe(
                 take(1),
-                switchMap(_ => this.getUrl('decision'), (outer, inner) => ({xml: outer, url: inner})),
-                switchMap(({xml, url}) => this._http.post<DeploymentResponse>(url, { xml: xml })),
-                switchMap((deployment: DeploymentResponse) =>
-                    this.testDecision(test, deployment.decisionRequirementsId, this._currentArtefactId))
+                switchMap(xml =>
+                    this.testDecision(test, xml, this._currentArtefactId))
             );
-    }
-
-    public clearProcessEngine() {
-        this.getUrl('decision')
-            .pipe(
-                switchMap(url => this._http.delete<void>(url))
-            ).subscribe();
     }
 
     public getResult() {

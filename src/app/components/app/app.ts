@@ -220,14 +220,6 @@ export class AppComponent implements OnInit {
             .subscribe(result => this._projectService.importDmn(result.data));
     }
 
-    public clearDeployments() {
-        this._testDecisionService.clearProcessEngine();
-    }
-
-    public deploy() {
-        this._testDecisionService.deployDecision().subscribe();
-    }
-
     public quit() {
         this.confirmActionWhenChangesAreUnsaved(() => {
             this._electronService.process.exit();

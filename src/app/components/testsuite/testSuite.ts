@@ -5,7 +5,8 @@ import { map, take, merge, mergeMap, tap, switchMap } from 'rxjs/operators';
 import { Test } from '../../model/test';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
-import { TestDecisionService, DeploymentResponse } from '../../services/testDecisionService';
+import { TestDecisionService } from '../../services/testDecisionService';
+import { DmnXmlService } from '../../services/dmnXmlService';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -30,9 +31,11 @@ export class TestSuiteComponent implements OnInit {
     public responseModel$: Observable<ObjectDefinition>;
     public testitem: TestCaseContainer;
 
-    public constructor(private _testSuiteService: TestSuiteService,
+    public constructor(
+        private _testSuiteService: TestSuiteService,
         private _dataModelService: DataModelService,
-        private _testDecisionService: TestDecisionService) { }
+        private _testDecisionService: TestDecisionService,
+        private dmnXmlService: DmnXmlService) { }
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
@@ -72,12 +75,13 @@ export class TestSuiteComponent implements OnInit {
         this.testCases$
             .pipe(
                 take(1),
-                switchMap(tests => this._testDecisionService.deployDecision(), (o, i) => ({ deployment: i, tests: o }))
+                switchMap(tests => this.dmnXmlService.getXmlModels('editor'), (o, i) => ({ tests: o, xml: i})),
+                take(1),
             )
-            .subscribe(({deployment, tests}) => {
+            .subscribe(({tests, xml}) => {
                 from(tests)
                     .pipe(
-                        mergeMap(test => this.runTestInternal(test, deployment), (o, i) => ({ test: o, result: i}))
+                        mergeMap(test => this.runTestInternal(test, xml), (o, i) => ({ test: o, result: i}))
                     )
                     .subscribe(result => {
                         tests.splice(tests.findIndex(item => item === result.test), 1, result.test);
@@ -91,9 +95,9 @@ export class TestSuiteComponent implements OnInit {
         item.testcase.expectedData = newExpectedData;
     }
 
-    private runTestInternal(item: TestCaseContainer, deployment: DeploymentResponse) {
+    private runTestInternal(item: TestCaseContainer, xml: string) {
         return this._testDecisionService
-            .testDecision(item.testcase, deployment.decisionRequirementsId)
+            .testDecision(item.testcase, xml)
             .pipe(
                 tap(result => this.assignTestResult(item, result))
             );

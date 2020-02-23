@@ -1,6 +1,6 @@
 import { Component, OnInit, Output, EventEmitter, Input } from '@angular/core';
 import { of, concat } from 'rxjs';
-import { switchMap, mergeMap, tap, map } from 'rxjs/operators';
+import { switchMap, mergeMap, tap, map, take } from 'rxjs/operators';
 import { TestSuiteService } from '../../services/testSuiteService';
 import { Test } from '../../model/test';
 import { TestsuiteProject } from '../../model/project/testsuiteproject';
@@ -8,6 +8,7 @@ import { TestDecisionService } from '../../services/testDecisionService';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
+import { DmnXmlService } from '../../services/dmnXmlService';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -17,7 +18,7 @@ export interface TestSuiteItem {
 export interface TestItem {
     test: Test;
     tableId: string;
-    deploymentId: string;
+    xml: string;
     clazz?: string;
     result: boolean;
 }
@@ -42,6 +43,7 @@ export class AllTestsDialogComponent implements OnInit {
         private _testsuiteService: TestSuiteService,
         private _eventService: EventService,
         private _testDecisionService: TestDecisionService,
+        private _dmnXmlService: DmnXmlService
     ) {}
 
     public ngOnInit() {
@@ -53,18 +55,18 @@ export class AllTestsDialogComponent implements OnInit {
     }
 
     public runAllTests() {
-        this._testDecisionService
-            .deployDecision()
+        this._dmnXmlService.getXmlModels('editor')
             .pipe(
-                switchMap(deployment =>
+                take(1),
+                switchMap(xml =>
                     of(this.testSuite)
                         .pipe(
                             mergeMap(tests => tests),
                             mergeMap(test => test.tests),
-                            tap(test => test.deploymentId = deployment.decisionRequirementsId))
+                            tap(test => test.xml = xml))
                 ),
                 map(test => this._testDecisionService
-                        .testDecision(test.test, test.deploymentId, test.tableId)
+                        .testDecision(test.test, test.xml, test.tableId)
                         .pipe(
                             map(result => {
                                 test.result = result['testSucceded'];

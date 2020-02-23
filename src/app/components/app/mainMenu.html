@@ -153,12 +153,6 @@
                    class="small transparent nounderline">Engine
             <ul *ngIf="(menuVisible$ | async) && (engineMenuVisible$ | async)" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li (click)="dispatchCommand('clearDeployments')">
-                        <i class="fa fa-trash-o mr-05" aria-hidden="true"></i>Deployments löschen
-                    </li>
-                    <li (click)="dispatchCommand('deploy')">
-                        <i class="fa fa-cloud-upload mr-05" aria-hidden="true"></i>DRD bereitstellen
-                    </li>
                 </div>
             </ul>
         </xn-button>
