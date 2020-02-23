@@ -457,10 +457,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const expression = clause.inputExpression;
         if (!expression) { return false; }
         if (!expression.text) { return true; }
-        if (DmnExpressionLanguage.isJuel(expression.expressionLanguage)) {
-            if (expression.text.indexOf('${') !== 0 || !expression.text.endsWith('}')) {
-                return true;
-            }
+        if (expression.text.indexOf('${') === 0 && !expression.text.endsWith('}')) {
+            return true;
         }
         return false;
     }
