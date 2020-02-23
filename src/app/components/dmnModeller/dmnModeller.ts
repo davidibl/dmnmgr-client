@@ -45,7 +45,6 @@ import { DmnBusinessObject } from '../../model/dmn/dmnBusinessObject';
 import { BaseEvent } from '../../model/event/event';
 import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
 import { CsvExportService } from '../../services/csvExportService';
-import { isNullOrUndefined } from 'util';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
