@@ -40,12 +40,6 @@ export class DmnSimulatorComponent implements OnInit {
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
-        this._sessionDataService
-            .getValue('tempObject', {})
-            .pipe(
-                take(1)
-            )
-            .subscribe(value => this.valueObject = (value) ? value : {});
 
         this.responseModel$ = this._dataModelService.getResponseModel();
 
@@ -74,6 +68,12 @@ export class DmnSimulatorComponent implements OnInit {
             this.simulate();
             return;
         }
+        this._sessionDataService
+            .getValue('tempObject', {})
+            .pipe(
+                take(1)
+            )
+            .subscribe(value => this.valueObject = (value) ? value : {});
         this.simulatorVisisble = true;
     }
 

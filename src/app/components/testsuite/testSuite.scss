@@ -7,8 +7,18 @@
     height: 100%;
 }
 
-.button-column {
+.button-header-column {
     width: 44px;
+}
+
+.button-column {
+    padding-right: 1px;
+    padding-left: 0px;
+
+    xn-button {
+        padding-left: 5px;
+        padding-right: 4px;
+    }
 }
 
 .result-column {

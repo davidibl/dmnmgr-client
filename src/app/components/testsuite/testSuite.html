@@ -16,9 +16,10 @@
             <th class="name-column" xnHeaderColumn [propertyPath]="'testCase.testcase.name'">Testname</th>
             <th class="data-model-column" xnHeaderColumn>Eingabedaten</th>
             <th class="data-model-column" xnHeaderColumn>Erwartetes Ergebnis</th>
-            <th class="button-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
-            <th class="button-column" xnHeaderColumn></th>
-            <th class="button-column" xnHeaderColumn></th>
+            <th class="button-header-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
+            <th class="button-header-column" xnHeaderColumn></th>
+            <th class="button-header-column" xnHeaderColumn></th>
+            <th class="button-header-column" xnHeaderColumn></th>
         </xn-data-table>
     </div>
 </div>
@@ -48,16 +49,22 @@
                             [open]="item === testitem"
                             [type]="1"></xn-json-editor>
         </td>
-        <td class="text-center" [ngClass]="item.clazz" (click)="item.showError = true">
+        <td class="text-center" style="padding-top:8px;" [ngClass]="item.clazz" (click)="item.showError = true">
             <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
             <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
             <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
         </td>
-        <td>
-            <xn-button (click)="testCase(item)" class="small"><i class="fa fa-play" aria-hidden="true"></i></xn-button>
+        <td class="button-column">
+            <xn-button (click)="testCase(item)" class="small">
+                <i class="fa fa-play" aria-hidden="true"></i></xn-button>
         </td>
-        <td>
-            <xn-button (click)="deleteCase(item)" class="small"><i class="fa fa-times" aria-hidden="true"></i></xn-button>
+        <td class="button-column">
+            <xn-button (click)="deleteCase(item)" class="small">
+                <i class="fa fa-times" aria-hidden="true"></i></xn-button>
+        </td>
+        <td class="button-column">
+            <xn-button (click)="openInSimulator(item)" class="small">
+                <i class="fa fa-flask" aria-hidden="true"></i></xn-button>
         </td>
     </tr>
     <tr *ngIf="!item.result && item.showError">

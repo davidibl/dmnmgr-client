@@ -7,6 +7,7 @@ import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { DataModelService } from '../../services/dataModelService';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { DmnXmlService } from '../../services/dmnXmlService';
+import { SessionDataService } from '../../services/sessionDataService';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -35,7 +36,9 @@ export class TestSuiteComponent implements OnInit {
         private _testSuiteService: TestSuiteService,
         private _dataModelService: DataModelService,
         private _testDecisionService: TestDecisionService,
-        private dmnXmlService: DmnXmlService) { }
+        private dmnXmlService: DmnXmlService,
+        private _sessionDateService: SessionDataService,
+    ) { }
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
@@ -93,6 +96,10 @@ export class TestSuiteComponent implements OnInit {
     public takeOverFinalResult(item: TestCaseContainer) {
         const newExpectedData = item.finalResult.map(o => Object.assign({}, o));
         item.testcase.expectedData = newExpectedData;
+    }
+
+    public openInSimulator(item: TestCaseContainer) {
+        this._sessionDateService.setValue('tempObject', item.testcase.data);
     }
 
     private runTestInternal(item: TestCaseContainer, xml: string) {
