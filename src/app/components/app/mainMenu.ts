@@ -79,6 +79,8 @@ export class MainMenuComponent {
     public pasteRulesSupported$ = combineLatest(this.hasDmnDataInClipboard$, this.isDecicionTableMode$)
         .pipe(map(([hasData, isDecisionTable]) => hasData && isDecisionTable));
 
+    public currentBranchName$ = this._gitService.getCurrentBranchname();
+
     public constructor(
         private _saveStateService: SaveStateService,
         private _eventService: EventService,

@@ -110,6 +110,9 @@
                             <i class="fa fa-circle ml-05 mr-05" aria-hidden="true"></i>Detached
                         </ng-container>
                     </li>
+                    <li *ngIf="(isRepositoryConnected$ | async)">
+                        Branch: {{currentBranchName$ | async}}
+                    </li>
                     <li (click)="dispatchCommand('cloneRepository')">
                         <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
                     </li>
