@@ -95,6 +95,9 @@
                     class="small transparent nounderline">Repository
             <ul *ngIf="(menuVisible$ | async) && (repositoryMenuVisible$ | async)" class="sub-menu">
                 <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('cloneRepository')">
+                        <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
+                    </li>
                     <li>
                         Status:
                         <ng-container *ngIf="isRepositoryNotConnected$ | async">
@@ -110,13 +113,23 @@
                             <i class="fa fa-circle ml-05 mr-05" aria-hidden="true"></i>Detached
                         </ng-container>
                     </li>
-                    <li *ngIf="(isRepositoryConnected$ | async)">
+                    <li *ngIf="(isRepositoryConnected$ | async)"
+                        (mouseenter)="openInnerMenu('branchSubMenuVisible')"
+                        (mouseleave)="closeMenu('branchSubMenuVisible')">
                         Branch: {{currentBranchName$ | async}}
+                        <span class="right"><i class="fa fa-arrow-right mr-05" aria-hidden="true"></i></span>
+                        <ul *ngIf="(branchSubMenuVisible$ | async)" class="sub-sub-menu">
+                            <div class="sub-menu-container">
+                                <li *ngIf="(isOnMaster$ | async)" (click)="dispatchCommand('createAndCheckoutBranch')">
+                                    <i class="fa fa-random mr-05" aria-hidden="true"></i>Neuer Branch
+                                </li>
+                                <li *ngIf="!(isOnMaster$ | async) && !(isHeadDetached$ | async)" (click)="dispatchCommand('checkoutMaster')">
+                                    <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zum Master
+                                </li>
+                            </div>
+                        </ul>
                     </li>
-                    <li (click)="dispatchCommand('cloneRepository')">
-                        <i class="fa fa-clone mr-05" aria-hidden="true"></i>Repository Klonen
-                    </li>
-                    <li *ngIf="isHeadDetached$ | async" (click)="dispatchCommand('checkoutMaster')">
+                    <li *ngIf="isHeadDetached$ | async" (click)="dispatchCommand('checkoutMasterAndDeleteDetached')">
                         <i class="fa fa-code-fork mr-05" aria-hidden="true"></i>Zurück zur letzten Änderung
                     </li>
                     <li *ngIf="connectedHasChangesAndNotDetached$ | async" (click)="dispatchCommand('commitChanges')">

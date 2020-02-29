@@ -20,6 +20,7 @@ import { MessageDialogComponent } from '../dialogs/messageDialog';
 import { CloneData } from '../../model/git/cloneData';
 import { PluginItem } from '../../model/pluginItem';
 import { Command } from '../../model/command';
+import { NewBranchDialogComponent } from '../dialogs/newBranchDialog';
 
 @Component({
     selector: 'xn-app-root',
@@ -38,6 +39,9 @@ export class AppComponent implements OnInit {
 
     @ViewChild('commitMessageDialog')
     private _commitMessageDialog: CommitDialogComponent;
+
+    @ViewChild('newBranchDialog')
+    private _newBranchDialog: NewBranchDialogComponent;
 
     @ViewChild('messageDialog')
     private _messageDialog: MessageDialogComponent;
@@ -249,6 +253,39 @@ export class AppComponent implements OnInit {
             .subscribe(_ => this.doCommit());
     }
 
+    public createAndCheckoutBranch() {
+        this.checkGitConfiguration()
+            .pipe(
+                take(1),
+                filter(configured => configured)
+            )
+            .subscribe(_ => this.doCreateAndCheckoutBranch());
+    }
+
+    private doCreateAndCheckoutBranch() {
+        const newBranchObservable = this._newBranchDialog
+            .branch
+            .pipe(
+                take(1),
+                tap(_ => this.openLoadingIndicator('Branch wird erstellt und ausgecheckt...')),
+                switchMap(branchname => this._gitService.createAndCheckoutBranch(branchname)),
+                tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
+            );
+
+        const cancelObservable = this._newBranchDialog.cancel.pipe(take(1));
+
+        merge(newBranchObservable, cancelObservable)
+            .pipe(tap(_ => this.closeNewBranchDialog()))
+            .subscribe(_ => this.switchMessageDialogToMessage('Neuer Branch', 'Branch ist erstellt und bereit.'));
+
+        this._newBranchDialog.open = true;
+    }
+
+    private closeNewBranchDialog() {
+        this._newBranchDialog.open = false;
+        this._newBranchDialog.branchname = null;
+    }
+
     private doCommit() {
         const commitObservable = this._commitMessageDialog
             .commit
@@ -277,8 +314,12 @@ export class AppComponent implements OnInit {
         this._gitService.resetCurrentChanges();
     }
 
-    public checkoutMaster() {
+    public checkoutMasterAndDeleteDetached() {
         this._gitService.checkoutMasterAndDeleteDetached();
+    }
+
+    public checkoutMaster() {
+        this._gitService.checkoutMaster();
     }
 
     public cloneRepository() {

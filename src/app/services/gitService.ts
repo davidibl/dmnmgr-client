@@ -141,6 +141,17 @@ export class GitService {
             );
     }
 
+    public createAndCheckoutBranch(branchname: string) {
+        return this.getCurrentRepository()
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('branchCommit', repository.getHeadCommit(), { repository: repository })),
+                switchMap(data => toObservable('branchReference',
+                    data.repository.createBranch(branchname, data.branchCommit, true), data)),
+                switchMap(data => data.repository.checkoutBranch(data.branchReference))
+            );
+    }
+
     public pushCommits() {
         return this._currentRepository
             .pipe(
@@ -160,14 +171,15 @@ export class GitService {
                 take(1),
                 switchMap(_ => this.createAuthOptions(),
                     (repository, creds) => ({ repository: repository, creds: creds })),
-                tap(data => {
-                    data.repository.fetchAll(data.creds).catch(error => this.handleError(error));
+                switchMap(data => {
+                    return from(data.repository.fetchAll(data.creds).catch(error => this.handleError(error)))
+                        .pipe(map(_ => data));
                 }),
                 switchMap(_ => this.getCurrentBranchname(),
                     (data, branchname) => Object.assign(data, { branchname: branchname })),
                 switchMap(_ => this.createSignature(), (data, signature) => Object.assign(data, {signature: signature})),
                 switchMap(data => toObservable('mergeResult',
-                    data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`, data.signature, 1), data,
+                    data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
                     (error) => this.handleError(error)
                 ))
             );
@@ -180,6 +192,14 @@ export class GitService {
                 switchMap(repository => toObservable('branchCommit', repository.getHeadCommit(), { repository: repository })),
                 switchMap(data => toObservable('newRepository',
                     this._nodegit.Reset(data.repository, data.branchCommit, 3), data))
+            ).subscribe(data => this._currentRepository.next(data.repository));
+    }
+
+    public checkoutMaster() {
+        this._currentRepository
+            .pipe(
+                take(1),
+                switchMap(repository => toObservable('newReference', repository.checkoutBranch('master'), { repository: repository }))
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
 

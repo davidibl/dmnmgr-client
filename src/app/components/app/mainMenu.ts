@@ -46,6 +46,7 @@ export class MainMenuComponent {
     public helpMenuVisible$ = new BehaviorSubject(false);
     public menuVisible$ = new BehaviorSubject(false);
     public recentFilesMenuVisible$ = new BehaviorSubject(false);
+    public branchSubMenuVisible$ = new BehaviorSubject(false);
 
     @Output()
     public commandDispatched = new EventEmitter<Command>();
@@ -80,6 +81,7 @@ export class MainMenuComponent {
         .pipe(map(([hasData, isDecisionTable]) => hasData && isDecisionTable));
 
     public currentBranchName$ = this._gitService.getCurrentBranchname();
+    public isOnMaster$ = this.currentBranchName$.pipe(map(branchname => branchname === 'master'));
 
     public constructor(
         private _saveStateService: SaveStateService,
@@ -111,6 +113,7 @@ export class MainMenuComponent {
         this.helpMenuVisible$.next(false);
         this.repositoryMenuVisible$.next(false);
         this.recentFilesMenuVisible$.next(false);
+        this.branchSubMenuVisible$.next(false);
         this[menuName + '$'].next(true);
     }
 

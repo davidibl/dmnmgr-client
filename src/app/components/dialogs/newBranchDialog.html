@@ -1,0 +1,24 @@
+<xn-dialog [closable]="true"
+            [open]="open"
+            (openChange)="onDialogOpenChanged($event)"
+            (confirm)="onCreateBranchClicked()"
+            (cancel)="onCancelClicked()"
+            [defaultOkButtonText]="'Branch anlegen'"
+            [closeOnOutsideClick]="false">
+    <div class="dialog-title">
+        Neuer Branch
+    </div>
+    <div class="dialog-body pb-1">
+        <form #commitForm="ngForm">
+            <p>
+                Bitte geben Sie den Namen des neuen Branch an
+            </p>
+            <xn-input-form [multiline]="false"
+                        [name]="'branchname'"
+                        xnRequired
+                        xnRequiredMessage="'Branchname ist Pflicht.'"
+                        [placeholder]="'Branch-Name'"
+                        [(ngModel)]="branchname"></xn-input-form>
+        </form>
+    </div>
+</xn-dialog>
