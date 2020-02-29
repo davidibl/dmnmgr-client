@@ -16,4 +16,5 @@ export class EventType {
     static TEXT_REPLACED = 'textReplaced';
     static COPY_RULES = 'copyRules';
     static PASTE_RULES = 'pasteRules';
+    static REFRESH_CURRENT_FILE = 'refreshCurrentFile';
 }

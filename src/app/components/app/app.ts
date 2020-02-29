@@ -90,6 +90,12 @@ export class AppComponent implements OnInit {
                     `Insgesamt wurden ${ev.data} Stellen ersetzt.`
                 );
             });
+
+        this._eventService
+            .getEvent(ev => ev.type === EventType.REFRESH_CURRENT_FILE)
+            .subscribe(_ => {
+                this.openProject(this._fileService.currentPath);
+            });
     }
 
     public onCommandDispatched(command: Command) {
@@ -102,10 +108,10 @@ export class AppComponent implements OnInit {
         this[command.command](...command.args);
     }
 
-    public openProject() {
+    public openProject(file?: string) {
         this.confirmActionWhenChangesAreUnsaved(() => {
             this._fileService
-                .openProject()
+                .openProject(file)
                 .pipe(
                     tap(result => this.processError(result)),
                     filter(result => result.type === FsResultType.OK)

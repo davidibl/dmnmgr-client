@@ -181,7 +181,8 @@ export class GitService {
                 switchMap(data => toObservable('mergeResult',
                     data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
                     (error) => this.handleError(error)
-                ))
+                )),
+                tap(_ => this.triggerRefreshFile())
             );
     }
 
@@ -191,7 +192,8 @@ export class GitService {
                 take(1),
                 switchMap(repository => toObservable('branchCommit', repository.getHeadCommit(), { repository: repository })),
                 switchMap(data => toObservable('newRepository',
-                    this._nodegit.Reset(data.repository, data.branchCommit, 3), data))
+                    this._nodegit.Reset(data.repository, data.branchCommit, 3), data)),
+                tap(_ => this.triggerRefreshFile())
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
@@ -209,7 +211,8 @@ export class GitService {
                 take(1),
                 switchMap(repository => toObservable('newReference', repository.checkoutBranch('master'), { repository: repository })),
                 switchMap(data => toObservable('detachedBranch', data.repository.getBranch(BranchNames.DETACHED), data)),
-                tap(data => this._nodegit.Branch.delete(data.detachedBranch))
+                tap(data => this._nodegit.Branch.delete(data.detachedBranch)),
+                tap(_ => this.triggerRefreshFile())
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
@@ -233,7 +236,8 @@ export class GitService {
                 take(1),
                 switchMap(repository => toObservable('newReference',
                     repository.createBranch(BranchNames.DETACHED, this._nodegit.Oid.fromString(commit.id)), { repository: repository })),
-                switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data))
+                switchMap(data => toObservable('checkoutReference', data.repository.checkoutBranch(data.newReference), data)),
+                tap(_ => this.triggerRefreshFile())
             ).subscribe(data => this._currentRepository.next(data.repository));
     }
 
@@ -258,6 +262,10 @@ export class GitService {
             map(([signature, keys]) =>
                 this.isSignatureConfigured(signature) && this.isKeysConfigured(keys))
         );
+    }
+
+    private triggerRefreshFile() {
+        this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_CURRENT_FILE));
     }
 
     private isSignatureConfigured(signature: GitSignatureIdentity) {

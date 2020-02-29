@@ -26,6 +26,10 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
+    public get currentPath() {
+        return this._currentPath;
+    }
+
     public constructor(
         private _errorMessageService: ErrorMessageService,
         private _zone: NgZone,
