@@ -27,8 +27,7 @@ export class FooterFlyinComponent {
     public WARNING_MODE = 'warning';
 
     public flyin = false;
-    public mode = 'true';
-    public warningMode = false;
+    public mode = null;
 
     public currentStatus$ = this._workingStateService.getWorkingState();
 
