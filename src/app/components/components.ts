@@ -24,6 +24,7 @@ import { CloneRepositoryDialogComponent } from './dialogs/cloneRepositoryDialog'
 import { MainMenuComponent } from './app/mainMenu';
 import { ALL_DOCUMENTATION_COMPONENTS } from './documentation/documentationComponents';
 import { NewBranchDialogComponent } from './dialogs/newBranchDialog';
+import { FooterFlyinComponent } from './footerBar/footerFlyin';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -51,5 +52,6 @@ export const ALL_COMPONENTS = [
     CloneRepositoryDialogComponent,
     MainMenuComponent,
     NewBranchDialogComponent,
+    FooterFlyinComponent,
     ...ALL_DOCUMENTATION_COMPONENTS,
 ];

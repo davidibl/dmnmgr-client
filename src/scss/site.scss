@@ -14,6 +14,7 @@ body {
 
 .main-content {
     padding-top:                                30px;
+    padding-bottom:                                30px;
 
     @media (max-width: $breakpoint-m - 1) {
         padding-top:                            30px;

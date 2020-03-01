@@ -19,8 +19,8 @@ import { FileDialogService } from './fileDialogService';
 import { WorkspaceService } from './workspaceService';
 import { GitService } from './gitService';
 import { ElectronService } from './electronService';
-import { DomService } from './domService';
 import { DmnClipboardService } from './dmnClipboardService';
+import { DmnValidationService } from './dmnValidationService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -45,4 +45,5 @@ export const ALL_SERVICES = [
     GitService,
     ElectronService,
     DmnClipboardService,
+    DmnValidationService,
 ];

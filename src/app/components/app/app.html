@@ -1,8 +1,8 @@
 <xn-main-menu (commandDispatched)="onCommandDispatched($event)"></xn-main-menu>
 
 <div class="main-content full-height">
-    <as-split unit="pixel" [direction]="'horizontal'" >
-        <as-split-area size="220" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
+    <as-split class="full-height" unit="pixel" [direction]="'horizontal'" >
+        <as-split-area class="full-height" size="220" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
             <xn-workspace (openFileRequested)="openRecentFile($event)"></xn-workspace>
         </as-split-area>
         <as-split-area size="*" #area1="asSplitArea" style="display: block; overflow-y: hidden;">
@@ -10,6 +10,8 @@
         </as-split-area>
     </as-split>
 </div>
+
+<xn-footer-flyin></xn-footer-flyin>
 
 <xn-dialog [closable]="true"
            [(open)]="showErrorDialog"

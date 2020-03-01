@@ -1,0 +1,51 @@
+@import 'variables';
+@import 'mixins';
+
+.flyin-panel {
+    position: fixed;
+    z-index: 1060;
+    left: 0px;
+    bottom: 0px;
+    overflow-y: auto;
+    width: 100%;
+    min-height: 290px;
+    max-height: 290px;
+    background-color: #fff;
+    border-top: 1px solid #E3E5E6;
+}
+
+.flyin-panel.active {
+    box-shadow: 0 0px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+}
+
+.footer-menu {
+    padding: 0;
+    margin: 0;
+    border-bottom: 1px solid #E3E5E6;
+
+    li {
+        border-right: 1px solid #E3E5E6;
+        padding-top: 4px;
+        padding-right: 10px;
+        padding-left: 10px;
+        width: 150px;
+        height: 29px;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    li.active {
+        background-color: $tab-header-col-active-bg-color;
+    }
+
+    li.footer-status {
+        float: right;
+        border-left: 1px solid #E3E5E6;
+        border-right: none;
+        cursor: default;
+    }
+}
+
+.footer-body {
+    overflow-y: auto;
+}

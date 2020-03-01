@@ -1,0 +1,55 @@
+<h3>{{title}}</h3>
+<p>
+    DMN Dateien können mit Hilfe der Funktion <i><b>DMN Validieren</b></i> validiert werden. Die Funktion findet sich
+    im Hauptmenü unter <i><b>DMN -> DMN Validieren</b></i>. Hierbei wird das DMN XML an einen Webservice gesendet
+    der mit Hilfe einer Validation-Engine einige Checks durchführt.
+</p>
+<h4><b>Validierungen:</b></h4>
+<table>
+    <tr>
+        <td><p>Shadowed Rules</p></td>
+        <td><p>
+            Dieser Validator prüft ob Regeln durch Regeln verdeckt werden. Dieser Check zeigt beispielsweise
+            in Tabellen mit "Hit Policy: First" ob eine Regel niemals getroffen werden kann weil eine
+            vorhergehende Regel alle Kriterien bereits abdeckt.
+        </p></td>
+    </tr>
+    <tr>
+        <td><p>Conflicting Rules</p></td>
+        <td><p>
+            Dieser Validator findet in Tabellen mit "Hit Policy: First" jene Regeln die andere Regeln verdecken.
+            Zudem werden Regeln entdeckt die in Tabellem mit "Hit Policy: Unique" stets beide getroffen werden
+            können. So können Fehler bei eindeutiger Regeldefinition die nicht offensichtlich sind gefunden werden.
+        </p></td>
+    </tr>
+    <tr>
+        <td><p>Connected Requirements</p></td>
+        <td><p>
+            Dieser Validator gibt alle Elemente eines Requirements Graph an, die nicht verbunden sind. Ein
+            Requirements Graph sollte immer aus einem Zusammenhängenden Baum bestehen.<br />
+            Diese Regel erzeugt nur ein Warning, da sie unzusammenhängende Elemente in einem DRD nicht
+            notwendigerweise Fehler darstellen.
+        </p></td>
+    </tr>
+    <tr>
+        <td><p>Aggregated Outputs</p></td>
+        <td><p>
+            Dieser Validator prüft ob die Aggregatsfunktionen, die in Output Expressions verwendet werden,
+            mit den gegebenen Datentypen tatsächlich möglich sind. So können beispielsweise nur Zahlen
+            addiert werden.
+        </p></td>
+    </tr>
+    <tr>
+        <td><p>Duplicated Rule</p></td>
+        <td><p>
+            Dieser Validator findet doppelte Regeln.
+        </p></td>
+    </tr>
+    <tr>
+        <td><p>Input/Output Type Declaration</p></td>
+        <td><p>
+            Dieser Validator prüft ob bei allen Input und Output Spalten ein Datentyp angegeben wurde.
+            Fehlt ein Datentyp wird die Tabelle als fehlerhaft markiert.
+        </p></td>
+    </tr>
+</table>

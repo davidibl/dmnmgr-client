@@ -1,0 +1,37 @@
+<div [class.active]="flyin" class="flyin-panel flex flex-column" [@flyin]="flyin">
+    <ul class="footer-menu">
+        <li
+            [class.active]="flyin && (mode === ERROR_MODE)"
+            (click)="toggleView(ERROR_MODE)">
+            <small>Error ({{errorCount$ | async}})</small></li>
+        <li
+            [class.active]="flyin && (mode === WARNING_MODE)"
+            (click)="toggleView(WARNING_MODE)">
+            <small>Warning ({{warningCount$ | async}})</small></li>
+        <li class="footer-status">
+            <small>Status: {{currentStatus$ | async}}</small>
+        </li>
+    </ul>
+    <div *ngIf="flyin && (mode === ERROR_MODE)" class="footer-body full-height">
+        <xn-data-table [data]="errors$ | async" [condensed]="true" [templateRef]="columnDefinition">
+            <th>Nachricht</th>
+            <th>Tabelle</th>
+            <th>Regel</th>
+        </xn-data-table>
+    </div>
+    <div *ngIf="flyin && (mode === WARNING_MODE)" class="footer-body full-height">
+        <xn-data-table [data]="warnings$ | async" [condensed]="true" [templateRef]="columnDefinition">
+            <th>Nachricht</th>
+            <th>Tabelle</th>
+            <th>Regel</th>
+        </xn-data-table>
+    </div>
+</div>
+
+<ng-template #columnDefinition let-item="item">
+    <tr>
+        <td>{{item?.message}}</td>
+        <td>{{item?.tableId}}</td>
+        <td>{{item?.ruleId}}</td>
+    </tr>
+</ng-template>

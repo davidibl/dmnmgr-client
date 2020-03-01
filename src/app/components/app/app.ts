@@ -21,6 +21,7 @@ import { CloneData } from '../../model/git/cloneData';
 import { PluginItem } from '../../model/pluginItem';
 import { Command } from '../../model/command';
 import { NewBranchDialogComponent } from '../dialogs/newBranchDialog';
+import { DmnValidationService } from '../../services/dmnValidationService';
 
 @Component({
     selector: 'xn-app-root',
@@ -75,7 +76,8 @@ export class AppComponent implements OnInit {
                        private _electronService: ElectronService,
                        private _appConfiguration: AppConfigurationService,
                        private _saveStateService: SaveStateService,
-                       private _gitService: GitService) {}
+                       private _gitService: GitService,
+                       private _dmnValidationService: DmnValidationService) {}
 
     public ngOnInit() {
         this._eventService
@@ -122,6 +124,10 @@ export class AppComponent implements OnInit {
                     this._saveStateService.resetChanges();
                 });
         });
+    }
+
+    public validateDmn() {
+        this._dmnValidationService.validate();
     }
 
     public openFolder() {

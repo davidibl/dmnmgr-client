@@ -166,9 +166,12 @@
         <xn-button (click)="toggleMenuVisible()"
                    (mouseenter)="openMenu('engineMenuVisible')"
                    [selected]="(menuVisible$ | async) && (engineMenuVisible$ | async)"
-                   class="small transparent nounderline">Engine
+                   class="small transparent nounderline">DMN
             <ul *ngIf="(menuVisible$ | async) && (engineMenuVisible$ | async)" class="sub-menu">
                 <div class="sub-menu-container">
+                    <li (click)="dispatchCommand('validateDmn')">
+                        <i class="fa fa-check-circle mr-05" aria-hidden="true"></i>DMN Validieren
+                    </li>
                 </div>
             </ul>
         </xn-button>

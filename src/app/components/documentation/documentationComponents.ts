@@ -3,6 +3,7 @@ import { DocEditorComponent } from './docEditor';
 import { DocSimulationComponent } from './docSimulation';
 import { DocGitComponent } from './docGit';
 import { DocIntroductionComponent } from './docIntroduction';
+import { DocValidationComponent } from './docValidation';
 
 export const ALL_DOCUMENTATION_COMPONENTS = [
     DocIntroductionComponent,
@@ -10,4 +11,5 @@ export const ALL_DOCUMENTATION_COMPONENTS = [
     DocEditorComponent,
     DocSimulationComponent,
     DocGitComponent,
+    DocValidationComponent,
 ];
