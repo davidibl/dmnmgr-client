@@ -48,4 +48,8 @@
 
 .footer-body {
     overflow-y: auto;
+
+    tr.selected {
+        background-color: $tab-header-col-active-bg-color;
+    }
 }

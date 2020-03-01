@@ -29,7 +29,7 @@
 </div>
 
 <ng-template #columnDefinition let-item="item">
-    <tr>
+    <tr [class.selected]="item === selectedHint" class="pointer" (click)="openHint(item)">
         <td>{{item?.message}}</td>
         <td>{{item?.tableId}}</td>
         <td>{{item?.ruleId}}</td>

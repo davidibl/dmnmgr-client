@@ -19,4 +19,6 @@ export class EventType {
     static REFRESH_CURRENT_FILE = 'refreshCurrentFile';
     static PROJECT_SAVED = 'projectSaved';
     static XML_LOADED = 'xmlLoaded';
+    static JUMP_TO_HINT = 'jumpToHint';
+    static CLEAR_HINT = 'clearHint';
 }

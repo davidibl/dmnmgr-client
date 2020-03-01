@@ -45,6 +45,7 @@ import { DmnBusinessObject } from '../../model/dmn/dmnBusinessObject';
 import { BaseEvent } from '../../model/event/event';
 import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
 import { CsvExportService } from '../../services/csvExportService';
+import { IDmnValidationResult } from '../../model/dmnValidationResult';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -136,6 +137,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private _searchStylesheet: any;
     private _newHeadElement = null;
 
+    private _hintStylesheet: any;
+
     private _errorNodes: any[] = [];
 
     private _internalEventService = new ReplaySubject<{ type: string, identity: any, func: () => void }>();
@@ -217,6 +220,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     public ngOnInit(): void {
         this._searchStylesheet = this._domService.createStylesheet();
+        this._hintStylesheet = this._domService.createStylesheet();
 
         this._debounceSubject.pipe( debounceTime(500) ).subscribe(func => func());
 
@@ -232,6 +236,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
             .subscribe((ev) => this.selectTable(ev.data));
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.JUMP_TO_HINT)
+            .subscribe((ev) => this.showHint(ev.data as IDmnValidationResult));
+
+        this._eventService
+            .getEvent((ev) => ev.type === EventType.CLEAR_HINT)
+            .subscribe((ev) => this.clearHint());
 
         this._eventService
             .getEvent((ev) => ev.type === EventType.COPY_RULES)
@@ -497,6 +509,22 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._modeller._viewers.drd.on('elements.changed', (event) => {
             this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DMN_MODEL));
         });
+    }
+
+    private showHint(hint: IDmnValidationResult) {
+        this.clearHint();
+        const color = (hint.severity === 'ERROR') ? '#f13943' : 'orange';
+        this.selectTable(hint.tableId);
+        if (!!hint.ruleId) {
+            this._hintStylesheet.insertRule(`td[data-row-id="${hint.ruleId}"]:first-child { background-color: ${color}; }`);
+        }
+        if (!!hint.counterRuleId) {
+            this._hintStylesheet.insertRule(`td[data-row-id="${hint.counterRuleId}"]:first-child { background-color: ${color}; }`);
+        }
+    }
+
+    private clearHint() {
+        this.clearStyles(this._hintStylesheet);
     }
 
     private selectTable(tableId: string) {
