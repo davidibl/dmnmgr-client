@@ -1,17 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { trigger, state, transition, style, animate } from '@angular/animations';
 import { DmnValidationService } from '../../services/dmnValidationService';
-import { map, tap } from 'rxjs/operators';
+import { map, tap, take } from 'rxjs/operators';
 import { WorkingStateService } from '../../services/workingStateService';
 import { IDmnValidationResult } from '../../model/dmnValidationResult';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
+import { BehaviorSubject, combineLatest } from 'rxjs';
 
 @Component({
     selector: 'xn-footer-flyin',
     templateUrl: 'footerFlyin.html',
     styleUrls: ['footerFlyin.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     animations: [
         trigger('flyin', [
             state('true', style({ transform: 'translateY(0px)' })),
@@ -26,8 +28,20 @@ export class FooterFlyinComponent {
     public ERROR_MODE = 'error';
     public WARNING_MODE = 'warning';
 
-    public flyin = false;
-    public mode = null;
+    public flyin$ = new BehaviorSubject<boolean>(false);
+    public mode$ = new BehaviorSubject<string>(null);
+
+    public warningsSelected$ = combineLatest(this.flyin$, this.mode$).pipe(
+        map(([flyin, mode]) => flyin === true && mode === this.WARNING_MODE)
+    );
+
+    public errorsSelected$ = combineLatest(this.flyin$, this.mode$).pipe(
+        map(([flyin, mode]) => flyin === true && mode === this.ERROR_MODE)
+    );
+
+    public errorsMode$ = this.mode$.pipe(map(mode => mode === this.ERROR_MODE));
+
+    public warningsMode$ = this.mode$.pipe(map(mode => mode === this.WARNING_MODE));
 
     public currentStatus$ = this._workingStateService.getWorkingState();
 
@@ -53,13 +67,20 @@ export class FooterFlyinComponent {
         private _validationService: DmnValidationService,
         private _workingStateService: WorkingStateService,
         private _eventService: EventService,
+        private _changeDetector: ChangeDetectorRef,
     ) {}
 
     public toggleView(mode: string) {
-        if (!this.flyin || this.mode === mode) {
-            this.flyin = !this.flyin;
-        }
-        this.mode = (!!mode) ? mode : this.ERROR_MODE;
+        combineLatest(this.flyin$, this.mode$)
+            .pipe(take(1))
+            .subscribe(([flyin, currentMode]) => {
+                if (!flyin || currentMode === mode) {
+                    this.flyin$.next(!flyin);
+                } else if (currentMode !== mode) {
+                    this.clearCurrentSelection();
+                }
+                this.mode$.next((!!mode) ? mode : this.ERROR_MODE);
+            });
     }
 
     public openHint(item: IDmnValidationResult) {
@@ -72,10 +93,12 @@ export class FooterFlyinComponent {
         }
         this.selectedHint = item;
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_HINT, item));
+        this._changeDetector.markForCheck();
     }
 
     private clearCurrentSelection() {
         this._eventService.publishEvent(new BaseEvent(EventType.CLEAR_HINT));
         this.selectedHint = null;
+        this._changeDetector.markForCheck();
     }
 }

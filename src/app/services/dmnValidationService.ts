@@ -42,6 +42,7 @@ export class DmnValidationService {
     }
 
     public validate() {
+        this._lastValidationResult.next({} as IDmnValidationResponse);
         this._dmnXmlService
             .getXmlModels('editor')
             .pipe(
