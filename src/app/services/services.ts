@@ -21,6 +21,7 @@ import { GitService } from './gitService';
 import { ElectronService } from './electronService';
 import { DmnClipboardService } from './dmnClipboardService';
 import { DmnValidationService } from './dmnValidationService';
+import { WorkingStateService } from './workingStateService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -46,4 +47,5 @@ export const ALL_SERVICES = [
     ElectronService,
     DmnClipboardService,
     DmnValidationService,
+    WorkingStateService,
 ];

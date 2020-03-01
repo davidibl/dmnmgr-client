@@ -3,6 +3,7 @@ import { trigger, state, transition, style, animate } from '@angular/animations'
 import { DmnValidationService } from '../../services/dmnValidationService';
 import { map } from 'rxjs/operators';
 import { BehaviorSubject } from 'rxjs';
+import { WorkingStateService } from '../../services/workingStateService';
 
 @Component({
     selector: 'xn-footer-flyin',
@@ -26,7 +27,7 @@ export class FooterFlyinComponent {
     public mode = 'true';
     public warningMode = false;
 
-    public currentStatus$ = new BehaviorSubject('Bereit');
+    public currentStatus$ = this._workingStateService.getWorkingState();
 
     public errors$ = this._validationService
         .getLastValidationResult()
@@ -44,6 +45,7 @@ export class FooterFlyinComponent {
 
     public constructor(
         private _validationService: DmnValidationService,
+        private _workingStateService: WorkingStateService,
     ) {}
 
     public toggleView(mode: string) {
