@@ -7,4 +7,5 @@ export class AppConfig {
     mostRecent: MostRecentFile[];
     gitSignature?: GitSignatureIdentity;
     gitKey?: GitKeys;
+    autoValidation?: boolean;
 }

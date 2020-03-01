@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DmnXmlService } from './dmnXmlService';
-import { take, map, switchMap, tap, finalize } from 'rxjs/operators';
+import { take, map, switchMap, tap, finalize, filter } from 'rxjs/operators';
 import { AppConfigurationService } from './appConfigurationService';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { RestTemplate } from '@xnoname/web-components';
@@ -28,7 +28,17 @@ export class DmnValidationService {
         this._eventService
             .getEvent(ev => ev.type === EventType.XML_LOADED ||
                             ev.type === EventType.PROJECT_SAVED)
-            .subscribe(_ => this.validate());
+            .pipe(
+                switchMap(_ => this._appConfigurationService.getAutoValidation()),
+                filter(autoValidation => !!autoValidation),
+            ).subscribe(_ => this.validate());
+
+        this._eventService
+            .getEvent(ev => ev.type === EventType.XML_LOADED)
+            .pipe(
+                switchMap(_ => this._appConfigurationService.getAutoValidation()),
+                filter(autoValidation => !autoValidation),
+            ).subscribe(_ => this.reset());
     }
 
     public validate() {
@@ -51,6 +61,10 @@ export class DmnValidationService {
 
     public getLastValidationResult(): Observable<IDmnValidationResponse> {
         return this._lastValidationResult.asObservable();
+    }
+
+    private reset() {
+        this._lastValidationResult.next(<IDmnValidationResponse>{});
     }
 
     private getUrl(path: string): Observable<string> {

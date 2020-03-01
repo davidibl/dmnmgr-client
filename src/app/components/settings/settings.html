@@ -9,6 +9,12 @@
                     name="simulatorBaseUrl"></xn-input-form>
     </div>
     <div class="mb-2">
+        <xn-section-divider [label]="'Validierung'"></xn-section-divider>
+        <xn-checkbox ngModel
+                    [(ngModel)]="configuration.autoValidation"
+                    name="autoValidate">Nach jedem Speichern und Öffnen automatisch validieren</xn-checkbox>
+    </div>
+    <div class="mb-2">
         <xn-section-divider [label]="'Git'"></xn-section-divider>
         <div class="flex">
             <div class="inline-block mr-1">

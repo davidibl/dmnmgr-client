@@ -57,6 +57,11 @@ export class AppConfigurationService {
             .pipe( map(config => config.gitKey ));
     }
 
+    public getAutoValidation(): Observable<boolean> {
+        return this._configurationCache
+            .pipe( map(config => config.autoValidation) );
+    }
+
     public getConfiguration(): Observable<AppConfig> {
         return this._configurationCache.asObservable();
     }
