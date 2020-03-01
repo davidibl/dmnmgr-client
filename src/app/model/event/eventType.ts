@@ -17,4 +17,6 @@ export class EventType {
     static COPY_RULES = 'copyRules';
     static PASTE_RULES = 'pasteRules';
     static REFRESH_CURRENT_FILE = 'refreshCurrentFile';
+    static PROJECT_SAVED = 'projectSaved';
+    static XML_LOADED = 'xmlLoaded';
 }

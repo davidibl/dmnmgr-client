@@ -207,7 +207,8 @@ export class AppComponent implements OnInit {
                         .pipe(
                             tap(result => this.processError(result)),
                             filter(result => result.type === FsResultType.OK),
-                            tap(__ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
+                            tap(__ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE))),
+                            tap(___ => this._eventService.publishEvent(new BaseEvent(EventType.PROJECT_SAVED)))
                         )
                         .subscribe(___ => this._saveStateService.resetChanges());
                 })
@@ -503,7 +504,8 @@ export class AppComponent implements OnInit {
                             take(1),
                             tap(result => this.processError(result)),
                             filter(result => result.type === FsResultType.OK),
-                            tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
+                            tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE))),
+                            tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.PROJECT_SAVED)))
                         );
                 })
             );

@@ -7,6 +7,8 @@ import { RestTemplate } from '@xnoname/web-components';
 import { HttpClient } from '@angular/common/http';
 import { IDmnValidationResponse } from '../model/dmnValidationResponse';
 import { WorkingStateService } from './workingStateService';
+import { EventService } from './eventService';
+import { EventType } from '../model/event/eventType';
 
 @Injectable()
 export class DmnValidationService {
@@ -21,7 +23,13 @@ export class DmnValidationService {
         private _dmnXmlService: DmnXmlService,
         private _appConfigurationService: AppConfigurationService,
         private _workingStateService: WorkingStateService,
-    ) {}
+        private _eventService: EventService,
+    ) {
+        this._eventService
+            .getEvent(ev => ev.type === EventType.XML_LOADED ||
+                            ev.type === EventType.PROJECT_SAVED)
+            .subscribe(_ => this.validate());
+    }
 
     public validate() {
         this._dmnXmlService

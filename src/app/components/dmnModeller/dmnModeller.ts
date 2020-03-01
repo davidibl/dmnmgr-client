@@ -272,6 +272,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                         type: 'views.changed',
                         func: () => {}
                     });
+                    this._eventService.publishEvent(new BaseEvent(EventType.XML_LOADED));
                     if (this.initialized) {
                         return;
                     }
