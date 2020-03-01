@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { trigger, state, transition, style, animate } from '@angular/animations';
 import { DmnValidationService } from '../../services/dmnValidationService';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import { WorkingStateService } from '../../services/workingStateService';
 import { IDmnValidationResult } from '../../model/dmnValidationResult';
 import { EventService } from '../../services/eventService';
@@ -36,7 +36,9 @@ export class FooterFlyinComponent {
 
     public errors$ = this._validationService
         .getLastValidationResult()
-        .pipe(map(response => (!!response) ? response.errors : []));
+        .pipe(
+            tap(_ => this.clearCurrentSelection()),
+            map(response => (!!response) ? response.errors : []));
 
     public warnings$ = this._validationService
         .getLastValidationResult()
@@ -66,11 +68,15 @@ export class FooterFlyinComponent {
             return;
         }
         if (this.selectedHint === item) {
-            this._eventService.publishEvent(new BaseEvent(EventType.CLEAR_HINT));
-            this.selectedHint = null;
+            this.clearCurrentSelection();
             return;
         }
         this.selectedHint = item;
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_HINT, item));
+    }
+
+    private clearCurrentSelection() {
+        this._eventService.publishEvent(new BaseEvent(EventType.CLEAR_HINT));
+        this.selectedHint = null;
     }
 }
