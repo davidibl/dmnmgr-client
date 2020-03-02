@@ -61,6 +61,7 @@ export class AppComponent implements OnInit {
     public showAllTestsDialog = false;
     public showInfoDialog = false;
     public showCloneRepositoryDialog = false;
+    public showChangelogDialog = false;
 
     public get error() {
         return this._error;
@@ -70,14 +71,16 @@ export class AppComponent implements OnInit {
         return this._errorTitle;
     }
 
-    public constructor(private _fileService: FileService,
-                       private _projectService: DmnProjectService,
-                       private _eventService: EventService,
-                       private _electronService: ElectronService,
-                       private _appConfiguration: AppConfigurationService,
-                       private _saveStateService: SaveStateService,
-                       private _gitService: GitService,
-                       private _dmnValidationService: DmnValidationService) {}
+    public constructor(
+        private _fileService: FileService,
+        private _projectService: DmnProjectService,
+        private _eventService: EventService,
+        private _electronService: ElectronService,
+        private _appConfiguration: AppConfigurationService,
+        private _saveStateService: SaveStateService,
+        private _gitService: GitService,
+        private _dmnValidationService: DmnValidationService,
+    ) {}
 
     public ngOnInit() {
         this._eventService
@@ -124,6 +127,10 @@ export class AppComponent implements OnInit {
                     this._saveStateService.resetChanges();
                 });
         });
+    }
+
+    public showChangelog() {
+        this.showChangelogDialog = true;
     }
 
     public validateDmn() {

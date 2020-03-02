@@ -1,0 +1,47 @@
+<xn-dialog [closable]="true"
+           [open]="open"
+           (openChange)="onDialogOpenChanged($event)"
+           (confirm)="onDialogOpenChanged(false)"
+           [defaultOkButtonText]="'Ok'"
+           [hideCancelButton]="true"
+           [closeOnConfirm]="true"
+           [closeOnOutsideClick]="true">
+    <div class="dialog-title">
+        Changelog
+    </div>
+    <div class="dialog-body pb-1">
+        <ng-container *ngIf="changes$ | async as changes">
+            <div class="version mb-2" *ngFor="let version of changes.versions">
+                <ng-container *ngIf="version.feat.length > 0 || version.chore.length > 0 || version.fix.length > 0 || version.improv.length > 0">
+                    <h3>{{version.version}}</h3>
+                    <ng-container *ngIf="!!version.feat && version.feat.length > 0">
+                        <h4 class="mt-1">Features</h4>
+                        <xn-data-table class="mb-1" [data]="version.feat" [condensed]="true" [templateRef]="changeColumnDefinition">
+                        </xn-data-table>
+                    </ng-container>
+                    <ng-container *ngIf="!!version.improv && version.improv.length > 0">
+                        <h4 class="mt-1">Verbesserungen</h4>
+                        <xn-data-table class="mb-1" [data]="version.improv" [condensed]="true" [templateRef]="changeColumnDefinition">
+                        </xn-data-table>
+                    </ng-container>
+                    <ng-container *ngIf="!!version.fix && version.fix.length > 0">
+                        <h4 class="mt-1">Bugfixes</h4>
+                        <xn-data-table class="mb-1" [data]="version.fix" [condensed]="true" [templateRef]="changeColumnDefinition">
+                        </xn-data-table>
+                    </ng-container>
+                    <ng-container *ngIf="!!version.chore && version.chore.length > 0">
+                        <h4 class="mt-1">Lästiges</h4>
+                        <xn-data-table class="mb-1" [data]="version.chore" [condensed]="true" [templateRef]="changeColumnDefinition">
+                        </xn-data-table>
+                    </ng-container>
+                </ng-container>
+            </div>
+        </ng-container>
+    </div>
+</xn-dialog>
+
+<ng-template #changeColumnDefinition let-item="item">
+    <tr>
+        <td>{{item?.message}}</td>
+    </tr>
+</ng-template>

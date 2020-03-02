@@ -60,3 +60,5 @@
 <xn-about-dialog [(open)]="showInfoDialog"></xn-about-dialog>
 
 <xn-clone-repository-dialog [(open)]="showCloneRepositoryDialog" (cloneDataComplete)="doCloneRepository($event)"></xn-clone-repository-dialog>
+
+<xn-changelog-dialog *ngIf="showChangelogDialog" [(open)]="showChangelogDialog"></xn-changelog-dialog>

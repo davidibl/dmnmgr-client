@@ -22,6 +22,7 @@ import { ElectronService } from './electronService';
 import { DmnClipboardService } from './dmnClipboardService';
 import { DmnValidationService } from './dmnValidationService';
 import { WorkingStateService } from './workingStateService';
+import { ChangelogService } from './changelogService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -48,4 +49,5 @@ export const ALL_SERVICES = [
     DmnClipboardService,
     DmnValidationService,
     WorkingStateService,
+    ChangelogService,
 ];
