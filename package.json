@@ -12,6 +12,7 @@
     "scripts": {
         "postinstall": "npm run link",
         "ng": "ng",
+        "changelog": "conventional-changelog -p -i .\\src\\assets\\CHANGELOG.md -s -r 0",
         "link": "npm link ../web-components/src --production",
         "start": "ng serve --aot=true",
         "start-prod": "ng serve --prod",
@@ -24,8 +25,8 @@
         "electron:linux": "npm run build-prod && electron-builder build --linux",
         "electron:windows": "npm run build-prod && electron-builder build --windows",
         "electron:mac": "npm run build-prod && electron-builder build --mac",
-        "release": "npm run electron:windows && npm version minor",
-        "release-patch": "npm run electron:windows && npm version patch",
+        "release": "npm version minor && npm run changelog && npm run electron:windows",
+        "release-patch": "npm version patch && npm run changelog && npm run electron:windows",
         "test": "ng test",
         "lint": "ng lint",
         "e2e": "ng e2e"
