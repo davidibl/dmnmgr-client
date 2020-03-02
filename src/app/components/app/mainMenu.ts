@@ -35,6 +35,7 @@ export class MainMenuComponent {
         KeyP: 'openFolder',
         KeyK: 'showSettings',
         KeyI: 'showInfo',
+        KeyL: 'showChangelog',
     };
 
     public fileMenuVisible$ = new BehaviorSubject(false);
