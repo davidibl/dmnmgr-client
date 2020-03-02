@@ -1,3 +1,11 @@
+## <small>0.0.27 (2020-03-02)</small>
+
+* 0.0.27 ([181b877](https://github.com/davidibl/dmnmgr-client/commit/181b877))
+* FIX: automatically generate changelog on release ([297f7bb](https://github.com/davidibl/dmnmgr-client/commit/297f7bb))
+* FEAT: New changelog dialog and changelog reflecting git commit messages ([b5759ad](https://github.com/davidibl/dmnmgr-client/commit/b5759ad))
+
+
+
 ## <small>0.0.26 (2020-03-02)</small>
 
 * 0.0.26 ([901beb2](https://github.com/davidibl/dmnmgr-client/commit/901beb2))

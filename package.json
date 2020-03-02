@@ -71,6 +71,7 @@
         "@types/node": "~6.0.60",
         "@types/nodegit": "0.24.13",
         "codelyzer": "4.5.0",
+        "conventional-changelog": "3.1.18",
         "electron": "6.1.4",
         "electron-builder": "22.1.0",
         "electron-rebuild": "1.8.6",
