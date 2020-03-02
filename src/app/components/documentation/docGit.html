@@ -4,7 +4,7 @@
     DMNMGR hat eine GIT Integration die es ermöglicht DMN Konfigurationen und Regeldefinitionen
     direkt wieder in ein Code Repository zu pushen.
 </p>
-<h4>Einstellungen</h4>
+<h4><b>Einstellungen</b></h4>
 <p>
     Um GIT nutzen zu können, müssen ein paar notwendige Einstellungen vorgenommen werden.
     Diese Einstellungen finden sich in der GIT Sektion der Einstellungen (STRG + K).
@@ -25,5 +25,76 @@
     <tr>
         <td>Public Key</td>
         <td>Das Public Pendant zu oben genanntem privatem SSH Schlüssel.</td>
+    </tr>
+</table>
+<h4 class="mt-2"><b>Die integrierten GIT Funktionen</b></h4>
+<p>
+    Alle GIT Funktionen finden sich im Hauptmenü unter <b><i>Repository</i></b>. Im Folgenden werden
+    die einzelnen Funktionen beschrieben
+</p>
+<table>
+    <tr>
+        <td>Repository klonen</td>
+        <td>
+            Dieser Befehl öffnet den Klonen Dialog. Um ein GIT Repository zu klonen (auf die eigene Festplatte
+            kopieren um daran zu arbeiten) muss der ssh-Url des Repositorys und ein Zielordner eingegeben werden.<br />
+            Der Dialog führt mit einem Wizard durch diesen Prozess. Sobald das Repository geklont wurde, kann
+            an den enthaltenen DMN Dateien gearbeitet werden.
+        </td>
+    </tr>
+    <tr>
+        <td>Status</td>
+        <td>
+            Der Menüeintrag Status zeigt stets den aktuellen Status des Repository in dem sich die aktuelle
+            Datei befindet:<br />
+            <ul>
+                <li>Nicht verbunden - Die Dateien sind in keinem Repository</li>
+                <li>Clean - Repository geöffnet und keine Änderungen vorhanden</li>
+                <li>Lokale Änderungen - Dateien im Repository wurden verändert und nicht committed</li>
+                <li>Detached - Ein zurückliegender Stand wurde ausgecheckt -> Keine Änderungen möglich</li>
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td>Branch</td>
+        <td>
+            Der aktuelle Branch. Standard ist Master. Wird ein neuer Branch angelegt wird dessen Name angezeigt.
+        </td>
+    </tr>
+    <tr>
+        <td>Branch -> Neuer Branch</td>
+        <td>
+            Öffnet einen Dialog zum Anlegen eines neuen Arbeitszweigs (Branch). Innerhalb des Dialogs muss
+            ein Branchname angegeben werden. Der neue Branch wird direkt ausgecheckt.
+        </td>
+    </tr>
+    <tr>
+        <td>Änderungen committen</td>
+        <td>
+            Nur sichtbar wenn sich im aktuellen Repository Änderungen befinden. Öffnet einen Dialog um eine
+            fachliche Beschreibung der Änderungen für die Änderungshistorie anzugeben. Ein Commit schreibt
+            die Änderungen im Repository fest.
+        </td>
+    </tr>
+    <tr>
+        <td>Änderungen rückgängig</td>
+        <td>
+            Diese Funktion macht alle nicht committeten (festgeschriebenen) Änderungen rückgängig.<br />
+            Achtung! Keine Bestätigung wird hier verlangt!
+        </td>
+    </tr>
+    <tr>
+        <td>Push zu Server</td>
+        <td>
+            Überträgt alle Commites in das Remote Repository auf dem zentralen GIT Server. So werden
+            Arbeitsstände geteilt.
+        </td>
+    </tr>
+    <tr>
+        <td>Pull vom Server</td>
+        <td>
+            Holt alle Änderungen die im Remote Repository vorliegen. Sollte nach jedem öffnen direkt zu
+            Beginn gemacht werden.
+        </td>
     </tr>
 </table>
