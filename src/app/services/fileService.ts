@@ -196,7 +196,7 @@ export class FileService {
         //    './' : this._electronService.process.env.PORTABLE_EXECUTABLE_FILE;
         return Observable.create(observer => {
             if (!this._filesystem.existsSync(filename)) {
-                this._filesystem.writeFile(filename, JSON.stringify(defaultValue), err => this.callback(() => {
+                this._filesystem.writeFile(filename, JSON.stringify(defaultValue, null, 2), err => this.callback(() => {
                     if (isNull(err)) {
                         this.readFile<T>(filename, observer);
                     } else {
@@ -232,7 +232,7 @@ export class FileService {
     }
 
     public saveFile<T>(filename: string, content: T): Observable<FileSystemAccessResult<void>> {
-        return this.saveTextToFile(filename, JSON.stringify(content));
+        return this.saveTextToFile(filename, JSON.stringify(content, null, 2));
     }
 
     public saveTextToFile(filename: string, content: string) {
@@ -327,7 +327,7 @@ export class FileService {
         project.dmnPath = dmnFilename;
         this._currentPath = filename;
 
-        this._filesystem.writeFile(filename, JSON.stringify(project), err => this.callback(() => {
+        this._filesystem.writeFile(filename, JSON.stringify(project, null, 2), err => this.callback(() => {
             if (isNull(err)) {
 
                 this._filesystem.writeFile(targetPathDmn, xml, err2 => this.callback(() => {
