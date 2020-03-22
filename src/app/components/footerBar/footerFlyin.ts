@@ -43,7 +43,10 @@ export class FooterFlyinComponent {
 
     public warningsMode$ = this.mode$.pipe(map(mode => mode === this.WARNING_MODE));
 
-    public currentStatus$ = this._workingStateService.getWorkingState();
+    public currentStatus$ = combineLatest(
+        this._workingStateService.getWorkingState(),
+        this._validationService.getError()
+    ).pipe(map(([workingState, error]) => (!!error) ? error.message : workingState));
 
     public selectedHint = null;
 

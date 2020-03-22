@@ -8,6 +8,11 @@ import { DataModelService } from '../../services/dataModelService';
 import { TestDecisionService } from '../../services/testDecisionService';
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { SessionDataService } from '../../services/sessionDataService';
+import { AppConfigurationService } from '../../services/appConfigurationService';
+import { EventService } from '../../services/eventService';
+import { BaseEvent } from '../../model/event/event';
+import { EventType } from '../../model/event/eventType';
+import { TabIds } from '../../model/tabIds';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -32,12 +37,17 @@ export class TestSuiteComponent implements OnInit {
     public responseModel$: Observable<ObjectDefinition>;
     public testitem: TestCaseContainer;
 
+    public urlConfigured$ = this._appConfigurationService
+        .getBaseUrlSimulator().pipe(map(url => !!url));
+
     public constructor(
         private _testSuiteService: TestSuiteService,
         private _dataModelService: DataModelService,
         private _testDecisionService: TestDecisionService,
         private dmnXmlService: DmnXmlService,
         private _sessionDateService: SessionDataService,
+        private _appConfigurationService: AppConfigurationService,
+        private _eventService: EventService,
     ) { }
 
     public ngOnInit() {
@@ -100,6 +110,10 @@ export class TestSuiteComponent implements OnInit {
 
     public openInSimulator(item: TestCaseContainer) {
         this._sessionDateService.setValue('tempObject', item.testcase.data);
+    }
+
+    public openSettings() {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
     }
 
     private runTestInternal(item: TestCaseContainer, xml: string) {

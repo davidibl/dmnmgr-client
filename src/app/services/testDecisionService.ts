@@ -20,6 +20,10 @@ export interface DeploymentResponse {
 @Injectable()
 export class TestDecisionService {
 
+    private readonly API_PREFIX = 'api';
+    private readonly API_PATH_SIMULATION = 'decision/simulation';
+    private readonly API_PATH_TESTING = 'decision/test';
+
     private _currentArtefactId: string;
 
     private _resultSubject = new ReplaySubject<DecisionSimulationResult>(1);
@@ -55,7 +59,7 @@ export class TestDecisionService {
                         xml: xml
                     };
                 }),
-                switchMap(_ => this.getUrl('decision/simulation'), (outer, inner) => ({request: outer, url: inner})),
+                switchMap(_ => this.getUrl(this.API_PATH_SIMULATION), (outer, inner) => ({request: outer, url: inner})),
                 switchMap(({url, request}) => this._http
                     .post<IDecisionSimulationResponse>(url, request)),
                 map((response: IDecisionSimulationResponse) =>
@@ -70,7 +74,7 @@ export class TestDecisionService {
             xml: xml,
             expectedData: test.expectedData
         };
-        return this.getUrl('decision/test')
+        return this.getUrl(this.API_PATH_TESTING)
             .pipe( switchMap(url => this._http.post<Object>(url, request)) );
     }
 
@@ -105,7 +109,7 @@ export class TestDecisionService {
             .getBaseUrlSimulator()
             .pipe(
                 map(baseUrl => RestTemplate.create(baseUrl)
-                        .withPathParameter('api')
+                        .withPathParameter(this.API_PREFIX)
                         .withPathParameter(path)
                         .build()),
                 take(1)

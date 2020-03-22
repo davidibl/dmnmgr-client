@@ -5,8 +5,14 @@
             <i class="fa fa-plus mr-05" aria-hidden="true"></i>Testcase anlegen
         </xn-button>
         <xn-button class="small ml-1"
-                (click)="runAllTests()">
+                (click)="runAllTests()"
+                *ngIf="!!(urlConfigured$ | async)">
             <i class="fa fa-forward mr-05" aria-hidden="true"></i>Alle ausführen
+        </xn-button>
+        <xn-button class="small ml-1"
+                (click)="openSettings()"
+                *ngIf="!(urlConfigured$ | async)">
+            Kein Service URL konfiguriert (Einstellungen)
         </xn-button>
     </div>
     <div class="scrollable">

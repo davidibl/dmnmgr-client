@@ -9,6 +9,8 @@ import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
 import { DmnXmlService } from '../../services/dmnXmlService';
+import { AppConfigurationService } from '../../services/appConfigurationService';
+import { TabIds } from '../../model/tabIds';
 
 export interface TestSuiteItem {
     tableId: string;
@@ -33,6 +35,9 @@ export class AllTestsDialogComponent implements OnInit {
     public testSuite: TestSuiteItem[];
     public isTestSuiteEmpty = false;
 
+    public urlConfigured$ = this._appConfigurationService
+        .getBaseUrlSimulator().pipe(map(url => !!url));
+
     @Output()
     public openChange = new EventEmitter<boolean>();
 
@@ -43,7 +48,8 @@ export class AllTestsDialogComponent implements OnInit {
         private _testsuiteService: TestSuiteService,
         private _eventService: EventService,
         private _testDecisionService: TestDecisionService,
-        private _dmnXmlService: DmnXmlService
+        private _dmnXmlService: DmnXmlService,
+        private _appConfigurationService: AppConfigurationService
     ) {}
 
     public ngOnInit() {
@@ -86,6 +92,11 @@ export class AllTestsDialogComponent implements OnInit {
     public onDialogOpenChanged(open: boolean) {
         this.open = open;
         this.openChange.emit(open);
+    }
+
+    public openSettings() {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
+        this.onDialogOpenChanged(false);
     }
 
     private mapTestSuite(testSuite: TestsuiteProject): TestSuiteItem[] {

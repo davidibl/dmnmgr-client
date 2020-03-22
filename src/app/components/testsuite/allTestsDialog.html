@@ -10,6 +10,9 @@
         Alle Tests ausführen
     </div>
     <div class="dialog-body pb-1">
+        <div class="mb-2" *ngIf="!(urlConfigured$ | async)">
+            <a class="dark-gray" (click)="openSettings()">Kein Service URL konfiguriert (Einstellungen)</a>
+        </div>
         <ng-container *ngIf="testSuite">
             <ng-container *ngFor="let item of testSuite">
                 <ul *ngIf="item.tests?.length > 0" class="testsuite-item">

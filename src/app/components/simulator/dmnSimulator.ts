@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { Observable } from 'rxjs';
-import { take, tap } from 'rxjs/operators';
+import { take, tap, map } from 'rxjs/operators';
 import { EditorType } from '../../model/json/editorType';
 import { DataModelService } from '../../services/dataModelService';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
@@ -9,6 +9,9 @@ import { TestDecisionService } from '../../services/testDecisionService';
 import { DecisionSimulationResult } from '../../model/decisionSimulationResult';
 import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
+import { AppConfigurationService } from '../../services/appConfigurationService';
+import { EventType } from '../../model/event/eventType';
+import { TabIds } from '../../model/tabIds';
 
 @Component({
     selector: 'xn-dmn-simulator',
@@ -26,6 +29,9 @@ export class DmnSimulatorComponent implements OnInit {
 
     public showHitsOnly$ = this._testDecisionService.getShowHitsOnly();
 
+    public urlConfigured$ = this._appConfigurationService
+        .getBaseUrlSimulator().pipe(map(url => !!url));
+
     @Input()
     public isVisisble = false;
     public simulatorVisisble = false;
@@ -36,7 +42,8 @@ export class DmnSimulatorComponent implements OnInit {
     public constructor(private _dataModelService: DataModelService,
                        private _sessionDataService: SessionDataService,
                        private _testDecisionService: TestDecisionService,
-                       private _eventService: EventService) {}
+                       private _eventService: EventService,
+                       private _appConfigurationService: AppConfigurationService) {}
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
@@ -89,5 +96,9 @@ export class DmnSimulatorComponent implements OnInit {
         };
         const ev = new BaseEvent('newTest', newTestData);
         this._eventService.publishEvent(ev);
+    }
+
+    public openSettings() {
+        this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_TAB, TabIds.settings));
     }
 }

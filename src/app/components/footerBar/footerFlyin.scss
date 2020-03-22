@@ -29,6 +29,7 @@
         padding-right: 10px;
         padding-left: 10px;
         width: 150px;
+        min-width: 150px;
         height: 29px;
         display: inline-block;
         cursor: pointer;
@@ -39,6 +40,7 @@
     }
 
     li.footer-status {
+        width: auto;
         float: right;
         border-left: 1px solid #E3E5E6;
         border-right: none;

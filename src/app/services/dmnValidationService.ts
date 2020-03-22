@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import { DmnXmlService } from './dmnXmlService';
-import { take, map, switchMap, tap, finalize, filter } from 'rxjs/operators';
+import { take, map, switchMap, tap, finalize, filter, catchError } from 'rxjs/operators';
 import { AppConfigurationService } from './appConfigurationService';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, of } from 'rxjs';
 import { RestTemplate } from '@xnoname/web-components';
 import { HttpClient } from '@angular/common/http';
 import { IDmnValidationResponse } from '../model/dmnValidationResponse';
 import { WorkingStateService } from './workingStateService';
 import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
+import { WebserviceError, WebserviceErrorType } from '../model/webserviceError';
 
 @Injectable()
 export class DmnValidationService {
@@ -17,6 +18,7 @@ export class DmnValidationService {
     private workingStateLabel = 'Validiere...';
 
     private _lastValidationResult = new BehaviorSubject<IDmnValidationResponse>(null);
+    private _error = new BehaviorSubject<WebserviceError>(null);
 
     public constructor(
         private _http: HttpClient,
@@ -47,6 +49,7 @@ export class DmnValidationService {
             .getXmlModels('editor')
             .pipe(
                 take(1),
+                tap(_ => this.clearError()),
                 tap(_ => this.setToValidating()),
                 map(xml => {
                     return {
@@ -56,12 +59,20 @@ export class DmnValidationService {
                 switchMap(_ => this.getUrl('decision/validate'), (outer, inner) => ({request: outer, url: inner})),
                 switchMap(({url, request}) => this._http
                     .post<IDmnValidationResponse>(url, request)),
+                catchError(error => {
+                    this.setWebserviceError('Fehler beim Webservice Aufruf');
+                    return of(null);
+                }),
                 finalize(() => this.resetWorkingState())
             ).subscribe(result => this._lastValidationResult.next(result));
     }
 
     public getLastValidationResult(): Observable<IDmnValidationResponse> {
         return this._lastValidationResult.asObservable();
+    }
+
+    public getError() {
+        return this._error.asObservable();
     }
 
     private reset() {
@@ -72,12 +83,27 @@ export class DmnValidationService {
         return this._appConfigurationService
             .getBaseUrlSimulator()
             .pipe(
+                tap(baseUrl => (!baseUrl) ? this.setNoUrlDefined() : this.clearError),
+                filter(baseUrl => !!baseUrl),
                 map(baseUrl => RestTemplate.create(baseUrl)
                         .withPathParameter('api')
                         .withPathParameter(path)
                         .build()),
                 take(1)
             );
+    }
+
+    private clearError() {
+        this._error.next(null);
+    }
+
+    private setNoUrlDefined() {
+        this._error.next({ message: 'Kein Service Url definiert (Einstellungen)',
+            type: WebserviceErrorType.URL_NOT_DEFINED });
+    }
+
+    private setWebserviceError(message: string) {
+        this._error.next({ message: message, type: WebserviceErrorType.WEBSERVICE_ERROR });
     }
 
     private setToValidating() {

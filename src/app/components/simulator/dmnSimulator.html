@@ -1,37 +1,43 @@
 <xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble" [wideFlyin]="false">
     <div class="wrapper">
-        <div>
-            <xn-checkbox
-                class="small mr-1"
-                (ngModelChange)="setShowHitsOnly($event)"
-                [ngModel]="showHitsOnly$ | async">Nur Treffer anzeigen</xn-checkbox>
-            <xn-button class="small mt-1"
-                [class.disabled]="!simulationResult$ | async"
-                (click)="reset()">Zurücksetzen</xn-button>
+        <div class="mt-2" *ngIf="!(urlConfigured$ | async)">
+            <a class="dark-gray" (click)="openSettings()">Kein Service URL konfiguriert (Einstellungen)</a>
         </div>
-        <xn-json-editor [type]="editorTypes.VALUE"
-                        [requestModel]="dataModel$ | async"
-                        class="ml-05"
-                        (valueChange)="onNewValueObjectCreated($event)"
-                        [value]="valueObject"></xn-json-editor>
-        <ng-container *ngIf="simulationResult$ | async as simulationResult">
-            <div class="mt-2" *ngIf="simulationResult">
-                <h4>Ergebnis</h4>
-                <xn-dmn-result-view [message]="simulationResult.message"
-                                    [result]="simulationResult.result"
-                                    [datamodelResult]="responseModel$ | async"></xn-dmn-result-view>
-            </div>
+        <ng-container *ngIf="!!(urlConfigured$ | async)">
             <div>
-                <xn-button class="small mt-1 mr-1"
-                        [class.disabled]="!simulationResult"
-                        (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
+                <xn-checkbox
+                    class="small mr-1"
+                    (ngModelChange)="setShowHitsOnly($event)"
+                    [ngModel]="showHitsOnly$ | async">Nur Treffer anzeigen</xn-checkbox>
+                <xn-button class="small mt-1"
+                    [class.disabled]="!simulationResult$ | async"
+                    (click)="reset()">Zurücksetzen</xn-button>
             </div>
+            <xn-json-editor [type]="editorTypes.VALUE"
+                            [requestModel]="dataModel$ | async"
+                            class="ml-05"
+                            (valueChange)="onNewValueObjectCreated($event)"
+                            [value]="valueObject"></xn-json-editor>
+            <ng-container *ngIf="simulationResult$ | async as simulationResult">
+                <div class="mt-2" *ngIf="simulationResult">
+                    <h4>Ergebnis</h4>
+                    <xn-dmn-result-view [message]="simulationResult.message"
+                                        [result]="simulationResult.result"
+                                        [datamodelResult]="responseModel$ | async"></xn-dmn-result-view>
+                </div>
+                <div>
+                    <xn-button class="small mt-1 mr-1"
+                            [class.disabled]="!simulationResult"
+                            (click)="takeAsTest(simulationResult.result)">Als Test übernehmen</xn-button>
+                </div>
+            </ng-container>
         </ng-container>
     </div>
 </xn-flyin>
 <xn-levitated-button class="simulator-button pointer"
                      [default]="true"
                      *ngIf="isVisisble"
+                     [disabled]="simulatorVisisble && !(urlConfigured$ | async)"
                      [showSpinner]="currentlyTesting"
                      [forceKeepOpen]="simulatorVisisble"
                      (click)="openSimulator()">
