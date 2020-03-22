@@ -158,7 +158,14 @@ export class AppComponent implements OnInit {
             this._fileService
                 .openProject(recentProject)
                 .pipe(
-                    tap(result => this.processError(result)),
+                    tap(result => {
+                        if (result.type === FsResultType.NOT_FOUND) {
+                            result.message = result.message +
+                                '<br />Die Datei wird aus den zuletzt verwendeten Dateien entfernt.';
+                            this._appConfiguration.removeMostRecentFile(recentProject);
+                        }
+                        this.processError(result);
+                    }),
                     filter(result => result.type === FsResultType.OK)
                 )
                 .subscribe(result => {
@@ -478,7 +485,7 @@ export class AppComponent implements OnInit {
     }
 
     private processError(result: FileSystemAccessResult<any>) {
-        if (result.type === FsResultType.ERROR) {
+        if (result.type === FsResultType.ERROR || result.type === FsResultType.NOT_FOUND) {
             this.createError('Fehler', result.message);
         }
     }

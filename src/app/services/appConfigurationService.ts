@@ -95,6 +95,13 @@ export class AppConfigurationService {
         this.saveFile();
     }
 
+    public removeMostRecentFile(path: string) {
+        const elementIndex = this._currentConfiguration.mostRecent.findIndex(element => element.path === path);
+        this._currentConfiguration.mostRecent.splice(elementIndex, 1);
+        this._configurationCache.next(this._currentConfiguration);
+        this.saveFile();
+    }
+
     private saveFile() {
         this._fileService
             .saveFile(this.getFilename(), this._currentConfiguration)

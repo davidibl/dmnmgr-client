@@ -63,6 +63,10 @@ export class FileService {
 
         return Observable.create(observer => {
             if (filepath) {
+                if (!this._filesystem.existsSync(filepath)) {
+                    observer.next({ type: FsResultType.NOT_FOUND, message: `Die Datei ${filepath} kann nicht gefunden werden.` });
+                    return;
+                }
                 this.openFile(filepath, observer);
                 this._eventService.publishEvent(
                     new BaseEvent(EventType.FOLDER_CHANGED, this.getDirectory(filepath)));
