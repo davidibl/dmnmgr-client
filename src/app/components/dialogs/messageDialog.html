@@ -4,6 +4,7 @@
             (confirm)="onOkClicked()"
             [hideCancelButton]="true"
             [defaultOkButtonText]="'Ok'"
+            [buttonsDisabled]="showLoadingIndicator"
             [closeOnOutsideClick]="false">
     <div class="dialog-title">
         {{title}}
