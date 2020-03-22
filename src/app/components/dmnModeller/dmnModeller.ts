@@ -15,105 +15,46 @@ import { take, filter, map, debounceTime, } from 'rxjs/operators';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
 
-import { DataModelService } from '../../services/dataModelService';
-import { DmnXmlService } from '../../services/dmnXmlService';
-import { ObjectDefinition } from '../../model/json/objectDefinition';
-import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
-import { EventService } from '../../services/eventService';
-import { NewViewEvent } from '../../model/event/newViewEvent';
-import { RenameArtefactEvent } from '../../model/event/renameArtefactEvent';
-import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
-import { DOCUMENT } from '@angular/platform-browser';
-import { DecisionDeleteEvent } from '../../model/event/decisionDeleteEvent';
-import { EventType } from '../../model/event/eventType';
-import { DmnModelService } from '../../services/dmnModelService';
+import { DMNJS } from '../../model/dmn/dmnJS';
+import { DmnColumn } from '../../model/dmn/dmnColumn';
+import { ShapeEvent } from '../../model/dmn/shapeEvent';
+import { DmnDatatypeMapping } from '../../model/dmn/dmnDatatypeMapping';
 import { DmnModdleElement } from '../../model/dmn/dmnModdleElement';
 import { DmnModdleRule } from '../../model/dmn/dmnModdleRule';
 import { DmnType } from '../../model/dmn/dmnType';
-import { MyDmnModdle } from '../../model/dmn/dmnModdle';
-import { DataChangedEvent } from '../../model/event/dataChangedEvent';
-import { DataChangeType } from '../../model/event/dataChangedType';
-import { SaveStateService } from '../../services/saveStateService';
-import { ImportDataEvent } from '../../model/event/importDataEvent';
-import { ExportService } from '../../services/exportService';
 import { DmnExpressionLanguage } from '../../model/dmn/dmnExpressionLanguage';
 import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
 import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
+
+
+import { ObjectDefinition } from '../../model/json/objectDefinition';
+import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
+import { NewViewEvent } from '../../model/event/newViewEvent';
+import { RenameArtefactEvent } from '../../model/event/renameArtefactEvent';
+import { DecisionDeleteEvent } from '../../model/event/decisionDeleteEvent';
+import { EventType } from '../../model/event/eventType';
+import { DataChangedEvent } from '../../model/event/dataChangedEvent';
+import { DataChangeType } from '../../model/event/dataChangedType';
+import { ImportDataEvent } from '../../model/event/importDataEvent';
+import { BaseEvent } from '../../model/event/event';
+import { IDmnValidationResult } from '../../model/dmnValidationResult';
+
+import { DataModelService } from '../../services/dataModelService';
+import { DmnXmlService } from '../../services/dmnXmlService';
+import { EventService } from '../../services/eventService';
+import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
+import { DOCUMENT } from '@angular/platform-browser';
+import { DmnModelService } from '../../services/dmnModelService';
+import { SaveStateService } from '../../services/saveStateService';
+import { ExportService } from '../../services/exportService';
 import { DomService } from '../../services/domService';
 import { isNull } from '@xnoname/web-components';
-import { DmnBusinessObject } from '../../model/dmn/dmnBusinessObject';
-import { BaseEvent } from '../../model/event/event';
 import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
 import { CsvExportService } from '../../services/csvExportService';
-import { IDmnValidationResult } from '../../model/dmnValidationResult';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
 };
-
-declare interface DMNJS {
-    _viewers: any;
-    _activeView: DmnModelerView;
-    _moddle: MyDmnModdle;
-    importXML(xml: string, callback: (error: any) => void);
-    saveXML(options: any, callback: (error: any, xml: string) => void);
-    getViews(): DmnModelerView[];
-    on(eventname: string, eventCallback: (event) => void);
-    _updateViews(): void;
-    _switchView(tableId: string);
-    getActiveViewer(): DmnModelerView;
-}
-
-export interface Modeling {
-    editAllowedValues(businessObject: DmnBusinessObject, restrictionSet: string[]);
-    editAnnotation(rule: DmnModdleRule, value: string);
-    editCell(cell: any, value: string);
-    editDecisionTableId(newId: string);
-    editDecisionTableName(newName);
-    editExpressionLanguage(element: DmnModdleElement, language: string);
-    editHitPolicy(hitPolicy: string, aggregation: string);
-    editInputExpression(inputExpression: unknown, value);
-    editInputExpressionTypeRef(inputExpression: unknown, typeRef: string);
-    editOutputName(output: DmnModdleElement, newName: string);
-    editOutputTypeRef(output: DmnModdleElement, typeRef: string);
-
-    addRow(ruleConfig: Object): { cells: DmnBusinessObject[] };
-}
-
-export type DmnModelingType = 'modeling';
-
-export interface DmnModelerView {
-    element: DmnModdleElement;
-    get(value: DmnModelingType): Modeling;
-}
-
-export interface ShapeEvent {
-    context: ShapeEventContext;
-}
-
-export interface ShapeEventContext {
-    shape: Shape;
-}
-
-export interface Shape {
-    id: string;
-}
-
-export class DmnDatatypeMapping {
-    static string = JsonDatatype.STRING;
-    static integer = JsonDatatype.INTEGER;
-    static long = JsonDatatype.INTEGER;
-    static double = JsonDatatype.NUMBER;
-    static boolean = JsonDatatype.BOOLEAN;
-    static date = JsonDatatype.DATETIME;
-}
-
-export interface DmnColumn {
-    label: string;
-    id: string;
-    index: number;
-    type: string;
-}
 
 @Component({
     selector: 'xn-dmn-modeller',
