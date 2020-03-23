@@ -5,7 +5,7 @@
 </div>
 <div class="commit-menu" [@slideInOut]="showCommitMenu">
     <ul class="toolbar">
-        <li (click)="checkout()">
+        <li [xnTooltip]="'Diesen Stand auschecken'" [placement]="'right'" (click)="checkout()">
             <small>
                 <xn-icon [iconClass]="'fa-shopping-cart'"></xn-icon>
             </small>

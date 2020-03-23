@@ -56,20 +56,22 @@
                             [type]="1"></xn-json-editor>
         </td>
         <td class="text-center" style="padding-top:8px;" [ngClass]="item.clazz" (click)="item.showError = true">
-            <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
-            <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
-            <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
+            <div [xnTooltip]="'Teststatus'" [placement]="'top'">
+                <i *xnIfNull="item.result" class="fa fa-question-circle" aria-hidden="true"></i>
+                <i *xnIfFalse="item.result" class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
+            </div>
         </td>
         <td class="button-column">
-            <xn-button (click)="testCase(item)" class="small">
+            <xn-button [xnTooltip]="'Test ausführen'" [placement]="'top'" (click)="testCase(item)" class="small">
                 <i class="fa fa-play" aria-hidden="true"></i></xn-button>
         </td>
         <td class="button-column">
-            <xn-button (click)="deleteCase(item)" class="small">
+            <xn-button [xnTooltip]="'Test löschen'" [placement]="'left'" (click)="deleteCase(item)" class="small">
                 <i class="fa fa-times" aria-hidden="true"></i></xn-button>
         </td>
         <td class="button-column">
-            <xn-button (click)="openInSimulator(item)" class="small">
+            <xn-button [xnTooltip]="'Daten in Simulation übernehmen'" [placement]="'left'" (click)="openInSimulator(item)" class="small">
                 <i class="fa fa-flask" aria-hidden="true"></i></xn-button>
         </td>
     </tr>

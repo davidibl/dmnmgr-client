@@ -5,11 +5,11 @@
         </li>
     </ul>
     <ul class="toolbar">
-        <li (click)="refresh()"><small><xn-icon [iconClass]="'fa-refresh'"></xn-icon></small></li>
-        <li *ngIf="isInFiletreeMode$ | async" (click)="switchViewMode(historyViewmode)">
+        <li [xnTooltip]="'Aktualisieren'" [placement]="'right'" (click)="refresh()"><small><xn-icon [iconClass]="'fa-refresh'"></xn-icon></small></li>
+        <li [xnTooltip]="'Historie'" [placement]="'bottom'" *ngIf="isInFiletreeMode$ | async" (click)="switchViewMode(historyViewmode)">
             <small><xn-icon [iconClass]="'fa-history'"></xn-icon></small>
         </li>
-        <li *ngIf="isInHistoryMode$ | async" (click)="switchViewMode(filetreeViewmode)">
+        <li [xnTooltip]="'Dateien'" [placement]="'bottom'" *ngIf="isInHistoryMode$ | async" (click)="switchViewMode(filetreeViewmode)">
             <small><xn-icon [iconClass]="'fa-file'"></xn-icon></small>
         </li>
     </ul>
