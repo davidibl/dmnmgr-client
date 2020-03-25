@@ -13,6 +13,7 @@ import { EventService } from '../../services/eventService';
 import { BaseEvent } from '../../model/event/event';
 import { EventType } from '../../model/event/eventType';
 import { TabIds } from '../../model/tabIds';
+import { ContextMenuCommand } from '@xnoname/web-components';
 
 export class TestCaseContainer {
     public result: boolean;
@@ -60,6 +61,11 @@ export class TestSuiteComponent implements OnInit {
                 map(testcases => testcases.map(testcase => new TestCaseContainer(testcase))),
                 merge(this._testCasesAfterExecution)
             );
+    }
+
+    public onContextMenuItemClick(command: ContextMenuCommand) {
+        const context = command.getContext() as TestCaseContainer;
+        this[command.command](context);
     }
 
     public addTestCase() {

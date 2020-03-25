@@ -23,15 +23,12 @@
             <th class="data-model-column" xnHeaderColumn>Eingabedaten</th>
             <th class="data-model-column" xnHeaderColumn>Erwartetes Ergebnis</th>
             <th class="button-header-column" xnHeaderColumn><i class="fa fa-tasks" aria-hidden="true"></i></th>
-            <th class="button-header-column" xnHeaderColumn></th>
-            <th class="button-header-column" xnHeaderColumn></th>
-            <th class="button-header-column" xnHeaderColumn></th>
         </xn-data-table>
     </div>
 </div>
 
 <ng-template #testCaseTemplate let-item="item">
-    <tr>
+    <tr [xnContextMenuConnect]="contextmenutest" [context]="item">
         <td>
             <xn-input-form [title]="item.testcase.name"
                         [label]="'Name'"
@@ -62,20 +59,8 @@
                 <i *ngIf="item.result" class="fa fa-check-square" aria-hidden="true"></i>
             </div>
         </td>
-        <td class="button-column">
-            <xn-button [xnTooltip]="'Test ausführen'" [placement]="'top'" (click)="testCase(item)" class="small">
-                <i class="fa fa-play" aria-hidden="true"></i></xn-button>
-        </td>
-        <td class="button-column">
-            <xn-button [xnTooltip]="'Test löschen'" [placement]="'left'" (click)="deleteCase(item)" class="small">
-                <i class="fa fa-times" aria-hidden="true"></i></xn-button>
-        </td>
-        <td class="button-column">
-            <xn-button [xnTooltip]="'Daten in Simulation übernehmen'" [placement]="'left'" (click)="openInSimulator(item)" class="small">
-                <i class="fa fa-flask" aria-hidden="true"></i></xn-button>
-        </td>
     </tr>
-    <tr *ngIf="!item.result && item.showError">
+    <tr [xnContextMenuConnect]="contextmenuresult" [context]="item" *ngIf="!item.result && item.showError">
         <td *ngIf="item.message" colspan="2">Fehler</td>
         <td *ngIf="!item.message" colspan="2">Tatsächliches Ergebnis</td>
         <td *ngIf="item.message" colspan="4">
@@ -87,8 +72,19 @@
                             [hideButtons]="true"
                             [type]="1"></xn-json-editor>
         </td>
-        <td *ngIf="!item.message">
-            <xn-button (click)="takeOverFinalResult(item)" class="small"><i class="fa fa-clone" aria-hidden="true"></i></xn-button>
-        </td>
     </tr>
 </ng-template>
+
+<xn-context-menu #contextmenutest (buttonClick)="onContextMenuItemClick($event)">
+    <xn-context-menu-item [command]="'testCase'">
+        <xn-icon class="mr-1" [iconClass]="'fa-play'"></xn-icon>Test ausführen</xn-context-menu-item>
+    <xn-context-menu-item [command]="'deleteCase'">
+        <xn-icon class="mr-1" [iconClass]="'fa-times'"></xn-icon>Test löschen</xn-context-menu-item>
+    <xn-context-menu-item [command]="'openInSimulator'">
+        <xn-icon class="mr-1" [iconClass]="'fa-flask'"></xn-icon>Testdaten in Simulator übernehmen</xn-context-menu-item>
+</xn-context-menu>
+
+<xn-context-menu #contextmenuresult (buttonClick)="onContextMenuItemClick($event)">
+    <xn-context-menu-item [command]="'takeOverFinalResult'">
+        <xn-icon class="mr-1" [iconClass]="'fa-clone'"></xn-icon>Als Erwartung übernehmen</xn-context-menu-item>
+</xn-context-menu>
