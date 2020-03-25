@@ -2,9 +2,10 @@ import { Component, EventEmitter, Output, ChangeDetectionStrategy, OnInit } from
 import { WorkspaceService } from '../../services/workspaceService';
 import { map, filter, tap } from 'rxjs/operators';
 import { WorkspaceFileModel } from '../../model/workspaceFileModel';
-import { merge, combineLatest, BehaviorSubject, zip } from 'rxjs';
+import { merge, combineLatest, BehaviorSubject } from 'rxjs';
 import { GitService } from '../../services/gitService';
 import { GitCommit } from '../../model/git/gitCommit';
+import { ContextMenuCommand } from '@xnoname/web-components';
 
 @Component({
     selector: 'xn-workspace',
@@ -67,6 +68,12 @@ export class WorkspaceComponent implements OnInit {
 
     public switchViewMode(viewmode: string) {
         this.viewmode.next(viewmode);
+    }
+
+    public onContextMenuItemClick(command: ContextMenuCommand) {
+        if (command.command === 'checkout-commit') {
+            this.checkoutCommit(command.getContext() as GitCommit);
+        }
     }
 
     public checkoutCommit(commit: GitCommit) {

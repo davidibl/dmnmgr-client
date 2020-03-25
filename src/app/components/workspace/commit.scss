@@ -21,26 +21,6 @@
     }
 }
 
-ul.toolbar {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    border-bottom: $tab-header-border-bottom;
-    height: 33px;
-    min-height: 33px;
-    li {
-        color: $tab-header-col-active-font-color;
-        width: 140px;
-        padding: 8px;
-        text-align: left;
-        display: block;
-        display: flex;
-        width: 32px;
-        cursor: pointer;
-    }
-}
-
 .commit-menu {
     max-height: 0px;
     opacity: 0;

@@ -20,6 +20,7 @@ import {
 import { ALL_COMPONENTS } from './components/components';
 import { ALL_PIPES } from './pipes/pipes';
 import { ALL_DOCUMENTATION_COMPONENTS } from './components/documentation/documentationComponents';
+import { ALL_DIRECTIVES } from './directives/directives';
 
 export function startupServiceFactory(startupService: StartupService): Function {
     return () => startupService.load(environment.configuration);
@@ -30,6 +31,7 @@ export function startupServiceFactory(startupService: StartupService): Function 
         AppComponent,
         ...ALL_COMPONENTS,
         ...ALL_PIPES,
+        ...ALL_DIRECTIVES,
     ],
     imports: [
         BrowserModule,

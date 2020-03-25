@@ -26,8 +26,13 @@
         <ul>
             <li class="current-commit mb-1">{{branchname$ | async}}</li>
             <li [class.current-commit]="commit.current" class="commit-entry" *ngFor="let commit of currentHistory$ | async">
-                <xn-commit (commitSelect)="checkoutCommit($event)" [commit]="commit"></xn-commit>
+                <xn-commit [xnContextMenuConnect]="contextmenugit" [context]="commit" [commit]="commit"></xn-commit>
             </li>
         </ul>
     </div>
 </div>
+
+<xn-context-menu #contextmenugit (buttonClick)="onContextMenuItemClick($event)">
+    <xn-context-menu-item [command]="'checkout-commit'">
+        <xn-icon class="mr-1" [iconClass]="'fa-shopping-cart'"></xn-icon>Diesen Stand auschecken</xn-context-menu-item>
+</xn-context-menu>
