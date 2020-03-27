@@ -22,7 +22,7 @@ export class ImportApiDefinitionComponent implements OnInit {
     @ViewChildren(NgForm)
     private _forms: QueryList<NgForm>;
 
-    @ViewChild(AccordionComponent, { static: true })
+    @ViewChild(AccordionComponent)
     private _accordion: AccordionComponent;
 
     private _apiDefinition: OpenApiSchema;

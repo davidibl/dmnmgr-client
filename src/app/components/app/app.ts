@@ -35,19 +35,19 @@ export class AppComponent implements OnInit {
         copyRules:  EventType.COPY_RULES,
     };
 
-    @ViewChild('unsavedChangesDialog', { static: true })
+    @ViewChild('unsavedChangesDialog')
     private _unsavedChangesDialog: DialogComponent;
 
-    @ViewChild('commitMessageDialog', { static: true })
+    @ViewChild('commitMessageDialog')
     private _commitMessageDialog: CommitDialogComponent;
 
-    @ViewChild('newBranchDialog', { static: true })
+    @ViewChild('newBranchDialog')
     private _newBranchDialog: NewBranchDialogComponent;
 
-    @ViewChild('messageDialog', { static: true })
+    @ViewChild('messageDialog')
     private _messageDialog: MessageDialogComponent;
 
-    @ViewChild('dontSaveButton', { static: true })
+    @ViewChild('dontSaveButton')
     private _dontSaveButton: ButtonComponent;
 
     private _error: string;
@@ -110,7 +110,11 @@ export class AppComponent implements OnInit {
             this._eventService.publishEvent(new BaseEvent(eventType));
             return;
         }
-        this[command.command](...command.args);
+        if (!!command.args && command.args.length > 0) {
+            this[command.command](...command.args);
+            return;
+        }
+        this[command.command]();
     }
 
     public openProject(file?: string) {

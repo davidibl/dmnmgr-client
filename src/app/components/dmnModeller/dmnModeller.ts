@@ -71,7 +71,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private _domService = new DomService(this.document, this._renderer);
 
-    @ViewChild('canvas', { static: true })
+    @ViewChild('canvas')
     private _container: ElementRef;
 
     private _modeller: DMNJS;

@@ -1,7 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "downlevelIteration": true,
+    "downlevelIteration": false,
     "importHelpers": true,
     "outDir": "./dist/out-tsc",
     "allowSyntheticDefaultImports": true,
@@ -24,7 +24,7 @@
       "es2017",
       "dom"
     ],
-    "module": "esnext",
+    "module": "es2015",
     "baseUrl": "./"
   }
 }

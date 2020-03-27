@@ -18,7 +18,7 @@ export class CloneRepositoryDialogComponent {
     @ViewChildren(NgForm)
     private _forms: QueryList<NgForm>;
 
-    @ViewChild(AccordionComponent, { static: true })
+    @ViewChild(AccordionComponent)
     private _accordion: AccordionComponent;
 
     public cloneData = new CloneData();

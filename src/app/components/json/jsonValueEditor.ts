@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, HostBinding, Output, EventEmitter } from '@angular/core';
+import { Component, Input, OnChanges, HostBinding, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 import { JsonDatatype } from '../../model/json/jsonDatatypes';
 import { isNull } from '@xnoname/web-components';
@@ -85,6 +85,8 @@ export class JsonValueEditorComponent implements OnChanges {
 
     @Input()
     public valueWithName: { key?: string, value?: any };
+
+    public constructor(private _changeDetector: ChangeDetectorRef) {}
 
     public ngOnChanges() {
         if (this.datamodel && this.value && this.datamodel.properties) {
@@ -178,5 +180,8 @@ export class JsonValueEditorComponent implements OnChanges {
 
     public toggleNode() {
         this.open = !this.open;
+        if (this.open) {
+            this._changeDetector.detectChanges();
+        }
     }
 }

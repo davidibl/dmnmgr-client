@@ -18,7 +18,7 @@ import { TabIds } from '../../model/tabIds';
 })
 export class DmnManagerComponent implements OnInit {
 
-    @ViewChild(TabsComponent, { static: true })
+    @ViewChild(TabsComponent)
     private tabs: TabsComponent;
 
     private stylesheet: any = null;

@@ -96,12 +96,12 @@ export class FooterFlyinComponent {
         }
         this.selectedHint = item;
         this._eventService.publishEvent(new BaseEvent(EventType.JUMP_TO_HINT, item));
-        this._changeDetector.markForCheck();
+        this._changeDetector.detectChanges();
     }
 
     private clearCurrentSelection() {
         this._eventService.publishEvent(new BaseEvent(EventType.CLEAR_HINT));
         this.selectedHint = null;
-        this._changeDetector.markForCheck();
+        this._changeDetector.detectChanges();
     }
 }

@@ -220,7 +220,7 @@ export class FileService {
         const saveOptions = <SaveDialogOptions>{
             filters: [{ name: dialogOptions.typeName, extensions: dialogOptions.extension }],
             title: dialogOptions.title,
-            properties: ['openFile']
+            properties: []
         };
 
         return Observable.create(observer => {
@@ -261,7 +261,7 @@ export class FileService {
         const saveOptions = <SaveDialogOptions>{
             filters: [{ name: 'DMN Projekt Files', extensions: ['dmnapp.json'] }],
             title: 'DMN Projekt speichern',
-            properties: ['openFile']
+            properties: []
         };
 
         return Observable.create(observer => {

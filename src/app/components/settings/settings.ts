@@ -8,7 +8,6 @@ import { Subscription } from 'rxjs';
     selector: 'xn-settings',
     templateUrl: 'settings.html',
     styleUrls: ['settings.scss'],
-    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsComponent implements OnDestroy, OnInit {
 
@@ -19,7 +18,6 @@ export class SettingsComponent implements OnDestroy, OnInit {
 
     public constructor(
         private _configurationService: AppConfigurationService,
-        private _changeDetector: ChangeDetectorRef,
     ) {}
 
     public ngOnInit() {
@@ -30,7 +28,6 @@ export class SettingsComponent implements OnDestroy, OnInit {
                 tap(configuration => this._originalConfiguration = configuration),
                 map(configuration => JSON.parse(JSON.stringify(configuration))),
                 tap(configuration => this.configuration = configuration),
-                tap(_ => this._changeDetector.markForCheck())
             )
             .subscribe();
     }
