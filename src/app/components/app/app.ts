@@ -35,19 +35,19 @@ export class AppComponent implements OnInit {
         copyRules:  EventType.COPY_RULES,
     };
 
-    @ViewChild('unsavedChangesDialog')
+    @ViewChild('unsavedChangesDialog', { static: true })
     private _unsavedChangesDialog: DialogComponent;
 
-    @ViewChild('commitMessageDialog')
+    @ViewChild('commitMessageDialog', { static: true })
     private _commitMessageDialog: CommitDialogComponent;
 
-    @ViewChild('newBranchDialog')
+    @ViewChild('newBranchDialog', { static: true })
     private _newBranchDialog: NewBranchDialogComponent;
 
-    @ViewChild('messageDialog')
+    @ViewChild('messageDialog', { static: true })
     private _messageDialog: MessageDialogComponent;
 
-    @ViewChild('dontSaveButton')
+    @ViewChild('dontSaveButton', { static: true })
     private _dontSaveButton: ButtonComponent;
 
     private _error: string;

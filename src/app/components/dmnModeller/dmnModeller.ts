@@ -43,7 +43,7 @@ import { DataModelService } from '../../services/dataModelService';
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { EventService } from '../../services/eventService';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
-import { DOCUMENT } from '@angular/platform-browser';
+import { DOCUMENT } from "@angular/common";
 import { DmnModelService } from '../../services/dmnModelService';
 import { SaveStateService } from '../../services/saveStateService';
 import { ExportService } from '../../services/exportService';
@@ -71,7 +71,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private _domService = new DomService(this.document, this._renderer);
 
-    @ViewChild('canvas')
+    @ViewChild('canvas', { static: true })
     private _container: ElementRef;
 
     private _modeller: DMNJS;

@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
-import { DOCUMENT } from '@angular/platform-browser';
+import { DOCUMENT } from "@angular/common";
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TestDecisionService } from '../../services/testDecisionService';
@@ -18,7 +18,7 @@ import { TabIds } from '../../model/tabIds';
 })
 export class DmnManagerComponent implements OnInit {
 
-    @ViewChild(TabsComponent)
+    @ViewChild(TabsComponent, { static: true })
     private tabs: TabsComponent;
 
     private stylesheet: any = null;

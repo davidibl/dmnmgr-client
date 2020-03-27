@@ -12,7 +12,7 @@ import { ImportApiDefinitionComponent } from './importWorkflow/importApiDefiniti
 })
 export class JsonEditorComponent implements OnInit {
 
-    @ViewChild(ImportApiDefinitionComponent)
+    @ViewChild(ImportApiDefinitionComponent, { static: true })
     private _importer: ImportApiDefinitionComponent;
 
     private _requestModel: ObjectDefinition;

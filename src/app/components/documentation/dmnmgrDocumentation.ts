@@ -17,7 +17,7 @@ import { ALL_DOCUMENTATION_COMPONENTS } from './documentationComponents';
 })
 export class DmnmgrDocumentationComponent {
 
-    @ViewChild('contentContainer', { read: ViewContainerRef })
+    @ViewChild('contentContainer', { read: ViewContainerRef, static: true })
     private viewContainerRef: ViewContainerRef;
     private factoryResolver: ComponentFactoryResolver;
     private currentComponentRef: ComponentRef<any>;
