@@ -1,8 +1,8 @@
 {
     "name": "dmnmgr-client",
     "version": "0.0.27",
-    "license": "MIT",
-    "author": "David Ibl@xnoname",
+    "license": "Apache 2.0",
+    "author": "David Ibl <david.ibl@xnoname.com>",
     "description": "dmnmgr - A toolkit to work with dmn",
     "main": "main.js",
     "repository": {
