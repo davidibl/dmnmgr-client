@@ -1,0 +1,64 @@
+@import "variables";
+@import "mixins";
+
+$application-menu-background-color:             #fff;
+$application-menu-brand-weight:                   900;
+$application-menu-brand-color:                    $brand-teritiary;
+$brand-name-font:                                 $base-heading-font-family-alternate !default;
+
+:host {
+    position: fixed;
+    width: 100%;
+    top: 0px;;
+    left: 0px;
+    z-index: 1000;
+    background-color: $application-menu-background-color;
+    padding: 0px;
+    margin: 0;
+    border-bottom: 1px solid #E3E5E6;
+    border-top: 1px solid #E3E5E6;
+    border-radius: 0px 0px 5px 5px;
+    z-index: 1005;
+
+    .nav {
+        display: block;
+        justify-content: center;
+        height: 100%;
+        position: relative;
+        padding: 0;
+
+        .brand-bar {
+            height: 25px;
+            float: right;
+            margin-right: 5px;
+
+            img {
+                margin-top: 3px;
+            }
+        }
+
+        .brand-name {
+            float: left;
+            font-family: $brand-name-font;
+            margin-top: -2px;
+            font-weight: $application-menu-brand-weight;
+            color: $application-menu-brand-color;
+        }
+
+        ul {
+            float: left;
+            bottom: 0;
+            margin: 0px auto 0px auto;
+            padding: 0px;
+        }
+
+        ul::ng-deep {
+            > li {
+                float: left;
+                list-style: none;
+                margin-right: 3px;
+                cursor: pointer;
+            }
+        }
+    }
+}

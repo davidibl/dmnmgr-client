@@ -21,15 +21,6 @@ body {
     }
 }
 
-xn-menu-header .nav li a {
-    margin-right: 5px;
-}
-
-xn-menu-header {
-    border-radius: 0px 0px 5px 5px;
-    z-index: 1005;
-}
-
 .full-content-height {
     height: calc(100% - (#{$header-height} + 15px));
 }

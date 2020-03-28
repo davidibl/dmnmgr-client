@@ -68,41 +68,10 @@ $default-link-hover-color:                      $brand-teritiary;
 
 $container-xl:                                  960px;
 $container-horizontal-spacearound:              0px;
-$header-height:                                 10px;
-$responsive-header-height:                      10px;
-$xn-menu-header-height:                         $header-height;
-$xn-menu-header-height-responsive:              $responsive-header-height;
-
-// header
-
-$xn-menu-header-background-color:               #fff;
-$xn-menu-header-padding-left:                   20px;
-$xn-menu-header-padding-right:                  20px;
-$xn-menu-header-padding-bottom:                 9px;
-$xn-menu-header-padding-top:                    5px;
-$xn-menu-header-right:                          initial;
-$xn-menu-header-left:                           50%;
-$xn-menu-header-transform:                      translateX(-50%);
-$xn-menu-header-nav-layout:                     block;
-$xn-menu-header-shadow:                         none;
-$xn-menu-header-brand-weight:                   900;
-$xn-menu-header-brand-color:                    $brand-teritiary;
-
-$menu-brand-bar-float:                          left;
-$menu-list-position:                            initial;
-$menu-list-float:                               right;
-
-$menu-item-color:                               $brand-primary;
-$menu-item-hover-color:                         $brand-primary;
 
 // Scroll to top
 
-$scroll-to-top-button-background-color:         $brand-secondary;
-$scroll-to-top-button-text-color:               $brand-white;
-
 $input-form-background-color: transparent;
-
-
 
 @import "../../node_modules/getbase/src/scss/base/_variables.scss";
 @import "../../node_modules/@xnoname/web-components/module/styles/_variables.scss";
