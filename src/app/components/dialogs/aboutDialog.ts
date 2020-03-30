@@ -1,5 +1,5 @@
 import { Component, Output, EventEmitter, Input } from '@angular/core';
-import { version } from '../../../../package.json';
+import { version, author, dependencies, name } from '../../../../package.json';
 
 @Component({
     selector: 'xn-about-dialog',
@@ -8,7 +8,11 @@ import { version } from '../../../../package.json';
 })
 export class AboutDialogComponent {
 
+    public name = name;
     public version = version;
+    public author = author;
+    public webComponentsVersion = dependencies['@xnoname/web-components'];
+    public versionDmnJs = '7.4.3';
 
     @Input()
     public open = false;
