@@ -22,6 +22,7 @@ import { PluginItem } from '../../model/pluginItem';
 import { Command } from '../../model/command';
 import { NewBranchDialogComponent } from '../dialogs/newBranchDialog';
 import { DmnValidationService } from '../../services/dmnValidationService';
+import { FileToCommit } from '../../model/git/fileToCommit';
 
 @Component({
     selector: 'xn-app-root',
@@ -62,6 +63,10 @@ export class AppComponent implements OnInit {
     public showInfoDialog = false;
     public showCloneRepositoryDialog = false;
     public showChangelogDialog = false;
+
+    public filesToCommit$ = this._gitService
+        .getCurrentChangesInTree()
+        .pipe(map(changes => changes.map(change => FileToCommit.fromChange(change))));
 
     public get error() {
         return this._error;
@@ -323,7 +328,7 @@ export class AppComponent implements OnInit {
             .pipe(
                 take(1),
                 tap(_ => this.openLoadingIndicator('Commit der Änderungen...')),
-                switchMap(message => this._gitService.commitCurrentChanges(message)),
+                switchMap(commit => this._gitService.commitCurrentChanges(commit)),
                 tap(_ => this._eventService.publishEvent(new BaseEvent(EventType.REFRESH_WORKSPACE)))
             );
 
@@ -338,7 +343,7 @@ export class AppComponent implements OnInit {
 
     private closeCommitMessageDialog() {
         this._commitMessageDialog.open = false;
-        this._commitMessageDialog.commitMessage = null;
+        this._commitMessageDialog.reset();
     }
 
     public resetChanges() {

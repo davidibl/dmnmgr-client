@@ -48,7 +48,7 @@
     </div>
 </xn-dialog>
 
-<xn-commit-dialog #commitMessageDialog></xn-commit-dialog>
+<xn-commit-dialog [files]="filesToCommit$ | async" #commitMessageDialog></xn-commit-dialog>
 
 <xn-new-branch-dialog #newBranchDialog></xn-new-branch-dialog>
 

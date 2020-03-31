@@ -1,5 +1,6 @@
 <xn-dialog [closable]="true"
             [open]="open"
+            *ngIf="open"
             (openChange)="onDialogOpenChanged($event)"
             (confirm)="onCommitClicked()"
             (cancel)="onCancelClicked()"
@@ -10,6 +11,15 @@
     </div>
     <div class="dialog-body pb-1">
         <form #commitForm="ngForm">
+            <p>Dateien zum Commit hinzufügen</p>
+            <xn-button class="small mb-1 ml-05" (click)="onSelectAllChanged()">Alle auswählen</xn-button>
+            <xn-list-selector
+                [(ngModel)]="selectedFiles"
+                [displayPropertyPath]="'name'"
+                class="small"
+                name="fileSelector"
+                [items]="files">
+            </xn-list-selector>
             <p>
                 Bitte geben Sie einen Änderungshinweis an. Der Hinweis sollte kurz zusammengefasst
                 den Grund der Anpassung beschreiben.

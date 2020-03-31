@@ -14,6 +14,7 @@ import { isNull } from '@xnoname/web-components';
 import { GitSignatureIdentity } from '../model/git/gitSignatureIdentity';
 import { GitKeys } from '../model/appConfiguration/gitKeys';
 import { CloneData } from '../model/git/cloneData';
+import { NewCommit } from '../model/git/newCommit';
 
 declare var NodeGit;
 
@@ -126,19 +127,27 @@ export class GitService {
             .pipe(map(branchname => branchname === BranchNames.DETACHED));
     }
 
-    public commitCurrentChanges(message: string): Observable<{}> {
+    public commitCurrentChanges(commit: NewCommit): Observable<{}> {
         return this.getCurrentRepository()
             .pipe(
                 take(1),
                 switchMap(repository => toObservable('index', repository.refreshIndex(), { repository: repository })),
-                switchMap(index => toObservable('addAllResult', index.index.addAll('.', 0, null), index)),
+                switchMap(index => this.addPaths(index.index, commit.commitAll, commit.filesToCommit), (index, _) => index),
                 tap(index => index.index.write()),
                 switchMap(index => toObservable('oid', index.index.writeTree(), index)),
                 switchMap(index => toObservable('branchCommit', index.repository.getHeadCommit(), index)),
-                switchMap(data => this.createCommit(data, message)),
-                switchMap(index => toObservable('addAllResultAfter', index.index.addAll('.', 1, null), index)),
+                switchMap(data => this.createCommit(data, commit.message)),
                 switchMap(data => toObservable('index', data.repository.refreshIndex(), data))
             );
+    }
+
+    private addPaths(index: Index, commitAll: boolean, files: FileStatus[]): Observable<any> {
+        if (commitAll) {
+            return from(index.addAll('.', 0, null));
+        }
+        return zip(
+            ...files.map(file => from(index.addByPath(file.path)))
+        );
     }
 
     public createAndCheckoutBranch(branchname: string) {
