@@ -20,10 +20,13 @@ import { TabIds } from '../../model/tabIds';
 })
 export class DmnSimulatorComponent implements OnInit {
 
+    private readonly SESSION_NAME = 'tempObject';
+
+    private _simulatorVisible = false;
     public editorTypes = EditorType;
 
     public dataModel$: Observable<ObjectDefinition>;
-    public valueObject: Object;
+    public valueObject$ = this._sessionDataService.getValue(this.SESSION_NAME, {});
 
     public currentlyTesting = false;
 
@@ -33,17 +36,31 @@ export class DmnSimulatorComponent implements OnInit {
         .getBaseUrlSimulator().pipe(map(url => !!url));
 
     @Input()
-    public isVisisble = false;
-    public simulatorVisisble = false;
+    public isVisible = false;
+
+    public set simulatorVisible(simulatorVisible: boolean) {
+        this._simulatorVisible = simulatorVisible;
+        if (simulatorVisible) {
+            this.valueObject$
+                .pipe(take(1), map(value => Object.assign({}, value)))
+                .subscribe(value => this._sessionDataService.setValue(this.SESSION_NAME, value));
+        }
+    }
+
+    public get simulatorVisible() {
+        return this._simulatorVisible;
+    }
 
     public simulationResult$: Observable<DecisionSimulationResult>;
     public responseModel$: Observable<ObjectDefinition>;
 
-    public constructor(private _dataModelService: DataModelService,
-                       private _sessionDataService: SessionDataService,
-                       private _testDecisionService: TestDecisionService,
-                       private _eventService: EventService,
-                       private _appConfigurationService: AppConfigurationService) {}
+    public constructor(
+        private _dataModelService: DataModelService,
+        private _sessionDataService: SessionDataService,
+        private _testDecisionService: TestDecisionService,
+        private _eventService: EventService,
+        private _appConfigurationService: AppConfigurationService,
+    ) {}
 
     public ngOnInit() {
         this.dataModel$ = this._dataModelService.getDataModel();
@@ -58,12 +75,14 @@ export class DmnSimulatorComponent implements OnInit {
     public simulate() {
 
         this.currentlyTesting = true;
-        this._testDecisionService.simulateDecision(this.valueObject);
+        this.valueObject$
+            .pipe(take(1))
+            .subscribe(value => this._testDecisionService.simulateDecision(value));
     }
 
     public reset() {
         this._testDecisionService.resetTest();
-        this.valueObject = {};
+        this._sessionDataService.setValue('tempObject', null);
     }
 
     public setShowHitsOnly(showHitsOnly: boolean) {
@@ -71,31 +90,28 @@ export class DmnSimulatorComponent implements OnInit {
     }
 
     public openSimulator() {
-        if (this.simulatorVisisble) {
+        if (this.simulatorVisible) {
             this.simulate();
             return;
         }
-        this._sessionDataService
-            .getValue('tempObject', {})
-            .pipe(
-                take(1)
-            )
-            .subscribe(value => this.valueObject = (value) ? value : {});
-        this.simulatorVisisble = true;
+        this.simulatorVisible = true;
     }
 
     public onNewValueObjectCreated(value: Object) {
-        this.valueObject = value;
-        this._sessionDataService.setValue('tempObject', this.valueObject);
+        this._sessionDataService.setValue(this.SESSION_NAME, value);
     }
 
     public takeAsTest(expectedResultData: Object[]) {
-        const newTestData = {
-            testdata: JSON.parse(JSON.stringify(this.valueObject)),
-            expectedResult: expectedResultData
-        };
-        const ev = new BaseEvent('newTest', newTestData);
-        this._eventService.publishEvent(ev);
+        this.valueObject$
+            .pipe(take(1))
+            .subscribe(value => {
+                const newTestData = {
+                    testdata: JSON.parse(JSON.stringify(value)),
+                    expectedResult: expectedResultData
+                };
+                const ev = new BaseEvent(EventType.NEW_TEST, newTestData);
+                this._eventService.publishEvent(ev);
+            });
     }
 
     public openSettings() {

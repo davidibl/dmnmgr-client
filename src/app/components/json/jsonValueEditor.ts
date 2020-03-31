@@ -59,6 +59,7 @@ export class JsonValueEditorComponent implements OnChanges {
             this.objectSetToNull = false;
         }
         this._value = value;
+        this._changeDetector.detectChanges();
     }
 
     public get value() {

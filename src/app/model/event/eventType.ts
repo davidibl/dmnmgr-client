@@ -21,4 +21,5 @@ export class EventType {
     static XML_LOADED = 'xmlLoaded';
     static JUMP_TO_HINT = 'jumpToHint';
     static CLEAR_HINT = 'clearHint';
+    static NEW_TEST: 'newTest';
 }

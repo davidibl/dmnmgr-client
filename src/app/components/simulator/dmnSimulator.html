@@ -1,4 +1,4 @@
-<xn-flyin *ngIf="isVisisble" [(visible)]="simulatorVisisble" [wideFlyin]="false">
+<xn-flyin *ngIf="isVisible" [(visible)]="simulatorVisible" [wideFlyin]="false">
     <div class="wrapper">
         <div class="mt-2" *ngIf="!(urlConfigured$ | async)">
             <a class="dark-gray" (click)="openSettings()">Kein Service URL konfiguriert (Einstellungen)</a>
@@ -17,7 +17,7 @@
                             [requestModel]="dataModel$ | async"
                             class="ml-05"
                             (valueChange)="onNewValueObjectCreated($event)"
-                            [value]="valueObject"></xn-json-editor>
+                            [value]="valueObject$ | async"></xn-json-editor>
             <ng-container *ngIf="simulationResult$ | async as simulationResult">
                 <div class="mt-2" *ngIf="simulationResult">
                     <h4>Ergebnis</h4>
@@ -36,10 +36,10 @@
 </xn-flyin>
 <xn-levitated-button class="simulator-button pointer"
                      [default]="true"
-                     *ngIf="isVisisble"
-                     [disabled]="simulatorVisisble && !(urlConfigured$ | async)"
+                     *ngIf="isVisible"
+                     [disabled]="simulatorVisible && !(urlConfigured$ | async)"
                      [showSpinner]="currentlyTesting"
-                     [forceKeepOpen]="simulatorVisisble"
+                     [forceKeepOpen]="simulatorVisible"
                      (click)="openSimulator()">
     <i class="white fa fa-flask"></i>
     <div class="button-content white"><i class="white fa fa-flask mr-05"></i>Simulation</div>

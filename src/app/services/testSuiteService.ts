@@ -19,7 +19,7 @@ export class TestSuiteService {
 
     public constructor(private _eventService: EventService) {
         this._eventService
-            .getEvent((ev) => ev.type === 'newTest')
+            .getEvent((ev) => ev.type === EventType.NEW_TEST)
             .subscribe(event => {
                 this.addTestCase(event.data.testdata, event.data.expectedResult);
             });

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ReplaySubject, BehaviorSubject, Subject, merge } from 'rxjs';
 import { EventService } from './eventService';
-import { map, take, switchMap } from 'rxjs/operators';
+import { map, take, switchMap, shareReplay } from 'rxjs/operators';
 import { NewViewEvent } from '../model/event/newViewEvent';
 import { EventType } from '../model/event/eventType';
 import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
@@ -19,7 +19,7 @@ export class SessionDataService {
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
             .pipe(map(event => event.data.newArtefactId))
-    );
+    ).pipe(shareReplay(1));
 
     public constructor(
         private _eventService: EventService,
