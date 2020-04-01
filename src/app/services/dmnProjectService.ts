@@ -9,6 +9,7 @@ import { EventService } from './eventService';
 import { EventType } from '../model/event/eventType';
 import { PluginDescriptor } from '../model/plugin/pluginDescriptor';
 import { PluginMetaDescriptor } from '../model/plugin/pluginMetaDescriptor';
+import { TabIds } from '../model/tabIds';
 
 @Injectable()
 export class DmnProjectService {
@@ -59,6 +60,7 @@ export class DmnProjectService {
         this.pluginsConfigured = (project.plugins) ? project.plugins : [];
         this._dmnXmlService.setXml(dmnXml);
         this._eventService.publishEvent({ type: EventType.PROJECT_LOADED, data: true });
+        this._eventService.publishEvent({ type: EventType.JUMP_TO_TAB, data: TabIds.editor });
     }
 
     public createNewProject() {
