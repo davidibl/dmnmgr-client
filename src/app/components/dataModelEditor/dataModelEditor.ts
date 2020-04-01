@@ -13,24 +13,17 @@ import { filter, take } from 'rxjs/operators';
     templateUrl: 'dataModelEditor.html',
     styleUrls: ['dataModelEditor.scss'],
 })
-export class DataModelEditorComponent implements OnInit {
+export class DataModelEditorComponent {
 
     public editorTypes = EditorType;
 
-    public responseModel$: Observable<ObjectDefinition>;
-    public requestModel$: Observable<ObjectDefinition>;
-    public requestModelsExceptCurrent$: Observable<string[]>;
-    public requestModelReferenced$: Observable<string>;
+    public responseModel$ = this._dataModelService.getResponseModel();
+    public requestModel$ = this._dataModelService.getDataModel();
+    public requestModelsExceptCurrent$ = this._dataModelService.getDataModelsExceptCurrent();
+    public requestModelReferenced$ = this._dataModelService.getCurrentDataModelReference();
 
     public constructor(private _dataModelService: DataModelService,
                        private _eventService: EventService) {}
-
-    public ngOnInit() {
-        this.requestModel$ = this._dataModelService.getDataModel();
-        this.responseModel$ = this._dataModelService.getResponseModel();
-        this.requestModelsExceptCurrent$ = this._dataModelService.getDataModelsExceptCurrent();
-        this.requestModelReferenced$ = this._dataModelService.getCurrentDataModelReference();
-    }
 
     public onNewModelCreated(requestModel: ObjectDefinition) {
         this._eventService.publishEvent(new DataChangedEvent(DataChangeType.DATAMODEL));
