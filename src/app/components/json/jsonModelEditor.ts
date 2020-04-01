@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { JsonDatatypeOptions, JsonDatatypes, JsonDatatype } from '../../model/json/jsonDatatypes';
 import { ObjectDefinition } from '../../model/json/objectDefinition';
 
@@ -6,6 +6,7 @@ import { ObjectDefinition } from '../../model/json/objectDefinition';
     selector: 'xn-json-model-editor',
     templateUrl: 'jsonModelEditor.html',
     styleUrls: ['jsonModelEditor.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JsonModelEditorComponent {
 
@@ -25,6 +26,7 @@ export class JsonModelEditorComponent {
     @Input()
     public set datamodel(datamodel: ObjectDefinition) {
         this._datamodel = datamodel;
+        this._changeDetector.detectChanges();
     }
 
     @Output()
@@ -36,6 +38,8 @@ export class JsonModelEditorComponent {
     public get datamodel() {
         return this._datamodel;
     }
+
+    public constructor(private _changeDetector: ChangeDetectorRef) {}
 
     public onDatamodelTypeChange(datatype: JsonDatatypes) {
         if (datatype == this.datamodel.type) { return; }
@@ -105,6 +109,9 @@ export class JsonModelEditorComponent {
 
     public toggleNode() {
         this.open = !this.open;
+        if (this.open) {
+            this._changeDetector.detectChanges();
+        }
     }
 
 }
