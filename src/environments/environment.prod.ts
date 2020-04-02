@@ -6,7 +6,7 @@ export const environment = {
             supported: 'DE'
         },
         endpoints: {
-            dmnbackend: 'http://zeus:11401'
+            dmnbackend: 'http://localhost:11401'
         },
     },
 };

@@ -3,17 +3,22 @@ import { JsonObjectDefinitions } from '../model/json/jsonObjectDefinitions';
 import { JsonDatatype } from '../model/json/jsonDatatypes';
 import { JsonObjectDefinition } from '../model/json/jsonObjectDefinition';
 import { ObjectDefinition } from '../model/json/objectDefinition';
-import { getObjectProperty, ConfigurationService, RestTemplate } from '@xnoname/web-components';
+import { getObjectProperty, RestTemplate } from '@xnoname/web-components';
 import { OpenApiSchema } from '../model/json/openApiSchema';
 import { Observable, of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, take, switchMap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
+import { AppConfigurationService } from './appConfigurationService';
 
 @Injectable()
 export class OpenApiDefinitionService {
 
-    public constructor(private _http: HttpClient,
-                       private _configuration: ConfigurationService) {}
+    private readonly API_PREFIX = 'api';
+
+    public constructor(
+        private _http: HttpClient,
+        private _appConfigurationService: AppConfigurationService,
+    ) {}
 
     public loadOpenApiFromText(text: string): Observable<OpenApiSchema> {
         return of(text)
@@ -24,9 +29,10 @@ export class OpenApiDefinitionService {
 
     public loadOpenApiDefinitionFromUrl(url: string): Observable<OpenApiSchema> {
 
-        return this._http
-            .get<{apiUrl: string, swaggerDefinition: string}>(this.getOpenApiDefinitionUrl(url))
+        return this.getOpenApiDefinitionUrl(url)
             .pipe(
+                switchMap(backendUrl => this._http
+                    .get<{apiUrl: string, swaggerDefinition: string}>(backendUrl)),
                 map(response => response.swaggerDefinition),
                 map(responseString => JSON.parse(responseString))
             );
@@ -107,23 +113,21 @@ export class OpenApiDefinitionService {
         return serializedObject;
     }
 
-    private findRootDefinition(datamodel: JsonObjectDefinitions) {
-        return Object.keys(datamodel)
-            .map(key => datamodel[key])
-            .filter(dataObject => dataObject.root)[0];
-    }
-
     private findReferencedObjectType(path: string, rootObject: JsonObjectDefinitions) {
         const finalPath = path.substring(path.lastIndexOf('/') + 1);
         return getObjectProperty(finalPath, rootObject);
     }
 
-    private getOpenApiDefinitionUrl(url: string) {
-        const baseUrl = this._configuration.getConfigValue<string>('endpoints.dmnbackend');
-        return RestTemplate.create(baseUrl)
-            .withPathParameter('api')
-            .withPathParameter('open-api-definition')
-            .withQueryParameter('api-url', url)
-            .build();
+    private getOpenApiDefinitionUrl(url: string): Observable<string> {
+        return this._appConfigurationService
+            .getBaseUrlSimulator()
+            .pipe(
+                map(baseUrl => RestTemplate.create(baseUrl)
+                        .withPathParameter(this.API_PREFIX)
+                        .withPathParameter('open-api-definition')
+                        .withQueryParameter('api-url', url)
+                        .build()),
+                take(1)
+            );
     }
 }

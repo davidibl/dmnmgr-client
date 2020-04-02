@@ -8,7 +8,7 @@ import { ImportApiDefinitionComponent } from './importWorkflow/importApiDefiniti
     selector: 'xn-json-editor',
     templateUrl: 'jsonEditor.html',
     styleUrls: ['jsonEditor.scss'],
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JsonEditorComponent implements OnInit {
 
