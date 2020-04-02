@@ -2,7 +2,7 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "outDir": "../out-tsc/spec",
-    "baseUrl": "/",
+    "baseUrl": "../",
     "types": [
       "jasmine",
       "node"

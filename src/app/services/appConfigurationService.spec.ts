@@ -8,6 +8,7 @@ import { AppConfig } from '../model/appConfiguration/appConfig';
 export class MockFileService {
     public openOrCreateFile() {}
     public saveFile() { return of(null); }
+    public getUserDataPath(): string { return 'any'; }
 }
 
 describe('AppConfiguration Service', () => {
@@ -23,7 +24,8 @@ describe('AppConfiguration Service', () => {
 
             const mockFileService = <any>new MockFileService();
 
-            const config = {mostRecent: []};
+            const config = {mostRecent: [], simulatorBaseUrl: '', autoValidation: true,
+                gitSignature: { name: null, email: null },  gitKey: { privateKey: null, publicKey: null }};
             const returnValue = {data: config, type: FsResultType.OK};
             spyOn(mockFileService, 'openOrCreateFile').and.returnValue(of(returnValue));
 
@@ -39,7 +41,8 @@ describe('AppConfiguration Service', () => {
         it('should ignore filesystem errors and keep last configuration', async(() => {
             const mockFileService = <any>new MockFileService();
 
-            const config = {mostRecent: []};
+            const config = {mostRecent: [], simulatorBaseUrl: '', autoValidation: true,
+                gitSignature: { name: null, email: null },  gitKey: { privateKey: null, publicKey: null }};
             const returnValue = {data: config, type: FsResultType.OK};
             const resultSubject = new BehaviorSubject(returnValue);
             spyOn(mockFileService, 'openOrCreateFile').and.returnValue(resultSubject);
@@ -54,10 +57,12 @@ describe('AppConfiguration Service', () => {
         it('should take every new configuration pushed by filesystem service', async(() => {
             const mockFileService = <any>new MockFileService();
 
-            const config = {mostRecent: []};
-            const configSecond = <AppConfig>{mostRecent: [{name: 'x'}]};
+            const config = {mostRecent: [], simulatorBaseUrl: '', autoValidation: true,
+                gitSignature: { name: null, email: null },  gitKey: { privateKey: null, publicKey: null }};
+            const configSecond = <AppConfig>{mostRecent: [{name: 'x'}], simulatorBaseUrl: '', autoValidation: true,
+                gitSignature: { name: null, email: null },  gitKey: { privateKey: null, publicKey: null }};
 
-            const returnValue = {data: config, type: FsResultType.OK};
+            const returnValue = {data: <AppConfig>config, type: FsResultType.OK};
             const resultSubject = new BehaviorSubject(returnValue);
             spyOn(mockFileService, 'openOrCreateFile').and.returnValue(resultSubject);
 
@@ -75,7 +80,7 @@ describe('AppConfiguration Service', () => {
 
             const mostRecent1 = {name: '1', path: 'a'};
             const mostRecent2 = {name: '2', path: 'b'};
-            const config = {mostRecent: [mostRecent1, mostRecent2]};
+            const config = {mostRecent: [mostRecent1, mostRecent2], simulatorBaseUrl: ''};
             const returnValue = {data: config, type: FsResultType.OK};
             const resultSubject = new BehaviorSubject(returnValue);
 
