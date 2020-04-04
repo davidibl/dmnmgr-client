@@ -17,6 +17,14 @@ export class WorkingStateService {
         this.currentOpenStates[id] = undefined;
         if (JSON.stringify(this.currentOpenStates) === JSON.stringify({})) {
             this.stateSubject.next(this.baseState);
+        } else {
+            if (!!this.currentOpenStates[id]) {
+                return;
+            }
+            const nextState = Object.keys(this.currentOpenStates)
+                .map(key => this.currentOpenStates[key])
+                .filter(value => !!value)[0];
+            this.stateSubject.next(nextState);
         }
     }
 
