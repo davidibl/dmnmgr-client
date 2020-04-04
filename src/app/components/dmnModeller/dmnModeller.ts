@@ -43,7 +43,7 @@ import { DataModelService } from '../../services/dataModelService';
 import { DmnXmlService } from '../../services/dmnXmlService';
 import { EventService } from '../../services/eventService';
 import { distinctUntilChanged } from 'rxjs/internal/operators/distinctUntilChanged';
-import { DOCUMENT } from "@angular/common";
+import { DOCUMENT } from '@angular/common';
 import { DmnModelService } from '../../services/dmnModelService';
 import { SaveStateService } from '../../services/saveStateService';
 import { ExportService } from '../../services/exportService';
@@ -437,8 +437,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             });
         this._dataModelService
             .getDatatypeByPath(literalExpression.text)
-            .pipe(take(1), map(type => this.getDmnByJsonType(type)), filter(type => !!type))
-            .subscribe(value => literalExpression.typeRef = value);
+            .pipe(
+                take(1),
+                map(type => this.getDmnByJsonType(type)),
+                filter(type => !!type),
+                filter(type => literalExpression.typeRef !== type))
+            .subscribe(value =>
+                this._modeller.getActiveViewer().get('modeling')
+                    .editInputExpressionTypeRef(literalExpression, value));
     }
 
     private initDrdListeners() {
@@ -542,7 +548,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                 .pipe(
                     take(1),
                     map(type => this.getDmnByJsonType(type)),
-                    filter(type => !!type)
+                    filter(type => !!type),
+                    filter(type => column.inputExpression.typeRef !== type)
                 )
                 .subscribe(value => {
                     if (column.inputExpression.typeRef === value) { return; }
