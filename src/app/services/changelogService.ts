@@ -8,6 +8,8 @@ import { Change } from '../model/change';
 @Injectable()
 export class ChangelogService {
 
+    private readonly NEXT_VERSION = 'up to come';
+
     public constructor(private _http: HttpClient) {}
 
     public getChangelog(): Observable<Changelog> {
@@ -18,7 +20,7 @@ export class ChangelogService {
 
     private toChangelog(text: string): Changelog {
         const changelog = new Changelog();
-        changelog.versions.push(new Version('up to come'));
+        changelog.versions.push(new Version(this.NEXT_VERSION));
         const lines = text.split('\n');
         for (let i = 0; i < lines.length; i++) {
             if (!lines[i]) {
