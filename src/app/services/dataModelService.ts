@@ -149,9 +149,12 @@ export class DataModelService {
         }
         return path
             .split('.')
-            .reduce((accumulator, nextPathPart) =>
-                Object.assign(accumulator,
-                    accumulator.properties.find(model => model.name === nextPathPart)), searchObject);
+            .reduce((accumulator, nextPathPart) => {
+                if (!accumulator) { return null; }
+                const nextValue = accumulator.properties.find(model => model.name === nextPathPart);
+                if (!nextValue) { return null; }
+                return Object.assign(accumulator, nextValue);
+            }, searchObject);
     }
 
     private changeView(artefactId: string) {
