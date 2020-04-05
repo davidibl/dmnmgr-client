@@ -5,6 +5,8 @@ import { NewViewEvent } from '../model/event/newViewEvent';
 import { DataModelProject } from '../model/project/dataModelProject';
 import { ObjectDefinition } from '../model/json/objectDefinition';
 import { take } from 'rxjs/operators';
+import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
+import { DecisionDeleteEvent } from '../model/event/decisionDeleteEvent';
 
 const artefactId1 = 'aaa';
 const artefactId2 = 'bbb';
@@ -15,50 +17,59 @@ const enumValues = ['TEST', 'TEST2'];
 const stringDataType = 'string';
 const integerDataType = 'integer';
 
-const dataModel1 = <ObjectDefinition>{ name: modelName1, properties: [
-    { name: 'a', properties: [
-        { name: 'b', properties: [
-            { name: 'c', type: 'enumeration', enum: enumValues },
-            { name: 'e', type: stringDataType }
+let dataModel1;
+let dataModelNewProperty;
+let dataModel2;
+let dataWithModel1WithEnumAndString;
+let dataWithModel1And2;
+let dataWithModel1ReferencingModel2;
+
+function setupDataModels () {
+    dataModel1 = <ObjectDefinition>{ name: modelName1, properties: [
+        { name: 'a', properties: [
+            { name: 'b', properties: [
+                { name: 'c', type: 'enumeration', enum: enumValues },
+                { name: 'e', type: stringDataType }
+            ]}
         ]}
-    ]}
-]};
+    ]};
 
-const dataModelNewProperty = <ObjectDefinition>{ name: modelName1, properties: [
-    { name: 'a', properties: [
-        { name: 'b', properties: [
-            { name: 'c', type: 'enumeration', enum: enumValues },
-            { name: 'e', type: integerDataType }
-        ]},
-        { name: 'x', type: integerDataType }
-    ]}
-]};
+    dataModelNewProperty = <ObjectDefinition>{ name: modelName1, properties: [
+        { name: 'a', properties: [
+            { name: 'b', properties: [
+                { name: 'c', type: 'enumeration', enum: enumValues },
+                { name: 'e', type: integerDataType }
+            ]},
+            { name: 'x', type: integerDataType }
+        ]}
+    ]};
 
-const dataModel2 = <ObjectDefinition>{ name: modelName2, properties: [
-    { name: 'a', properties: [
-        { name: 'b', properties: [
-            { name: 'c', type: 'enumeration', enum: enumValues },
-            { name: 'e', type: stringDataType }
-        ]},
-        { name: 'x', type: integerDataType }
-    ]}
-]};
+    dataModel2 = <ObjectDefinition>{ name: modelName2, properties: [
+        { name: 'a', properties: [
+            { name: 'b', properties: [
+                { name: 'c', type: 'enumeration', enum: enumValues },
+                { name: 'e', type: stringDataType }
+            ]},
+            { name: 'x', type: integerDataType }
+        ]}
+    ]};
 
-const dataWithModel1WithEnumAndString = <DataModelProject>{
-    [artefactId1]: { requestModel: dataModel1 }
-};
+    dataWithModel1WithEnumAndString = <DataModelProject>{
+        [artefactId1]: { requestModel: dataModel1 }
+    };
 
-const dataWithModel1And2 = <DataModelProject>{
-    [artefactId1]: { requestModel: dataModel1 },
-    [artefactId2]: { requestModel: dataModel2 }
-};
+    dataWithModel1And2 = <DataModelProject>{
+        [artefactId1]: { requestModel: dataModel1 },
+        [artefactId2]: { requestModel: dataModel2 }
+    };
 
-const dataWithModel1ReferencingModel2 = <DataModelProject>{
-    [artefactId1]: {
-        requestModel: { name: `#ref/${artefactId2}` }
-    },
-    [artefactId2]: { requestModel: dataModel2 }
-};
+    dataWithModel1ReferencingModel2 = <DataModelProject>{
+        [artefactId1]: {
+            requestModel: { name: `#ref/${artefactId2}` }
+        },
+        [artefactId2]: { requestModel: dataModel2 }
+    };
+}
 
 describe('DataModelService', () => {
 
@@ -66,6 +77,7 @@ describe('DataModelService', () => {
     let eventService: EventService;
 
     beforeEach(async(() => {
+        setupDataModels();
         const eventServiceSpy = jasmine.createSpyObj('EventService', ['publishEvent', 'getEvent']);
 
         TestBed.configureTestingModule({
@@ -125,6 +137,48 @@ describe('DataModelService', () => {
                 expect(model).toEqual(dataModel2);
             });
         }));
+
+        it('should rename model when table is renamed and align referenced models', async(() => {
+
+            cut['_dataModelProject'] = dataWithModel1ReferencingModel2;
+
+            eventService.publishEvent(new NewViewEvent(artefactId2));
+            eventService.publishEvent(new RenameArtefactEvent(artefactId2, 'neuerName'));
+
+            cut.getDataModel().pipe(take(1)).subscribe(model => {
+                expect(model).toEqual(dataModel2);
+            });
+
+            eventService.publishEvent(new NewViewEvent(artefactId1));
+
+            cut.getDataModel().pipe(take(1)).subscribe(model => {
+                expect(model).toEqual(dataModel2);
+            });
+        }));
+
+        it('should delete a decision table data model', async(() => {
+
+            cut['_dataModelProject'] = dataWithModel1And2;
+
+            expect(cut.getDataModelProject()[artefactId2]).not.toBeNull();
+
+            eventService.publishEvent(new NewViewEvent(artefactId2));
+            eventService.publishEvent(new DecisionDeleteEvent(artefactId2));
+
+            expect(cut.getDataModelProject()[artefactId2]).toBeUndefined();
+        }));
+
+        it('should open a new model on set and provide nothing immidiatly', async(() => {
+
+            cut['_dataModelProject'] = dataWithModel1And2;
+            eventService.publishEvent(new NewViewEvent(artefactId2));
+
+            cut.getDataModel().pipe(take(1)).subscribe(model => expect(model).not.toBeNull());
+
+            cut.setDataModelProject(dataWithModel1ReferencingModel2);
+
+            cut.getDataModel().pipe(take(1)).subscribe(model => expect(model).toBeNull());
+        }));
     });
 
     describe('Access Properties', () => {
@@ -135,6 +189,17 @@ describe('DataModelService', () => {
             eventService.publishEvent(new NewViewEvent(artefactId1, true));
 
             cut.getPropertyByPath('a.b.e').subscribe(property => {
+                expect(property.name).toBe('e');
+                expect(property.type).toBe('string');
+            });
+        }));
+
+        it('should provide a property by path of the current model with juel notation', async(() => {
+            cut['_dataModelProject'] = dataWithModel1WithEnumAndString;
+
+            eventService.publishEvent(new NewViewEvent(artefactId1, true));
+
+            cut.getPropertyByPath('${a.b.e}').subscribe(property => {
                 expect(property.name).toBe('e');
                 expect(property.type).toBe('string');
             });
@@ -241,6 +306,24 @@ describe('DataModelService', () => {
             cut.getDataModel()
                 .pipe(take(1))
                 .subscribe(model => expect(model).toEqual(dataModel2));
+        }));
+
+        it('should reset a given reference to new objectmodel when setting it to null', async(() => {
+            cut['_dataModelProject'] = dataWithModel1ReferencingModel2;
+            eventService.publishEvent(new NewViewEvent(artefactId1, true));
+
+            cut.setCurrentDataModelReference(null);
+
+            cut.getDataModel()
+                .pipe(take(1))
+                .subscribe(model => expect(model).toEqual({ type: 'object' }));
+        }));
+
+        it('should provide a datamodel reference', async(() => {
+            cut['_dataModelProject'] = dataWithModel1ReferencingModel2;
+            eventService.publishEvent(new NewViewEvent(artefactId1, true));
+
+            cut.getCurrentDataModelReference().subscribe(ref => expect(ref).toEqual(artefactId2));
         }));
     });
 });

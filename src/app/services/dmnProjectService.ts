@@ -26,10 +26,12 @@ export class DmnProjectService {
         this._pluginsConfiguredSubject.next(this._pluginsConfigured);
     }
 
-    public constructor(private _dmnXmlService: DmnXmlService,
+    public constructor(
+        private _dmnXmlService: DmnXmlService,
         private _testSuiteService: TestSuiteService,
         private _dataModelService: DataModelService,
-        private _eventService: EventService) { }
+        private _eventService: EventService
+    ) { }
 
     public getProject(): Observable<{ xml: string, project: DmnProject }> {
 

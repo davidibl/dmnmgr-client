@@ -42,7 +42,7 @@ export class TestDecisionService {
 
         this._eventService
             .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
-            .subscribe(event => this._currentArtefactId = event.data.artefactId);
+            .subscribe(event => this._currentArtefactId = event.data.newArtefactId);
     }
 
     public simulateDecision(simulationData: Object) {

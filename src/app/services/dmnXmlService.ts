@@ -6,6 +6,8 @@ import { HttpClient } from '@angular/common/http';
 @Injectable()
 export class DmnXmlService {
 
+    private readonly _PATH = 'assets/val.xml';
+
     private modelProvider: XmlProvider[] = [];
     private _dmnXmlSubject = new ReplaySubject<string>(1);
 
@@ -13,7 +15,7 @@ export class DmnXmlService {
 
     public createNewDmn(): void {
         this._http
-            .get('assets/val.xml', { responseType: 'text' })
+            .get(this._PATH, { responseType: 'text' })
             .subscribe(response => {
                 this._dmnXmlSubject.next(response);
             });
