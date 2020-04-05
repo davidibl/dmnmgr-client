@@ -1,6 +1,6 @@
 {
     "name": "dmnmgr-client",
-    "version": "0.0.27",
+    "version": "1.0.0",
     "license": "Apache 2.0",
     "description": "dmnmgr - A toolkit to work with dmn",
     "main": "main.js",
