@@ -1,6 +1,54 @@
+## 1.1.0 (2020-04-05)
+
+* 1.1.0 ([41a38e1](https://github.com/davidibl/dmnmgr-client/commit/41a38e1))
+* FEAT: Add license Information ([cca133e](https://github.com/davidibl/dmnmgr-client/commit/cca133e))
+* FEAT: Added link to Camunda DMN Docs in documentation of modeler ([16a3ebf](https://github.com/davidibl/dmnmgr-client/commit/16a3ebf))
+* FEAT: Angular 9 und Electron 8 Upgrade ([44780cf](https://github.com/davidibl/dmnmgr-client/commit/44780cf))
+* FEAT: Checkout commit now via context menu as a visually cleaner solution ([eb0094d](https://github.com/davidibl/dmnmgr-client/commit/eb0094d))
+* FEAT: Commit of selected files now possible. File selection is done in commit dialog ([1d95e56](https://github.com/davidibl/dmnmgr-client/commit/1d95e56))
+* FEAT: Documentation of GIT commands ([89e91cc](https://github.com/davidibl/dmnmgr-client/commit/89e91cc))
+* FEAT: Extract test commands in testsuite view to context menu ([041e430](https://github.com/davidibl/dmnmgr-client/commit/041e430))
+* FEAT: Finally, the first major release ([eca9415](https://github.com/davidibl/dmnmgr-client/commit/eca9415))
+* FEAT: impoved readme.md ([50cfda8](https://github.com/davidibl/dmnmgr-client/commit/50cfda8))
+* FEAT: Improved Get Started documentation ([0bff120](https://github.com/davidibl/dmnmgr-client/commit/0bff120))
+* FEAT: Improved info-dialog with extended versions ([620b7ae](https://github.com/davidibl/dmnmgr-client/commit/620b7ae))
+* FEAT: Jump to modeller after opening a file ([6a31b37](https://github.com/davidibl/dmnmgr-client/commit/6a31b37))
+* FEAT: Tooltips on icon-only buttons ([ce1b133](https://github.com/davidibl/dmnmgr-client/commit/ce1b133))
+* FEAT: web-components now linked via npmjs and package json improved ([1f3de44](https://github.com/davidibl/dmnmgr-client/commit/1f3de44))
+* FEAT: Working state service provides any other still active state when current state gets invalidate ([58ab8bf](https://github.com/davidibl/dmnmgr-client/commit/58ab8bf))
+* FIX: Add missing hotkey for changelog ([06a251b](https://github.com/davidibl/dmnmgr-client/commit/06a251b))
+* FIX: Added tests to service layer ([3351429](https://github.com/davidibl/dmnmgr-client/commit/3351429))
+* FIX: Better icon for changelog menu entry ([b4d44b8](https://github.com/davidibl/dmnmgr-client/commit/b4d44b8))
+* FIX: Buttons get disabled when loading indicator is shown ([07f7d08](https://github.com/davidibl/dmnmgr-client/commit/07f7d08))
+* FIX: Corrected data binding due to ng9 changes to view caching model ([dde37b6](https://github.com/davidibl/dmnmgr-client/commit/dde37b6))
+* FIX: Fixed bug on datamodelservice and added tests ([6670fae](https://github.com/davidibl/dmnmgr-client/commit/6670fae))
+* FIX: Fixed tests after upgrade ([5616a6b](https://github.com/davidibl/dmnmgr-client/commit/5616a6b))
+* FIX: Generate test coverage report ([131f9fc](https://github.com/davidibl/dmnmgr-client/commit/131f9fc))
+* FIX: If recent file is not found anymore it gets removed from recent files and a error message shows ([6fadb65](https://github.com/davidibl/dmnmgr-client/commit/6fadb65))
+* FIX: remove angular classic http dependency ([bb43f47](https://github.com/davidibl/dmnmgr-client/commit/bb43f47))
+* FIX: Remove environments configuration and migrate remote service call to user configuration ([00b769f](https://github.com/davidibl/dmnmgr-client/commit/00b769f))
+* FIX: Simulation after just opening and working with initial model did not work because of an subscri ([486fbb5](https://github.com/davidibl/dmnmgr-client/commit/486fbb5))
+* FIX: Use modling component from dmnjs to edit datatype of dmn input expression ([ca69b92](https://github.com/davidibl/dmnmgr-client/commit/ca69b92))
+* FIX: Use onPush on JsonModelEditor due to performance improvements ([daa0755](https://github.com/davidibl/dmnmgr-client/commit/daa0755))
+* CHORE: Aligned formatting of documentation ([199441d](https://github.com/davidibl/dmnmgr-client/commit/199441d))
+* CHORE: Angular 8 upgrade ([d3a31ac](https://github.com/davidibl/dmnmgr-client/commit/d3a31ac))
+* CHORE: Extract constants and added tests for changelog service ([f4da05c](https://github.com/davidibl/dmnmgr-client/commit/f4da05c))
+* CHORE: Improved message mapping and tests on error message service ([ab40d6d](https://github.com/davidibl/dmnmgr-client/commit/ab40d6d))
+* CHORE: Remove unused file ([0e8cb0e](https://github.com/davidibl/dmnmgr-client/commit/0e8cb0e))
+* CHORE: Removed dependency to component libraries menu header due to deprecation ([949cccf](https://github.com/davidibl/dmnmgr-client/commit/949cccf))
+* CHORE: Slightly opimized code ([ac5e055](https://github.com/davidibl/dmnmgr-client/commit/ac5e055))
+* IMPROV: Application shows messages when no service url is defined. And no more service url is define ([6ece0fe](https://github.com/davidibl/dmnmgr-client/commit/6ece0fe))
+* IMPROV: Explanation of URL style of basis simulator url ([d388350](https://github.com/davidibl/dmnmgr-client/commit/d388350))
+* IMPROV: Isolate dmnjs typescript typings ([1723d29](https://github.com/davidibl/dmnmgr-client/commit/1723d29))
+* IMPROV: Readme improved with build commands ([fb3af79](https://github.com/davidibl/dmnmgr-client/commit/fb3af79))
+* IMPROV: Write json files formatted ([a1a9d0b](https://github.com/davidibl/dmnmgr-client/commit/a1a9d0b))
+
+
+
 ## <small>0.0.27 (2020-03-02)</small>
 
 * 0.0.27 ([181b877](https://github.com/davidibl/dmnmgr-client/commit/181b877))
+* CHORE: Next changelog ([e87afb4](https://github.com/davidibl/dmnmgr-client/commit/e87afb4))
 * FIX: automatically generate changelog on release ([297f7bb](https://github.com/davidibl/dmnmgr-client/commit/297f7bb))
 * FEAT: New changelog dialog and changelog reflecting git commit messages ([b5759ad](https://github.com/davidibl/dmnmgr-client/commit/b5759ad))
 
@@ -9,6 +57,11 @@
 ## <small>0.0.26 (2020-03-02)</small>
 
 * 0.0.26 ([901beb2](https://github.com/davidibl/dmnmgr-client/commit/901beb2))
+
+
+
+## <small>0.0.25 (2020-03-01)</small>
+
 * IMPROV: Correct reset of marked rules in modelere after revalidation ([6149023](https://github.com/davidibl/dmnmgr-client/commit/6149023))
 * IMPROV: Improved HTML and format of docs ([2255607](https://github.com/davidibl/dmnmgr-client/commit/2255607))
 * IMPROV: Transformed status footer to onPush component to improve performance ([774d857](https://github.com/davidibl/dmnmgr-client/commit/774d857))
