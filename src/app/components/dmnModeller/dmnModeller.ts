@@ -281,7 +281,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
             this.clearSearch();
-            const newViewEvent = new NewViewEvent(event.activeView.element.id);
+            const newViewEvent = new NewViewEvent(event.activeView.element.id, true);
             if (event.activeView.type !== 'decisionTable') {
                 newViewEvent.data.isDecisionTable = false;
             }
@@ -331,8 +331,8 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.refreshTableColumnsList();
         this.checkAllErrors();
 
-        const ev = new NewViewEvent(this._modeller._activeView.element.id);
-        if (this._modeller._activeView.element.$type !== 'decisionTable') {
+        const ev = new NewViewEvent(this._modeller._activeView.element.id, true);
+        if ((<any>this._modeller._activeView).type !== 'decisionTable') {
             ev.data.isDecisionTable = false;
         }
         this._internalEventService.next({

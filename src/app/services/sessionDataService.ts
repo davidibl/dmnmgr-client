@@ -12,18 +12,20 @@ export class SessionDataService {
     private _sessionData = new Map<string, Map<String, BehaviorSubject<Object>>>();
     private _permanentData = new Map<string, Subject<Object>>();
 
-    private _artefactId = merge(
-        this._eventService
-            .getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
-            .pipe( map(event => event.data.artefactId)),
-        this._eventService
-            .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
-            .pipe(map(event => event.data.newArtefactId))
-    ).pipe(shareReplay(1));
+    private _artefactId = new ReplaySubject<string>(1);
 
     public constructor(
         private _eventService: EventService,
-    ) {}
+    ) {
+        merge(
+            this._eventService
+                .getEvent<NewViewEvent>((ev) => ev.type === EventType.NEW_VIEW)
+                .pipe( map(event => event.data.artefactId)),
+            this._eventService
+                .getEvent<RenameArtefactEvent>((ev) => ev.type === EventType.RENAME_ARTEFACT)
+                .pipe(map(event => event.data.newArtefactId))
+        ).pipe(shareReplay(1)).subscribe(artefactId => this._artefactId.next(artefactId));
+    }
 
     public setValue(key: string, value: Object) {
         this._artefactId
