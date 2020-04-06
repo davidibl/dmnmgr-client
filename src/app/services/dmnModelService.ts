@@ -7,9 +7,40 @@ import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
 import { DmnModdleEventType, DmnModdleEventTypes } from '../model/dmn/dmnModdleEventType';
 import { DmnModdleEvent } from '../model/dmn/dmnModdleEvent';
 import { DmnModdleElement } from '../model/dmn/dmnModdleElement';
+import { DataModelService } from './dataModelService';
+import { Modeling } from '../model/dmn/modeling';
+import { take, map, filter } from 'rxjs/operators';
+import { DmnDatatypeMapping } from '../model/dmn/dmnDatatypeMapping';
+import { JsonDatatypes } from '../model/json/jsonDatatypes';
 
 @Injectable()
 export class DmnModelService {
+
+    public constructor(private _dataModelService: DataModelService) {}
+
+    public updateInputColumns(modeling: Modeling, decisionTable: DmnModdleTable) {
+        if (!decisionTable?.input) { return; }
+
+        decisionTable.input.forEach(column => {
+            this.setDataModelOnInput(modeling, column, column.inputExpression);
+        });
+    }
+
+    public setDataModelPropertiesOnColumns(modeling: Modeling, event: DmnModdleEvent) {
+        const literalExpression = this.getElementByTypeFromEvent(event, DmnType.LITERAL_EXPRESSION);
+        const inputClause = this.getElementByTypeFromEvent(event, DmnType.INPUT_CLAUSE);
+
+        this.setDataModelOnInput(modeling, inputClause, literalExpression);
+    }
+
+    public setInputValueRestriction(modeling: Modeling, inputClause: DmnModdleElement, values: string[]) {
+        if (!inputClause) { return; }
+        if (!!inputClause.inputValues && inputClause.inputValues.text === `"${values.join('","')}"`) {
+            return;
+        }
+
+        modeling.editAllowedValues(inputClause, values.map(value => `"${value}"`));
+    }
 
     public importData(data: string[][], moddle: MyDmnModdle, decisionTable: DmnModdleTable, replaceRules = false) {
 
@@ -95,5 +126,33 @@ export class DmnModelService {
 
     private hasValue(csvCell: string): boolean {
         return !!csvCell && csvCell.length > 0;
+    }
+
+    private getDmnByJsonType(jsonType: JsonDatatypes) {
+        return Object.getOwnPropertyNames(DmnDatatypeMapping)
+            .find(name => DmnDatatypeMapping[name] === jsonType);
+    }
+
+    private getElementByTypeFromEvent(event: DmnModdleEvent, type: string) {
+        return event.elements.find(element => element.$type === type);
+    }
+
+    private setDataModelOnInput(modeling: Modeling, inputClause: DmnModdleElement, literalExpression: DmnModdleElement) {
+        this._dataModelService
+            .getEnumValuesByPath(literalExpression.text)
+            .pipe(take(1))
+            .subscribe(values => {
+                this.setInputValueRestriction(modeling, inputClause, values);
+            });
+        this._dataModelService
+            .getDatatypeByPath(literalExpression.text)
+            .pipe(
+                take(1),
+                map(type => this.getDmnByJsonType(type)),
+                filter(type => !!type),
+                filter(type => literalExpression.typeRef !== type))
+            .subscribe(value =>
+                modeling
+                    .editInputExpressionTypeRef(literalExpression, value));
     }
 }

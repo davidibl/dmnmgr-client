@@ -11,7 +11,7 @@ import {
     ChangeDetectionStrategy,
 } from '@angular/core';
 import { ReplaySubject, BehaviorSubject, } from 'rxjs';
-import { take, filter, map, debounceTime, } from 'rxjs/operators';
+import { take, filter, debounceTime, } from 'rxjs/operators';
 
 import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
 
@@ -28,7 +28,7 @@ import { DmnModdleEventType } from '../../model/dmn/dmnModdleEventType';
 
 
 import { ObjectDefinition } from '../../model/json/objectDefinition';
-import { JsonDatatype, JsonDatatypes } from '../../model/json/jsonDatatypes';
+import { JsonDatatype } from '../../model/json/jsonDatatypes';
 import { NewViewEvent } from '../../model/event/newViewEvent';
 import { RenameArtefactEvent } from '../../model/event/renameArtefactEvent';
 import { DecisionDeleteEvent } from '../../model/event/decisionDeleteEvent';
@@ -249,7 +249,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
         this._dataModelService
             .getDataModel()
-            .subscribe(datamodel => this.updateInputColumns(datamodel));
+            .subscribe(datamodel => this.updateInputColumns());
 
         this._eventService
             .getEvent((event) => event.type === EventType.IMPORT_DATA)
@@ -427,24 +427,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private setDataModelPropertiesOnColumns(event: DmnModdleEvent) {
-        const literalExpression = this.getElementByType(event, DmnType.LITERAL_EXPRESSION);
-        const inputClause = this.getElementByType(event, DmnType.INPUT_CLAUSE);
-        this._dataModelService
-            .getEnumValuesByPath(literalExpression.text)
-            .pipe(take(1))
-            .subscribe(values => {
-                this.setInputValueRestriction(inputClause, values);
-            });
-        this._dataModelService
-            .getDatatypeByPath(literalExpression.text)
-            .pipe(
-                take(1),
-                map(type => this.getDmnByJsonType(type)),
-                filter(type => !!type),
-                filter(type => literalExpression.typeRef !== type))
-            .subscribe(value =>
-                this._modeller.getActiveViewer().get('modeling')
-                    .editInputExpressionTypeRef(literalExpression, value));
+        this._dmnModelService.setDataModelPropertiesOnColumns(this.getModeling(), event);
     }
 
     private initDrdListeners() {
@@ -533,66 +516,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._dataModelService.setResponseModel(responseModel);
     }
 
-    private updateInputColumns(datamodel: ObjectDefinition) {
-        if (!this.inputColumnsPresent(this._modeller)) { return; }
-
-        this._modeller._activeView.element.decisionTable.input.forEach(column => {
-            this._dataModelService
-                .getEnumValuesByPath(column.inputExpression.text)
-                .pipe(take(1))
-                .subscribe(values => {
-                    this.setInputValueRestriction(column, values);
-                });
-            this._dataModelService
-                .getDatatypeByPath(column.inputExpression.text)
-                .pipe(
-                    take(1),
-                    map(type => this.getDmnByJsonType(type)),
-                    filter(type => !!type),
-                    filter(type => column.inputExpression.typeRef !== type)
-                )
-                .subscribe(value => {
-                    if (column.inputExpression.typeRef === value) { return; }
-                    this._modeller
-                        .getActiveViewer()
-                        .get('modeling')
-                        .editInputExpressionTypeRef(column.inputExpression, value);
-                });
-        });
-        this._modeller._updateViews();
+    private updateInputColumns() {
+        this._dmnModelService.updateInputColumns(
+            this.getModeling(), this._modeller?._activeView?.element?.decisionTable);
     }
 
-    private isInputExpressionChanged(event: DmnModdleEvent) {
-        return (event.elements && event.elements.length > 1 &&
-            !!event.elements.find(element => element.$type === DmnType.LITERAL_EXPRESSION));
-    }
-
-    private getElementByType(event: DmnModdleEvent, type: string) {
-        return event.elements.find(element => element.$type === type);
-    }
-
-    private setInputValueRestriction(inputClause: DmnModdleElement, values: string[]) {
-        if (!inputClause) { return; }
-        if (!!inputClause.inputValues && inputClause.inputValues.text === `"${values.join('","')}"`) {
-            return;
-        }
-        this._modeller
-            .getActiveViewer()
-            .get('modeling')
-            .editAllowedValues(inputClause, values.map(value => `"${value}"`));
-    }
-
-    private getDmnByJsonType(jsonType: JsonDatatypes) {
-        return Object.getOwnPropertyNames(DmnDatatypeMapping)
-            .find(name => DmnDatatypeMapping[name] === jsonType);
-    }
-
-    private inputColumnsPresent(modeller: DMNJS) {
-        return (!!this._modeller &&
-            !!this._modeller._activeView &&
-            !!this._modeller._activeView.element &&
-            !!this._modeller._activeView.element.decisionTable &&
-            !!this._modeller._activeView.element.decisionTable.input);
+    private getModeling() {
+        return this._modeller.getActiveViewer().get('modeling');
     }
 
     private searchRows(): void {
