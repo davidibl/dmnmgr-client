@@ -82,7 +82,7 @@ describe('Csv Export Service', () => {
                 rule: rules
             };
 
-            const csv = cut.exportRules(rules);
+            const csv = cut.exportTable(table);
             expect(csv).toEqual('test;Hallo;Hui\r\ntest;Hallo;Hui\r\ntest;Hallo;Hui\r\n');
         }));
     });

@@ -68,11 +68,6 @@ export class TestSuiteService {
         return this._testsuiteProject[this._currentArtefactId];
     }
 
-    private getCurrentTestsuite() {
-        if (!this._testsuiteProject) { return null; }
-        return this._testsuiteProject[this._currentArtefactId];
-    }
-
     private addTestCaseToTestSuite(testsuite: Testsuite, nextName: string, testdata: Object, expectedResult: Object) {
         testsuite.tests.push(this.createTest(nextName, testdata, expectedResult));
     }

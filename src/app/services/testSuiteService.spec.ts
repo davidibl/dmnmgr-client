@@ -1,65 +1,124 @@
-import { TestBed, async } from '@angular/core/testing';
+import { TestBed, async, tick, fakeAsync } from '@angular/core/testing';
 import { TestSuiteService } from './testSuiteService';
 import { EventService } from './eventService';
 import { of } from 'rxjs';
 import { BaseEvent } from '../model/event/event';
 import { take } from 'rxjs/operators';
+import { NewViewEvent } from '../model/event/newViewEvent';
+import { RenameArtefactEvent } from '../model/event/renameArtefactEvent';
+import { DecisionDeleteEvent } from '../model/event/decisionDeleteEvent';
+import { EventType } from '../model/event/eventType';
 
+let cut: TestSuiteService;
+let eventService: EventService;
+
+const initialTestsuiteFirstTestName = 'test1';
+const secondSuiteFirstTestName = 'testsecondSuite';
+let initialTestsuiteProject;
+let emptyTestSuiteProject;
 
 describe('Testsuite Service', () => {
     beforeEach(async(() => {
 
+        initialTestsuiteProject = {
+            aaa: { tests: [{data: null, expectedData: null, name: initialTestsuiteFirstTestName}]},
+            bbb: { tests: [{data: null, expectedData: null, name: secondSuiteFirstTestName}]}
+        };
+
+        emptyTestSuiteProject = {
+            aaa: { tests: [] }
+        };
+
         TestBed.configureTestingModule({
+            providers: [
+                TestSuiteService,
+                EventService
+            ]
         }).compileComponents();
+
+        cut = TestBed.inject(TestSuiteService);
+        eventService = TestBed.inject(EventService);
     }));
 
     describe('initialize', () => {
 
-        it('should subscribe to new test event', async(() => {
-            const ev = new BaseEvent('', {});
-
-            const eventService = new EventService();
-            const getEventSpy = spyOn(eventService, 'getEvent').and.returnValue(of(ev));
-            const cut = new TestSuiteService(eventService);
-            expect(eventService.getEvent).toHaveBeenCalledTimes(4);
-        }));
-
         it('should be not null after construction', async(() => {
-            const ev = new BaseEvent('', {});
-
-            const eventService = new EventService();
-            const getEventSpy = spyOn(eventService, 'getEvent').and.returnValue(of(ev));
-            const cut = new TestSuiteService(eventService);
             expect(cut).not.toBeNull();
         }));
+    });
 
-        it('should be not null after construction', async(() => {
-            const ev = new BaseEvent('', {});
+    describe('Event Handler', () => {
 
-            const eventService = new EventService();
-            spyOn(eventService, 'getEvent').and.returnValue(of(ev));
-            const cut = new TestSuiteService(eventService);
-            expect(cut).not.toBeNull();
+        it('should handle new view event and change current testsuite', async(() => {
+            cut.setTestSuiteProject(initialTestsuiteProject);
+            eventService.publishEvent(new NewViewEvent('aaa'));
+            cut.getTestSuite().pipe(take(1)).subscribe(testsuite =>
+                expect(testsuite.tests[0].name).toEqual(initialTestsuiteFirstTestName));
+
+            eventService.publishEvent(new NewViewEvent('bbb'));
+
+            cut.getTestSuite().pipe(take(1)).subscribe(testsuite =>
+                expect(testsuite.tests[0].name).toEqual(secondSuiteFirstTestName));
+        }));
+
+        it('should handle rename event and rename current view', async(() => {
+            cut.setTestSuiteProject(initialTestsuiteProject);
+            eventService.publishEvent(new NewViewEvent('aaa'));
+
+            const newName = 'zzz';
+            eventService.publishEvent(new RenameArtefactEvent('aaa', newName));
+            cut.getTestSuite().pipe(take(1)).subscribe(testsuite =>
+                expect(testsuite.tests[0].name).toEqual(initialTestsuiteFirstTestName));
+
+            expect(cut.getTestSuiteProject()[newName]).not.toBeNull();
+            expect(cut.getTestSuiteProject()['aaa']).toBeUndefined();
+            expect(cut.getTestSuiteProject()[newName].tests[0].name).toEqual(initialTestsuiteFirstTestName);
+        }));
+
+        it('should handle delete event and delete corresponding testsuite', async(() => {
+            cut.setTestSuiteProject(initialTestsuiteProject);
+            eventService.publishEvent(new NewViewEvent('aaa'));
+
+            eventService.publishEvent(new DecisionDeleteEvent('aaa'));
+            cut.getTestSuite().pipe(take(1)).subscribe(testsuite =>
+                expect(testsuite.tests[0].name).toEqual(initialTestsuiteFirstTestName));
+
+            expect(cut.getTestSuiteProject()['aaa']).toBeUndefined();
+        }));
+
+        it('should handle new test event and add the test', async(() => {
+            cut.setTestSuiteProject(emptyTestSuiteProject);
+            eventService.publishEvent(new NewViewEvent('aaa'));
+
+            const newTest = {testdata: { bla: '1'}, expectedResult: {blubb: 2}};
+            eventService.publishEvent(new BaseEvent(EventType.NEW_TEST, newTest));
+
+            cut.getTestSuite()
+                .subscribe(result => expect(result.tests[0]).not.toBeNull());
+        }));
+
+        it('should create a suite with id "null" for some unknown reason (Refactoring?)', async(() => {
+            cut.setTestSuiteProject(emptyTestSuiteProject);
+            eventService.publishEvent(new NewViewEvent('aaa'));
+
+            expect(Object.keys(cut.getTestSuiteProject()).length).toBe(2);
+            expect(Object.keys(cut.getTestSuiteProject())[1]).toEqual('null');
         }));
     });
 
     describe('tests', () => {
 
-        let cut;
-
-        beforeEach(() => {
-            const ev = new BaseEvent('', {});
-
-            const eventService = new EventService();
-            spyOn(eventService, 'getEvent').and.returnValue(of(ev));
-            cut = new TestSuiteService(eventService);
-        });
-
         it('should create testsuite when adding a test', async(() => {
+            eventService.publishEvent(new NewViewEvent('aaa'));
             cut.addTestCase({}, {});
             expect(cut.getTestSuite()).not.toBeNull();
             cut.getTestSuite()
                 .subscribe(result => expect(result).not.toBeNull());
+        }));
+
+        it('should set a testsuite project', async(() => {
+            cut.setTestSuiteProject(initialTestsuiteProject);
+            expect(cut['_testsuiteProject']).toEqual(initialTestsuiteProject);
         }));
 
         it('added test should be present', async(() => {

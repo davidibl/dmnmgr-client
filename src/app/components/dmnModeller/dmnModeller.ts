@@ -646,7 +646,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private addRulesByCSV(csvData: string) {
         const modeling = this._modeller.getActiveViewer().get('modeling');
-        console.log(modeling);
         csvData.split(CsvExportService.ROW_DELIMITER)
             .filter(line => !!line && line.length > 0)
             .forEach(line => {
