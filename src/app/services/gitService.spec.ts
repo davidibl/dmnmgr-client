@@ -3,7 +3,17 @@ import { GitService } from './gitService';
 import { ElectronService } from './electronService';
 import { AppConfigurationService } from './appConfigurationService';
 import { EventService } from './eventService';
-import { Repository, Commit, Diff, Signature, StatusFile, Index, Oid, Reference, Remote } from 'nodegit';
+import {
+    Repository,
+    Commit,
+    Diff,
+    Signature,
+    StatusFile,
+    Index,
+    Oid,
+    Reference,
+    Remote
+} from 'nodegit';
 import { HistoryEventEmitter } from 'nodegit/commit';
 import { of } from 'rxjs';
 import { EventType } from '../model/event/eventType';
@@ -43,8 +53,9 @@ export class GitMockBuilder {
     public index: jasmine.SpyObj<Index> = jasmine.createSpyObj('Index', ['addAll', 'addByPath',
             'write', 'writeTree']);
     public repositoryObj: jasmine.SpyObj<Repository> = jasmine.createSpyObj('Repository',
-        ['getCurrentBranch', 'getMasterCommit', 'getStatusExt', 'getHeadCommit',
-        'refreshIndex', 'createCommit', 'createBranch', 'checkoutBranch', 'getRemote']);
+        ['getCurrentBranch', 'getMasterCommit', 'getStatusExt', 'getHeadCommit', 'fetchAll',
+        'refreshIndex', 'createCommit', 'createBranch', 'checkoutBranch', 'getRemote',
+        'getBranch', 'mergeBranches']);
     public remote: jasmine.SpyObj<Remote> = jasmine.createSpyObj('Remote', ['push']);
 
     public masterCommitObj = this.createCommit(this.commits[0].message, this.commits[0].paths);
@@ -150,6 +161,10 @@ let eventService: EventService;
 let fakeRemote;
 let repository;
 let signature;
+let oid;
+let branch;
+let fakeClone;
+let fakeReset;
 
 let fakeNodeGit;
 let electronService;
@@ -164,10 +179,18 @@ describe('GitService', () => {
         fakeRemote = jasmine.createSpyObj('Remote', ['getGlobal']);
         repository = jasmine.createSpyObj('Repository', ['openExt']);
         signature = jasmine.createSpyObj('Signature', ['create']);
+        oid = jasmine.createSpyObj('Oid', ['fromString']);
+        fakeClone = jasmine.createSpy('Clone').and.returnValue(Promise.resolve('x'));
+        fakeReset = jasmine.createSpy('Reset').and.returnValue(Promise.resolve(null));
+        branch = jasmine.createSpyObj('Branch', ['delete']);
 
         fakeNodeGit = {
             Repository: repository,
             Signature: signature,
+            Oid: oid,
+            Clone: fakeClone,
+            Branch: branch,
+            Reset: fakeReset,
         };
         electronService = {
             remote: fakeRemote
@@ -457,6 +480,131 @@ describe('GitService', () => {
 
             expect(mockBuilder.repositoryObj.checkoutBranch).toHaveBeenCalledTimes(1);
             expect(mockBuilder.repositoryObj.checkoutBranch).toHaveBeenCalledWith('master');
+        }));
+
+        it('should checkout checkout a concrete commit as detached head', fakeAsync(() => {
+
+            oid.fromString.and.returnValue('test');
+            const myReference = <Reference>{};
+            mockBuilder.repositoryObj.checkoutBranch.and.returnValue(Promise.resolve(null));
+            mockBuilder.repositoryObj.createBranch.and.returnValue(Promise.resolve(myReference));
+
+            mockBuilder.withBranchname(masterBranchname).build();
+            cut.openRepository('.');
+
+            tick(1);
+
+            mockBuilder.commitWalkerCommit();
+            mockBuilder.commitWalkerEnd();
+
+            let refreshEvent;
+            eventService.getEvent(ev => ev.type === EventType.REFRESH_CURRENT_FILE).subscribe(ev => refreshEvent = ev);
+
+            const commit = {id: '1', changedFiles: null, committer: null, current: null, message: null, sha: null};
+            cut.checkoutCommit(commit);
+
+            tick(1);
+
+            expect(mockBuilder.repositoryObj.checkoutBranch).toHaveBeenCalledTimes(1);
+            expect(oid.fromString).toHaveBeenCalledWith(commit.id);
+            expect(mockBuilder.repositoryObj.checkoutBranch).toHaveBeenCalledWith(myReference);
+            expect(mockBuilder.repositoryObj.createBranch).toHaveBeenCalledTimes(1);
+            expect(refreshEvent).not.toBeNull();
+        }));
+
+        it('should clone a repository', fakeAsync(() => {
+
+            const gitKeys = {privateKey: 'aaa', publicKey: 'bbb'};
+            configurationService.getGitKeys.and.returnValue(of(gitKeys));
+
+            const cloneData = {destinationPath: 'c:\\', repositoryUrl: 'ssh://xx.de'};
+            cut.cloneRepository(cloneData).subscribe();
+
+            tick(1);
+
+            expect(fakeClone).toHaveBeenCalledTimes(1);
+            expect(fakeClone).toHaveBeenCalledWith(cloneData.repositoryUrl, cloneData.destinationPath, {fetchOpts: gitKeys});
+        }));
+
+        it('should switch back to master and delete detached head branch', fakeAsync(() => {
+
+            const myReference = <Reference>{};
+            mockBuilder.repositoryObj.checkoutBranch.and.returnValue(Promise.resolve(null));
+            mockBuilder.repositoryObj.getBranch.and.returnValue(Promise.resolve(myReference));
+
+            mockBuilder.withBranchname(masterBranchname).build();
+            cut.openRepository('.');
+
+            tick(1);
+
+            mockBuilder.commitWalkerCommit();
+            mockBuilder.commitWalkerEnd();
+
+            let refreshEvent;
+            eventService.getEvent(ev => ev.type === EventType.REFRESH_CURRENT_FILE).subscribe(ev => refreshEvent = ev);
+
+            cut.checkoutMasterAndDeleteDetached();
+
+            tick(1);
+
+            expect(branch.delete).toHaveBeenCalledTimes(1);
+            expect(branch.delete).toHaveBeenCalledWith(myReference);
+            expect(refreshEvent).not.toBeNull();
+        }));
+
+        it('should reset current changes hard', fakeAsync(() => {
+
+            mockBuilder.withBranchname(masterBranchname).build();
+            cut.openRepository('.');
+
+            tick(1);
+
+            mockBuilder.commitWalkerCommit();
+            mockBuilder.commitWalkerEnd();
+
+            let refreshEvent;
+            eventService.getEvent(ev => ev.type === EventType.REFRESH_CURRENT_FILE).subscribe(ev => refreshEvent = ev);
+
+            cut.resetCurrentChanges();
+
+            tick(1);
+
+            expect(fakeReset).toHaveBeenCalledTimes(1);
+            expect(fakeReset).toHaveBeenCalledWith(mockBuilder.repositoryObj, mockBuilder.masterCommitObj, 3);
+            expect(refreshEvent).not.toBeNull();
+        }));
+
+        it('should fetch from remote and merge the files from origin', fakeAsync(() => {
+
+            const gitKeys = {privateKey: 'aaa', publicKey: 'bbb'};
+            const gitSignature = {name: 'david', email: 'david'};
+            configurationService.getGitKeys.and.returnValue(of(gitKeys));
+            configurationService.getGitSignature.and.returnValue(of(gitSignature));
+
+            mockBuilder.repositoryObj.fetchAll.and.returnValue(Promise.resolve(null));
+            const mergeResult = 'mergeresult';
+            mockBuilder.repositoryObj.mergeBranches.and.returnValue(Promise.resolve(mergeResult));
+
+            const anyBranchName = 'testbranch';
+            mockBuilder.withBranchname(anyBranchName).build();
+            cut.openRepository('.');
+
+            tick(1);
+
+            mockBuilder.commitWalkerCommit();
+            mockBuilder.commitWalkerEnd();
+
+            let refreshEvent;
+            eventService.getEvent(ev => ev.type === EventType.REFRESH_CURRENT_FILE).subscribe(ev => refreshEvent = ev);
+
+            cut.pullFromRemote().subscribe();
+
+            tick(1);
+
+            expect(mockBuilder.repositoryObj.fetchAll).toHaveBeenCalledTimes(1);
+            expect(mockBuilder.repositoryObj.fetchAll).toHaveBeenCalledWith(gitKeys);
+            expect(mockBuilder.repositoryObj.mergeBranches).toHaveBeenCalledTimes(1);
+            expect(mockBuilder.repositoryObj.mergeBranches).toHaveBeenCalledWith(anyBranchName, `origin/${anyBranchName}`);
         }));
     });
 });
