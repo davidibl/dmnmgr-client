@@ -15,7 +15,7 @@ export class DeploymentService {
             .getXmlModels('editor')
             .pipe(
                 take(1),
-                switchMap(modelXml => this._http.post(url, { xml: modelXml, deloymentName: deloymentName }))
+                switchMap(modelXml => this._http.post(url, { xml: modelXml, deploymentName: deloymentName }))
             );
     }
 }

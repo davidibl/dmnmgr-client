@@ -1,7 +1,6 @@
-import { TestBed, async, tick, fakeAsync } from '@angular/core/testing';
+import { TestBed, async } from '@angular/core/testing';
 import { TestSuiteService } from './testSuiteService';
 import { EventService } from './eventService';
-import { of } from 'rxjs';
 import { BaseEvent } from '../model/event/event';
 import { take } from 'rxjs/operators';
 import { NewViewEvent } from '../model/event/newViewEvent';

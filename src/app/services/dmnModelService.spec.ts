@@ -51,11 +51,6 @@ describe('DmnModelService', async () => {
             const dummyElement = document.createElement('div');
             modeller = new DmnJS({
                 container: dummyElement,
-                common: {
-                    keyboard: {
-                        bindTo: window
-                    }
-                }
             });
             new Promise(function(resolve, _) {
                 modeller.importXML(decisionTableTwoInputs, __ => {
@@ -153,7 +148,96 @@ describe('DmnModelService', async () => {
         }));
     });
 
-    describe('DMN', () => {
+    describe('Import', () => {
+
+        let modeller: DMNJS;
+
+        beforeEach(fakeAsync(() => {
+            const dummyElement = document.createElement('div');
+            modeller = new DmnJS({
+                container: dummyElement,
+            });
+            new Promise(function(resolve, _) {
+                modeller.importXML(decisionTableTwoInputsStringInt, __ => {
+                    const newView = modeller.getViews().find(view => view.element.id === 'Decision_13nychf');
+                    modeller._switchView(<any>newView);
+                    resolve(null);
+                });
+            }).then(x => x);
+
+            tick(1);
+        }));
+
+        it('should be able to import csv data and append rows to existing model', fakeAsync(() => {
+
+            const firstInputInt = '10';
+            const lastInputString = '"Test5"';
+            const testImportData = [
+                ['"Test3"', firstInputInt, '"Huch"'],
+                [lastInputString, '11', '"Super"']
+            ];
+
+            cut.importData(
+                testImportData,
+                modeller._moddle,
+                modeller._activeView.element.decisionTable,
+                false);
+
+            tick(1);
+
+            const table = modeller._activeView.element.decisionTable;
+            expect(table.rule.length).toBe(4);
+            expect(table.rule[2].inputEntry[1].text).toBe(firstInputInt);
+            expect(table.rule[3].inputEntry[0].text).toBe(lastInputString);
+        }));
+
+        it('should be able to import csv data and append rows to existing model', fakeAsync(() => {
+
+            const firstInputInt = '10';
+            const lastInputString = '"Test5"';
+            const testImportData = [
+                ['"Test3"', firstInputInt, '"Huch"'],
+                [lastInputString, '11', '"Super"']
+            ];
+
+            cut.importData(
+                testImportData,
+                modeller._moddle,
+                modeller._activeView.element.decisionTable,
+                true);
+
+            tick(1);
+
+            const table = modeller._activeView.element.decisionTable;
+            expect(table.rule.length).toBe(testImportData.length);
+            expect(table.rule[0].inputEntry[1].text).toBe(firstInputInt);
+            expect(table.rule[1].inputEntry[0].text).toBe(lastInputString);
+        }));
+
+        it('should be able to add hyphens when string column is found', fakeAsync(() => {
+
+            const firstInputInt = '10';
+            const lastInputString = 'Test5';
+            const testImportData = [
+                ['"Test3"', firstInputInt, '"Huch"'],
+                [lastInputString, '11', '"Super"']
+            ];
+
+            cut.importData(
+                testImportData,
+                modeller._moddle,
+                modeller._activeView.element.decisionTable,
+                true);
+
+            tick(1);
+
+            const table = modeller._activeView.element.decisionTable;
+            expect(table.rule.length).toBe(testImportData.length);
+            expect(table.rule[1].inputEntry[0].text).toBe(`"${lastInputString}"`);
+        }));
+    });
+
+    describe('Functions', () => {
         it('should generate an uuid', async(() => {
 
             const uuid = cut.generateId(DmnType.DECISION_TABLE);
@@ -162,7 +246,7 @@ describe('DmnModelService', async () => {
         }));
     });
 
-    describe('DMN', () => {
+    describe('EscapeSequenceCheck', () => {
 
         it('should be able to check if a string starts with an escape char', async(() => {
 
@@ -268,6 +352,54 @@ const decisionTableTwoInputs = `
         </inputValues>
       </input>
       <output id="output_1" typeRef="string" />
+    </decisionTable>
+  </decision>
+</definitions>
+`;
+
+const decisionTableTwoInputsStringInt =
+`
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/DMN/20151101/dmn.xsd"
+    xmlns:biodi="http://bpmn.io/schema/dmn/biodi/1.0" id="Definitions_1ebsg01" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
+  <decision id="Decision_13nychf" name="Decision 1">
+    <extensionElements>
+      <biodi:bounds x="200" y="200" width="180" height="80" />
+    </extensionElements>
+    <decisionTable id="decisionTable_1">
+      <input id="input_1">
+        <inputExpression id="inputExpression_1" typeRef="string">
+          <text>Eigenschaft1</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_0i0z40u">
+        <inputExpression id="LiteralExpression_1ir8f2b" typeRef="integer">
+          <text>Eigenschaft2</text>
+        </inputExpression>
+      </input>
+      <output id="output_1" name="Result" typeRef="string" />
+      <rule id="DecisionRule_0nuazgh">
+        <inputEntry id="UnaryTests_12qzn8b">
+          <text>"Test"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_1wzz9za">
+          <text>1</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0saxhol">
+          <text>"Hallo"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_0rd7wha">
+        <inputEntry id="UnaryTests_020np2e">
+          <text>"Test2"</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_01cj6ew">
+          <text>5</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_13j4van">
+          <text>"Welt"</text>
+        </outputEntry>
+      </rule>
     </decisionTable>
   </decision>
 </definitions>

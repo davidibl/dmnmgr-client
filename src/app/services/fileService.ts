@@ -26,6 +26,22 @@ export class FileService {
     private _filesystem;
     private _currentPath: string;
 
+    private _openOptionsImportExistingDmn = <OpenDialogOptions>{
+        filters: [{ name: 'DMN Files', extensions: ['xml', 'dmn'] }],
+        title: 'DMN importieren',
+        properties: ['openFile']
+    };
+
+    private _openOptionsChooseProjectFolder = <OpenDialogOptions>{
+        title: 'Projektordner öffnen',
+        properties: ['openDirectory']
+    };
+
+    private _openOptionsChooseFolderOnly = <OpenDialogOptions>{
+        title: 'Zielordner wählen',
+        properties: ['openDirectory']
+    };
+
     public get currentPath() {
         return this._currentPath;
     }
@@ -85,7 +101,7 @@ export class FileService {
                 const filename = fileNames[0];
                 this.openFile(filename, observer);
                 this._eventService.publishEvent(
-                    new BaseEvent(EventType.FOLDER_CHANGED, filename));
+                    new BaseEvent(EventType.FOLDER_CHANGED, this.getDirectory(filename)));
                 this._eventService.publishEvent(
                     new BaseEvent(EventType.OPENED_FILE_CHANGED, filename));
             });
@@ -96,16 +112,13 @@ export class FileService {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
-        const openOptions = <OpenDialogOptions>{
-            title: 'Projektordner öffnen',
-            properties: ['openDirectory']
-        };
-
         return Observable.create(observer => {
-            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+            dialog.showOpenDialog(window, this._openOptionsChooseProjectFolder)
+                .then((openDialogReturnValue: OpenDialogReturnValue) => {
+
                 const directoryNames = openDialogReturnValue.filePaths;
                 if (directoryNames === undefined || directoryNames.length < 1) {
-                    observer.next({ error: false });
+                    observer.next({ type: FsResultType.NOTHING_SELECTED });
                     observer.complete();
                     return;
                 }
@@ -113,7 +126,7 @@ export class FileService {
                 const directoryName = directoryNames[0];
                 this._eventService.publishEvent(
                     new BaseEvent(EventType.FOLDER_CHANGED, directoryName));
-                observer.next({ error: false, filepath: directoryName});
+                observer.next({ type: FsResultType.OK, filepath: directoryName});
             });
         });
     }
@@ -122,13 +135,10 @@ export class FileService {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
-        const openOptions = <OpenDialogOptions>{
-            title: 'Zielordner wählen',
-            properties: ['openDirectory']
-        };
-
         return Observable.create(observer => {
-            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+            dialog.showOpenDialog(window, this._openOptionsChooseFolderOnly).
+                then((openDialogReturnValue: OpenDialogReturnValue) => {
+
                 const directoryNames = openDialogReturnValue.filePaths;
                 if (directoryNames === undefined || directoryNames.length < 1) {
                     observer.next({ error: false, type: FsResultType.NOTHING_SELECTED });
@@ -184,7 +194,7 @@ export class FileService {
             this._filesystem.readFile(path + project.dmnPath, 'utf-8', (err2, data2) => this.callback(() => {
                 if (err2) {
                     const errorMessage = this._errorMessageService
-                        .getErrorMessage(err.message, this._errorOpeningDmn, { path: path + project.dmnPath });
+                        .getErrorMessage(err2.message, this._errorOpeningDmn, { path: path + project.dmnPath });
                     observer.next({ type: FsResultType.ERROR, message: errorMessage });
                     observer.complete();
                     return;
@@ -286,14 +296,10 @@ export class FileService {
         const dialog = this._electronService.remote.dialog;
         const window = this._electronService.remote.getCurrentWindow();
 
-        const openOptions = <OpenDialogOptions>{
-            filters: [{ name: 'DMN Files', extensions: ['xml', 'dmn'] }],
-            title: 'DMN importieren',
-            properties: ['openFile']
-        };
-
         return Observable.create(observer => {
-            dialog.showOpenDialog(window, openOptions).then((openDialogReturnValue: OpenDialogReturnValue) => {
+            dialog.showOpenDialog(window, this._openOptionsImportExistingDmn)
+                .then((openDialogReturnValue: OpenDialogReturnValue) => {
+
                 const fileNames = openDialogReturnValue.filePaths;
                 if (isNull(fileNames) || fileNames.length < 1) {
                     observer.next({ type: FsResultType.NOTHING_SELECTED, message: this._errorMessageImporting });

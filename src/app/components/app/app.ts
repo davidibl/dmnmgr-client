@@ -155,7 +155,6 @@ export class AppComponent implements OnInit {
                     filter(result => result.type === FsResultType.OK)
                 )
                 .subscribe(_ => {
-                    this._projectService.readProject(null, null);
                     this._saveStateService.resetChanges();
                 });
         });
