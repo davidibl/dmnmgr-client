@@ -3,6 +3,10 @@
 The DMN Manager is a toolkit incoperating the Camunda DMN implementation and providing
 tools to develop DMN based applications in cross functional teams.
 
+## The medium article
+
+[Medium - David Ibl - DMN Manager](https://medium.com/@davidibl/dmn-manager-ed2afa73b221)
+
 ## General architecture
 
 ![alt text](readme_assets/general_architecture.png "general architecture")
