@@ -16,4 +16,5 @@ export interface Modeling {
     editOutputTypeRef(output: DmnModdleElement, typeRef: string);
 
     addRow(ruleConfig: Object): { cells: DmnBusinessObject[] };
+    removeRow(ruleConfig: Object);
 }
