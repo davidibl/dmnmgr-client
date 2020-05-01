@@ -15,7 +15,6 @@ import { ErrorMessageService } from './errorMessageService';
 import { SaveStateService } from './saveStateService';
 import { ExportService } from './exportService';
 import { CsvExportService } from './csvExportService';
-import { FileDialogService } from './fileDialogService';
 import { WorkspaceService } from './workspaceService';
 import { GitService } from './gitService';
 import { ElectronService } from './electronService';
@@ -42,7 +41,6 @@ export const ALL_SERVICES = [
     SaveStateService,
     ExportService,
     CsvExportService,
-    FileDialogService,
     WorkspaceService,
     GitService,
     ElectronService,
