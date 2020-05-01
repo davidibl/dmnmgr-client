@@ -15,6 +15,16 @@ tools to develop DMN based applications in cross functional teams.
 - The server-side application provides web services to simulate decisions, run tests and validate DMN definitions. (https://github.com/davidibl/dmnmgr-server)
 - The test driver is a java library to run tests defined in the DMN Manager client during CI/CD processes automatically. (https://github.com/davidibl/dmnmgr-server)
 
+## Setup
+
+To setup the development environment, just clone this repository and execute the following commands:
+
+`npm install`
+`npm run rebuild`
+
+The second command rebuilds necessary node modules.
+
+
 ## Use
 
 To use this toolkit, you need to download a prebuild release or checkout this repository and build it for yourself.
