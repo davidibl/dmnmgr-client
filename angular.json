@@ -38,20 +38,20 @@
                             "src/translations"
                         ],
                         "styles": [
-                            "src/assets/css/diagram-js.css",
-                            "src/assets/css/dmn-js-decision-table.css",
-                            "src/assets/css/dmn-js-decision-table-controls.css",
-                            "src/assets/css/dmn-js-drd.css",
-                            "src/assets/css/dmn-embedded.css",
-                            "src/assets/css/dmn-js-literal-expression.css",
-                            "src/assets/css/dmn-js-shared.css",
+                            "node_modules/dmn-js/dist/assets/diagram-js.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-decision-table.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-decision-table-controls.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-drd.css",
+                            "node_modules/dmn-js/dist/assets/dmn-font/css/dmn-embedded.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-literal-expression.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-shared.css",
                             "src/assets/css/dmn-js-override.css",
                             "node_modules/font-awesome/scss/font-awesome.scss",
                             "node_modules/breakpoint-sass/stylesheets/_breakpoint.scss",
                             "src/scss/site.scss"
                         ],
                         "scripts": [
-                            "src/assets/dmn-modeler.production.min.js"
+                            "node_modules/dmn-js/dist/dmn-modeler.production.min.js"
                         ]
                         },
                         "configurations": {
@@ -115,13 +115,13 @@
                             ]
                         },
                         "styles": [
-                            "src/assets/css/diagram-js.css",
-                            "src/assets/css/dmn-js-decision-table.css",
-                            "src/assets/css/dmn-js-decision-table-controls.css",
-                            "src/assets/css/dmn-js-drd.css",
-                            "src/assets/css/dmn-embedded.css",
-                            "src/assets/css/dmn-js-literal-expression.css",
-                            "src/assets/css/dmn-js-shared.css",
+                            "node_modules/dmn-js/dist/assets/diagram-js.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-decision-table.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-decision-table-controls.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-drd.css",
+                            "node_modules/dmn-js/dist/assets/dmn-font/css/dmn-embedded.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-literal-expression.css",
+                            "node_modules/dmn-js/dist/assets/dmn-js-shared.css",
                             "node_modules/font-awesome/scss/font-awesome.scss",
                             "node_modules/breakpoint-sass/stylesheets/_breakpoint.scss",
                             "src/scss/site.scss"

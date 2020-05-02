@@ -5,7 +5,7 @@ module.exports = function (config) {
   config.set({
     basePath: '',
     files: [
-        'src/assets/dmn-modeler.production.min.js',
+        "node_modules/dmn-js/dist/dmn-modeler.production.min.js"
     ],
     frameworks: ['jasmine', '@angular-devkit/build-angular'],
     plugins: [
