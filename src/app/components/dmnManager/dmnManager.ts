@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit, Renderer2, ViewChild } from '@angular/core';
-import { DOCUMENT } from "@angular/common";
+import { DOCUMENT } from '@angular/common';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { TestDecisionService } from '../../services/testDecisionService';

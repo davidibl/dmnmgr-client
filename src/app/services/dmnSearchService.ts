@@ -3,11 +3,23 @@ import { SearchRequest, ReplaceRequest } from '../model/searchRequest';
 import { DmnModdleRule } from '../model/dmn/dmnModdleRule';
 import { DmnColumn } from '../model/dmn/dmnColumn';
 import { Modeling } from '../model/dmn/modeling';
+import { DmnModdleTable } from '../model/dmn/dmnModdleTable';
+import { DmnModdleElement } from '../model/dmn/dmnModdleElement';
 
 @Injectable()
 export class DmnSearchService {
 
-    public searchRulesByCurrentFilter(
+    public searchTablesWithRules(
+        tables: DmnModdleElement[],
+        searchRequest: SearchRequest,
+    ): DmnModdleElement[] {
+        return tables
+            .map(table => ({table: table, columns: this.getColumnsFromTable(table.input, table.output)}))
+            .filter(value => this.searchRules(value.table.decisionTable.rule, value.columns, false, searchRequest).length < 1)
+            .map(value => value.table);
+    }
+
+    public searchRules(
         rules: DmnModdleRule[],
         columns: DmnColumn[],
         negate: boolean,
@@ -62,6 +74,14 @@ export class DmnSearchService {
             (foundElements.annotationFound ? 1 : 0);
     }
 
+    public getColumnsFromTable(inputColumns: DmnModdleElement[], outputColumns: DmnModdleElement[]) {
+        const columns = <DmnColumn[]>[];
+        columns.splice(0, 0, ...this.createOutputColumnArray(outputColumns));
+        columns.splice(0, 0, ...this.createInputColumnArray(inputColumns));
+        columns.push({ label: 'Annotation', id: 'description', type: 'ANNOTATION', index: null });
+        return columns;
+    }
+
     private getColumnFilter(searchColumn: string, columns: DmnColumn[]) {
         const column = columns.find(col => col.id === searchColumn);
         return (!searchColumn) ?
@@ -96,5 +116,29 @@ export class DmnSearchService {
         if (!text) { return false; }
         if (!searchString) { return false; }
         return text.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+    }
+
+    private createOutputColumnArray(columns: DmnModdleElement[]) {
+        if (!columns) { return []; }
+        return columns.map((column, index) => {
+            return {
+                label: (column.name) ? column.name : column.id,
+                id: column.id,
+                index: index,
+                type: 'OUTPUT'
+            };
+        });
+    }
+
+    private createInputColumnArray(columns: DmnModdleElement[]) {
+        if (!columns) { return []; }
+        return columns.map((column, index) => {
+            return {
+                label: (column.label) ? column.label : column.inputExpression.text,
+                id: column.id,
+                index: index,
+                type: 'INPUT'
+            };
+        });
     }
 }

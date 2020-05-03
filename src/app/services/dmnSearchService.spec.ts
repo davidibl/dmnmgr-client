@@ -1,4 +1,4 @@
-import { TestBed, async, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import { TestBed, async, fakeAsync, tick } from '@angular/core/testing';
 import { DMNJS } from '../model/dmn/dmnJS';
 import { DmnSearchService } from './dmnSearchService';
 import { DmnModdleRule } from '../model/dmn/dmnModdleRule';
@@ -12,8 +12,9 @@ declare var DmnJS: {
 describe('DmnModelService', async () => {
 
     let cut: DmnSearchService;
+    let modeller: DMNJS;
 
-    beforeEach(async(() => {
+    beforeEach(fakeAsync(() => {
 
         TestBed.configureTestingModule({
             providers: [
@@ -22,11 +23,24 @@ describe('DmnModelService', async () => {
         });
 
         cut = TestBed.inject(DmnSearchService);
+
+        const dummyElement = document.createElement('div');
+            modeller = new DmnJS({
+                container: dummyElement,
+            });
+            new Promise(function(resolve, _) {
+                modeller.importXML(searchDmn, __ => {
+                    const newView = modeller.getViews().find(view => view.element.id === 'testSearch');
+                    modeller._switchView(<any>newView);
+                    resolve(null);
+                });
+            }).then(x => x);
+
+        tick(1);
     }));
 
     describe('searchRulesByCurrentFilter', () => {
 
-        let modeller: DMNJS;
         let rules: DmnModdleRule[];
 
         const inputColumn = {id: 'input1_', index: 0, label: 'testinput', type: 'INPUT'};
@@ -39,26 +53,12 @@ describe('DmnModelService', async () => {
         ];
 
         beforeEach(fakeAsync(() => {
-            const dummyElement = document.createElement('div');
-            modeller = new DmnJS({
-                container: dummyElement,
-            });
-            new Promise(function(resolve, _) {
-                modeller.importXML(searchDmn, __ => {
-                    const newView = modeller.getViews().find(view => view.element.id === 'testSearch');
-                    modeller._switchView(<any>newView);
-                    resolve(null);
-                });
-            }).then(x => x);
-
-            tick(1);
-
             rules = modeller._activeView.element.decisionTable.rule;
         }));
 
         it('should find a single row by given searchexpression', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('Eintrag2'));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('Eintrag2'));
 
             expect(result.length).toBe(1);
             expect(result[0].inputEntry[0].text).toBe('"Huch"');
@@ -66,7 +66,7 @@ describe('DmnModelService', async () => {
 
         it('should find multiple rows with matches in different columns', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('Hallo'));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('Hallo'));
 
             expect(result.length).toBe(2);
             expect(result[0].inputEntry[0].text).toBe('"Hallo"');
@@ -75,7 +75,7 @@ describe('DmnModelService', async () => {
 
         it('should find a value only in a concrete given output column', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('Hallo', outputColumn.id));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('Hallo', outputColumn.id));
 
             expect(result.length).toBe(1);
             expect(result[0].inputEntry[0].text).toBe('"alternative"');
@@ -83,7 +83,7 @@ describe('DmnModelService', async () => {
 
         it('should find a given annotation value', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('Ne Annotation'));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('Ne Annotation'));
 
             expect(result.length).toBe(1);
             expect(result[0].inputEntry[0].text).toBe('"Huch"');
@@ -91,7 +91,7 @@ describe('DmnModelService', async () => {
 
         it('should search the annotation column when requested', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('n', annotationColumn.id));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('n', annotationColumn.id));
 
             expect(result.length).toBe(1);
             expect(result[0].inputEntry[0].text).toBe('"Huch"');
@@ -99,7 +99,7 @@ describe('DmnModelService', async () => {
 
         it('should negate the given search and find all rows not matching', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, true, new SearchRequest('n', annotationColumn.id));
+            const result = cut.searchRules(rules, columns, true, new SearchRequest('n', annotationColumn.id));
 
             expect(result.length).toBe(2);
             expect(result[0].inputEntry[0].text).toBe('"Hallo"');
@@ -108,7 +108,7 @@ describe('DmnModelService', async () => {
 
         it('should give back all rows when searchvalue is empty', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest(''));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest(''));
 
             expect(result.length).toBe(3);
             expect(result[0].inputEntry[0].text).toBe('"Hallo"');
@@ -118,21 +118,21 @@ describe('DmnModelService', async () => {
 
         it('should give back no rows when searchvalue is empty and negation is chosen', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, true, new SearchRequest(''));
+            const result = cut.searchRules(rules, columns, true, new SearchRequest(''));
 
             expect(result.length).toBe(0);
         }));
 
         it('should give back an empty array if rows are null', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(null, columns, true, new SearchRequest('Hallo'));
+            const result = cut.searchRules(null, columns, true, new SearchRequest('Hallo'));
 
             expect(result).toEqual([]);
         }));
 
         it('should search rows with a trimmed searchvalue case insensitive', async(() => {
 
-            const result = cut.searchRulesByCurrentFilter(rules, columns, false, new SearchRequest('  huCh'));
+            const result = cut.searchRules(rules, columns, false, new SearchRequest('  huCh'));
 
             expect(result.length).toBe(1);
             expect(result[0].inputEntry[0].text).toBe('"Huch"');
@@ -141,7 +141,6 @@ describe('DmnModelService', async () => {
 
     describe('replaceByCurrentReplaceSettings', () => {
 
-        let modeller: DMNJS;
         let rules: DmnModdleRule[];
 
         const inputColumn = {id: 'input1_', index: 0, label: 'testinput', type: 'INPUT'};
@@ -154,20 +153,6 @@ describe('DmnModelService', async () => {
         ];
 
         beforeEach(fakeAsync(() => {
-            const dummyElement = document.createElement('div');
-            modeller = new DmnJS({
-                container: dummyElement,
-            });
-            new Promise(function(resolve, _) {
-                modeller.importXML(searchDmn, __ => {
-                    const newView = modeller.getViews().find(view => view.element.id === 'testSearch');
-                    modeller._switchView(<any>newView);
-                    resolve(null);
-                });
-            }).then(x => x);
-
-            tick(1);
-
             rules = modeller._activeView.element.decisionTable.rule;
         }));
 
@@ -199,6 +184,68 @@ describe('DmnModelService', async () => {
             expect(rules[1].description).toEqual('TREFFERe ATREFFERTREFFERotatioTREFFER');
             expect(resultCount).toBe(2);
         }));
+    });
+
+    describe('searchTablesWithRules', () => {
+
+        let rules: DmnModdleRule[];
+
+        beforeEach(fakeAsync(() => {
+            rules = modeller._activeView.element.decisionTable.rule;
+        }));
+
+        it('should return the table not containing a matching rule', async(() => {
+
+            const elements = modeller.getViews()
+                .map(view => view.element)
+                .filter(element => element.$type === 'dmn:Decision');
+
+            const result = cut.searchTablesWithRules(
+                elements,
+                new SearchRequest('wowowow'));
+
+            expect(result[0]).toBe(elements[0]);
+            expect(result.length).toBe(1);
+        }));
+
+        it('should return empty array when every table matches contains a matching rule', async(() => {
+
+            const elements = modeller.getViews()
+                .map(view => view.element)
+                .filter(element => element.$type === 'dmn:Decision');
+
+            const result = cut.searchTablesWithRules(
+                elements,
+                new SearchRequest('Huch'));
+
+            expect(result.length).toBe(0);
+        }));
+
+    });
+
+    describe('getColumnsFromTable', () => {
+
+        const inputColumn = {id: 'input_1', index: 0, label: 'testinput', type: 'INPUT'};
+        const outputColumn = {id: 'output_1', index: 0, label: 'output_1', type: 'OUTPUT'};
+        const annotationColumn = {id: 'description', index: null, label: 'Annotation', type: 'ANNOTATION'};
+        const columns: DmnColumn[] = [
+            inputColumn,
+            outputColumn,
+            annotationColumn,
+        ];
+
+        it('should build an array of columns in an unified column model', async(() => {
+
+            const theOnlyTable = modeller.getViews()
+                .map(view => view.element)
+                .filter(element => element.$type === 'dmn:Decision')[0].decisionTable;
+
+            const result = cut.getColumnsFromTable(theOnlyTable.input, theOnlyTable.output);
+
+            expect(result).toEqual(columns);
+            expect(result.length).toBe(3);
+        }));
+
     });
 });
 

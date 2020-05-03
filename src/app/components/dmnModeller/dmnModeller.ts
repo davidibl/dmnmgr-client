@@ -212,7 +212,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     public searchAndReplace(replaceRequest: ReplaceRequest): void {
         const replaceCount = this._dmnSearchService
-            .searchRulesByCurrentFilter(
+            .searchRules(
                 this._modeller?._activeView?.element?.decisionTable?.rule,
                 this.currentColumns,
                 false, replaceRequest)
@@ -230,11 +230,10 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             return;
         }
 
-        const columns = <DmnColumn[]>[];
-        columns.splice(0, 0, ...this.createOutputColumnArray());
-        columns.splice(0, 0, ...this.createInputColumnArray());
-        columns.push({ label: 'Annotation', id: 'description', type: 'ANNOTATION', index: null });
-        this.currentColumns = columns;
+        this.currentColumns = this._dmnSearchService.getColumnsFromTable(
+            this._modeller._activeView?.element?.decisionTable?.input,
+            this._modeller._activeView?.element?.decisionTable?.output,
+        );
     }
 
     private configureModeller() {
@@ -433,32 +432,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         });
     }
 
-    private createOutputColumnArray() {
-        const columns = this._modeller._activeView.element.decisionTable.output;
-        if (!columns) { return []; }
-        return columns.map((column, index) => {
-            return {
-                label: (column.name) ? column.name : column.id,
-                id: column.id,
-                index: index,
-                type: 'OUTPUT'
-            };
-        });
-    }
-
-    private createInputColumnArray() {
-        const columns = this._modeller._activeView.element.decisionTable.input;
-        if (!columns) { return []; }
-        return columns.map((column, index) => {
-            return {
-                label: (column.label) ? column.label : column.inputExpression.text,
-                id: column.id,
-                index: index,
-                type: 'INPUT'
-            };
-        });
-    }
-
     private updateResponseModel() {
         if (!this._modeller._activeView || this._modeller._activeView.element.$type !== DmnType.DECISION_TABLE) {
             return;
@@ -486,8 +459,33 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private searchRows(searchRequest: SearchRequest): void {
         this.clearSearchStyles();
 
+        if (!this._modeller?._activeView) {
+            return;
+        }
+
+        console.log(this._modeller);
+        if (this._modeller?._activeView?.element?.$type === 'dmn:Definitions') {
+            this.searchTables(searchRequest);
+            return;
+        }
+        this.searchRowsInTable(searchRequest);
+    }
+
+    private searchTables(searchRequest: SearchRequest): void {
         this._dmnSearchService
-            .searchRulesByCurrentFilter(
+            .searchTablesWithRules(
+                this._modeller.getViews().map(view => view.element).filter(table => table.$type === 'dmn:Decision'),
+                searchRequest,
+            )
+            .forEach(table => {
+                this._searchStylesheet.insertRule(`g[data-element-id="${table.id}"] { display: none !important; }`);
+                this._searchStylesheet.insertRule(`div[data-container-id="${table.id}"] { display: none; }`);
+            });
+    }
+
+    private searchRowsInTable(searchRequest: SearchRequest): void {
+        this._dmnSearchService
+            .searchRules(
                 this._modeller?._activeView?.element?.decisionTable?.rule,
                 this.currentColumns,
                 true, searchRequest)
@@ -499,7 +497,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private copyRulesInSearch(): void {
         const foundRules = this._dmnSearchService
-            .searchRulesByCurrentFilter(
+            .searchRules(
                 this._modeller?._activeView?.element?.decisionTable?.rule,
                 this.currentColumns,
                 false, this._currentSearchRequest);
