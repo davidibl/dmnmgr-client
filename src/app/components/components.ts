@@ -27,6 +27,7 @@ import { NewBranchDialogComponent } from './dialogs/newBranchDialog';
 import { FooterFlyinComponent } from './footerBar/footerFlyin';
 import { ChangelogDialogComponent } from './dialogs/changelogDialog';
 import { ApplicationMenuComponent } from './app/applicationMenu';
+import { SearchBarComponent } from './dmnModeller/searchBar';
 
 export const ALL_COMPONENTS = [
     DmnModellerComponent,
@@ -57,5 +58,6 @@ export const ALL_COMPONENTS = [
     FooterFlyinComponent,
     ChangelogDialogComponent,
     ApplicationMenuComponent,
+    SearchBarComponent,
     ...ALL_DOCUMENTATION_COMPONENTS,
 ];

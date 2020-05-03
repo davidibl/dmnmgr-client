@@ -1,0 +1,92 @@
+<div *ngIf="searchOpen" class="search mb-1" [class.minimized]="(searchMinimized$ | async)">
+    <div (click)="maximize()" *ngIf="(searchMinimized$ | async)">
+        <button (click)="minimize()" style="padding-top: 4px;" class="small right mr-05 no-border no-background">
+            <i class="fa fa-window-minimize" aria-hidden="true"></i>
+        </button>
+    </div>
+    <table *ngIf="!(searchMinimized$ | async)">
+        <tr>
+            <td class="p-0" style="width: 40px;">
+                <xn-button (click)="toggleReplace()" class="small">
+                    <xn-icon *ngIf="!(replaceOpen$ | async)" [iconClass]="'fa-chevron-right'"></xn-icon>
+                    <xn-icon *ngIf="(replaceOpen$ | async)" [iconClass]="'fa-chevron-down'"></xn-icon>
+                </xn-button>
+            </td>
+            <td class="p-0 small">
+                Suche:
+                <xn-input-form [title]="'suche'"
+                            [label]="'Suchwort'"
+                            [showLabel]="false"
+                            #searchInput
+                            [autofocus]="true"
+                            [validatable]="false"
+                            (keydown.enter)="emitSearchRequestImmediately()"
+                            class="inline-block mb-0 nomargin small"
+                            [name]="'suche'"
+                            (ngModelChange)="onSearchValueChanged($event)"
+                            [(ngModel)]="searchValue"></xn-input-form>
+                in Spalte:
+                <xn-dropdown [showLabel]="false"
+                            [idPropertyPath]="'id'"
+                            [displayPropertyPath]="'label'"
+                            [validatable]="false"
+                            class="inline-block mb-0 nomargin w120"
+                            [small]="true"
+                            [name]="'datamodel.type'"
+                            [noborder]="true"
+                            [nomargin]="true"
+                            [label]="'Spalte wählen'"
+                            [items]="currentColumns"
+                            (ngModelChange)="onSearchColumnChanged($event)"
+                            [ngModel]="searchColumn"></xn-dropdown>
+                <button (click)="closeAndClearSearch()" style="padding-top: 4px;" class="small right mr-05 no-border no-background">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
+                <button (click)="minimize()" style="padding-top: 4px;" class="small right no-border no-background">
+                    <i class="fa fa-window-minimize" aria-hidden="true"></i>
+                </button>
+            </td>
+        </tr>
+        <tr *ngIf="replaceOpen$ | async">
+            <td class="p-0"></td>
+            <td class="p-0 pt-05 small">
+                Ersetzen:
+                <xn-input-form [title]="'suche'"
+                            [label]="'Suchwort'"
+                            [showLabel]="false"
+                            #searchInput
+                            [autofocus]="true"
+                            [validatable]="false"
+                            class="inline-block mb-0 nomargin small"
+                            [name]="'replaceWhat'"
+                            [(ngModel)]="replaceWhat"></xn-input-form>
+                mit:
+                <xn-input-form [title]="'replaceWith'"
+                            [showLabel]="false"
+                            [label]="'Ersatzwort'"
+                            #searchInput
+                            [autofocus]="true"
+                            [validatable]="false"
+                            class="inline-block mb-0 nomargin small"
+                            [name]="'replaceWith'"
+                            [(ngModel)]="replaceWith"></xn-input-form>
+                in Spalte:
+                <xn-dropdown [showLabel]="false"
+                            [idPropertyPath]="'id'"
+                            [displayPropertyPath]="'label'"
+                            [validatable]="false"
+                            class="inline-block mb-0 nomargin w120"
+                            [small]="true"
+                            [name]="'datamodel.type'"
+                            [noborder]="true"
+                            [nomargin]="true"
+                            [label]="'Spalte wählen'"
+                            [items]="currentColumns"
+                            [(ngModel)]="replaceColumn"></xn-dropdown>
+                <xn-button (click)="searchAndReplace()" style="padding-top: 4px;" class="ml-1 small">
+                    Start!
+                </xn-button>
+            </td>
+        </tr>
+    </table>
+</div>

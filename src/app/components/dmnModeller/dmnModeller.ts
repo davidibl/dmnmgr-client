@@ -4,23 +4,19 @@ import {
     ElementRef,
     AfterViewInit,
     Input,
-    HostListener,
     OnInit,
     Inject,
     Renderer2,
     ChangeDetectionStrategy,
 } from '@angular/core';
 import { ReplaySubject, BehaviorSubject, } from 'rxjs';
-import { take, filter, debounceTime, } from 'rxjs/operators';
-
-import DmnModdle from 'dmn-moddle/lib/dmn-moddle.js';
+import { take, filter, } from 'rxjs/operators';
 
 import { DMNJS } from '../../model/dmn/dmnJS';
 import { DmnColumn } from '../../model/dmn/dmnColumn';
 import { ShapeEvent } from '../../model/dmn/shapeEvent';
 import { DmnDatatypeMapping } from '../../model/dmn/dmnDatatypeMapping';
 import { DmnModdleElement } from '../../model/dmn/dmnModdleElement';
-import { DmnModdleRule } from '../../model/dmn/dmnModdleRule';
 import { DmnType } from '../../model/dmn/dmnType';
 import { DmnExpressionLanguage } from '../../model/dmn/dmnExpressionLanguage';
 import { DmnModdleEvent } from '../../model/dmn/dmnModdleEvent';
@@ -48,9 +44,10 @@ import { DmnModelService } from '../../services/dmnModelService';
 import { SaveStateService } from '../../services/saveStateService';
 import { ExportService } from '../../services/exportService';
 import { DomService } from '../../services/domService';
-import { isNull } from '@xnoname/web-components';
 import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipboardService';
 import { CsvExportService } from '../../services/csvExportService';
+import { SearchRequest, ReplaceRequest } from '../../model/searchRequest';
+import { DmnSearchService } from '../../services/dmnSearchService';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -83,18 +80,13 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private _errorNodes: any[] = [];
 
     private _internalEventService = new ReplaySubject<{ type: string, identity: any, func: () => void }>();
-    private _debounceSubject = new ReplaySubject<() => void>(1);
+
+    private _currentSearchRequest: SearchRequest;
 
     @Input()
     public type: string;
 
     public searchOpen = new BehaviorSubject(false);
-    public searchValue: string;
-    public searchColumn: string = null;
-    public replaceOpen$ = new BehaviorSubject(false);
-    public replaceWhat: string;
-    public replaceWith: string;
-    public replaceColumn: string = null;
     public currentColumns: DmnColumn[] = [];
 
     public constructor(private _dmnXmlService: DmnXmlService,
@@ -108,66 +100,28 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         private _renderer: Renderer2,
         private _clipboardService: DmnClipboardService,
         private _csvService: CsvExportService,
+        private _dmnSearchService: DmnSearchService,
     ) { }
 
-    @HostListener('window:keyup', ['$event'])
-    public handleKeyboardEvent(event: KeyboardEvent) {
-        if (!this._modeller._activeView.element.decisionTable) {
-            return;
-        }
-
-        if (event.ctrlKey && event.code === 'KeyF') {
-            this.searchOpen
-                .pipe(
-                    take(1),
-                ).subscribe(searchOpen => {
-                    searchOpen = !searchOpen;
-                    this.searchOpen.next(searchOpen);
-                    if (!searchOpen) {
-                        this.clearSearch();
-                        this.toggleReplace(false);
-                    }
-                });
-        }
-    }
-
-    public toggleReplace(open?: boolean) {
-        this.replaceOpen$
-            .pipe(take(1))
-            .subscribe(replaceOpen => {
-                replaceOpen = isNull(open) ? !replaceOpen : open;
-                this.replaceOpen$.next(replaceOpen);
-                if (!replaceOpen) {
-                    this.clearReplace();
-                }
-            });
-    }
-
-    public closeAndClearSearch() {
-        this.searchOpen.next(false);
-        this.toggleReplace(false);
-        this.clearSearch();
-    }
-
-    public onSearchValueChanged(newSearchValue: string) {
-        this.searchValue = newSearchValue;
-        this._debounceSubject.next(() => this.searchRows());
-    }
-
-    public onSearchColumnChanged(newSearchColumn: string) {
-        this.searchColumn = newSearchColumn;
-        this.searchRows();
+    public onSearchRequested(searchRequest: SearchRequest) {
+        this._currentSearchRequest = searchRequest;
+        this.searchRows(searchRequest);
     }
 
     public ngOnInit(): void {
         this._searchStylesheet = this._domService.createStylesheet();
         this._hintStylesheet = this._domService.createStylesheet();
 
-        this._debounceSubject.pipe( debounceTime(500) ).subscribe(func => func());
-
         this._eventService
             .getEvent((ev) => ev.type === EventType.OPEN_SEARCH)
-            .subscribe(_ => this.searchOpen.next(true));
+            .subscribe(_ => {
+                this.searchOpen
+                    .pipe(take(1))
+                    .subscribe(searchOpen => {
+                        searchOpen = !searchOpen;
+                        this.searchOpen.next(searchOpen);
+                    });
+            });
 
         this._eventService
             .getEvent((ev) => ev.type === EventType.EXPORT)
@@ -256,10 +210,15 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             .subscribe(importEvent => this.importData(importEvent as ImportDataEvent));
     }
 
-    public searchAndReplace(): void {
-        const replaceCount = this.searchRulesByCurrentFilter(false, this.searchColumn, this.searchValue)
+    public searchAndReplace(replaceRequest: ReplaceRequest): void {
+        const replaceCount = this._dmnSearchService
+            .searchRulesByCurrentFilter(
+                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this.currentColumns,
+                false, replaceRequest)
             .reduce((count, filteredRow) => {
-                count += this.replaceByCurrentReplaceSettings(filteredRow);
+                count += this._dmnSearchService.replaceByCurrentReplaceSettings(
+                    this.getModeling(), filteredRow, this.currentColumns, replaceRequest);
                 return count;
             }, 0);
         this._eventService.publishEvent(new BaseEvent(EventType.TEXT_REPLACED, replaceCount));
@@ -280,7 +239,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private configureModeller() {
         this._modeller.on('views.changed', (event) => {
-            this.clearSearch();
             const newViewEvent = new NewViewEvent(event.activeView.element.id, true);
             if (event.activeView.type !== 'decisionTable') {
                 newViewEvent.data.isDecisionTable = false;
@@ -525,107 +483,26 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         return this._modeller.getActiveViewer().get('modeling');
     }
 
-    private searchRows(): void {
+    private searchRows(searchRequest: SearchRequest): void {
         this.clearSearchStyles();
 
-        this.searchRulesByCurrentFilter(true, this.searchColumn, this.searchValue)
+        this._dmnSearchService
+            .searchRulesByCurrentFilter(
+                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this.currentColumns,
+                true, searchRequest)
             .forEach(filteredRule => {
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] { display: none; }`);
                 this._searchStylesheet.insertRule(`td[data-row-id="${filteredRule.id}"] + td { display: none; }`);
             });
     }
 
-    private replaceByCurrentReplaceSettings(rule: DmnModdleRule) {
-        const columnFilter = this.getColumnFilter(this.replaceColumn);
-        const foundElements = this.filterRuleGetFoundElements(rule, this.replaceWhat, columnFilter);
-        const searchMask = new RegExp(this.replaceWhat, 'ig');
-        if (foundElements.annotationFound) {
-            const newVal = rule.description.replace(searchMask, this.replaceWith);
-            this._modeller.getActiveViewer().get('modeling').editAnnotation(rule, newVal);
-        }
-        if (foundElements.inputEntries) {
-            foundElements.inputEntries.forEach(element => {
-                const newValue = element.text.replace(searchMask, this.replaceWith);
-                this._modeller.getActiveViewer().get('modeling').editCell(element, newValue);
-            });
-        }
-        if (foundElements.outputEntries) {
-            foundElements.outputEntries.forEach(element => {
-                const newValue = element.text.replace(searchMask, this.replaceWith);
-                this._modeller.getActiveViewer().get('modeling').editCell(element, newValue);
-            });
-        }
-        return foundElements.inputEntries.length +
-            foundElements.outputEntries.length +
-            (foundElements.annotationFound ? 1 : 0);
-    }
-
-    private searchRulesByCurrentFilter(negate: boolean, searchColumn: string, searchValue: string): DmnModdleRule[] {
-        searchValue = (!!searchValue) ? searchValue.toLowerCase().trim() : null;
-
-        if (!this._modeller._activeView.element.decisionTable ||
-            !this._modeller._activeView.element.decisionTable.rule) {
-                return [];
-        }
-
-        if (!searchValue) {
-            return (negate) ? [] :
-                this._modeller
-                    ._activeView
-                    .element
-                    .decisionTable
-                    .rule;
-        }
-
-        const columnFilter = this.getColumnFilter(searchColumn);
-
-        return this._modeller
-            ._activeView
-            .element
-            .decisionTable
-            .rule
-            .filter(rule => (negate) ?
-                !this.filterRule(rule, searchValue, columnFilter) :
-                this.filterRule(rule, searchValue, columnFilter));
-    }
-
-    private filterRule(rule: DmnModdleRule, searchValue: string, columnFilter: (index, type?) => boolean) {
-        if (!this.searchValue || !this.searchValue.trim()) { return false; }
-
-        const found = this.filterRuleGetFoundElements(rule, searchValue, columnFilter);
-
-        return (found.inputEntries.length + found.outputEntries.length) > 0 || found.annotationFound;
-    }
-
-    private getColumnFilter(searchColumn: string) {
-        const column = this.currentColumns.find(col => col.id === searchColumn);
-        return (!searchColumn) ?
-            (_: number) => true : (index: number, type?: string) => index === column.index && type === column.type;
-    }
-
-    private filterRuleGetFoundElements(rule: DmnModdleRule, searchValue: string, columnFilter: (index, type?) => boolean) {
-        const inputEntriesFound = (!!rule.inputEntry) ?
-            rule.inputEntry.filter((input, index) =>
-                columnFilter(index, 'INPUT') && this.contains(input.text, searchValue)) : [];
-        const outputEntriesFound = (!!rule.outputEntry) ?
-            rule.outputEntry.filter((output, index) =>
-                columnFilter(index, 'OUTPUT') && this.contains(output.text, searchValue)) : [];
-        const annotationFound = columnFilter(null, 'ANNOTATION') ? this.contains(rule.description, searchValue) : false;
-        return {
-            inputEntries: inputEntriesFound,
-            outputEntries: outputEntriesFound,
-            annotationFound: annotationFound,
-        };
-    }
-
-    private contains(text: string, searchString: string) {
-        if (!text && !searchString) { return true; }
-        if (!text) { return false; }
-        return text.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
-    }
-
     private copyRulesInSearch(): void {
-        const foundRules = this.searchRulesByCurrentFilter(false, this.searchColumn, this.searchValue);
+        const foundRules = this._dmnSearchService
+            .searchRulesByCurrentFilter(
+                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this.currentColumns,
+                false, this._currentSearchRequest);
         this._clipboardService.copyData(
             ClipBoardDataType.DMN_RULES,
             this._csvService.exportRules(foundRules)
@@ -658,19 +535,6 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
                     }
                 });
             });
-    }
-
-    private clearSearch() {
-        this.clearSearchStyles();
-        this.searchOpen.next(false);
-        this.searchColumn = null;
-        this.searchValue = null;
-    }
-
-    private clearReplace() {
-        this.replaceColumn = null;
-        this.replaceWhat = null;
-        this.replaceWith = null;
     }
 
     private clearSearchStyles() {

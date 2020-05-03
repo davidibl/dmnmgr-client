@@ -22,6 +22,7 @@ import { DmnClipboardService } from './dmnClipboardService';
 import { DmnValidationService } from './dmnValidationService';
 import { WorkingStateService } from './workingStateService';
 import { ChangelogService } from './changelogService';
+import { DmnSearchService } from './dmnSearchService';
 
 export const ALL_SERVICES = [
     DmnXmlService,
@@ -48,4 +49,5 @@ export const ALL_SERVICES = [
     DmnValidationService,
     WorkingStateService,
     ChangelogService,
+    DmnSearchService,
 ];

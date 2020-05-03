@@ -60,7 +60,7 @@
                     class="small transparent nounderline">Bearbeiten
             <ul *ngIf="(menuVisible$ | async) && (bearbeitenMenuVisible$ | async)" class="sub-menu">
                 <div class="sub-menu-container">
-                    <li *ngIf="(isDecicionTableMode$ | async)" (click)="dispatchCommand('openSearch')">
+                    <li (click)="dispatchCommand('openSearch')">
                         <i class="fa fa-search mr-05" aria-hidden="true"></i>Suchen
                         <span class="right">(STRG + F)</span>
                     </li>
