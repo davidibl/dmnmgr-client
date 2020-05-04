@@ -1,0 +1,90 @@
+<h3>{{title}}</h3>
+<p class="mb-2">
+    DMN Tabellen können vielfältige und umfangreiche Informationen enthalten. Aus diesem Grund bietet das
+    Tool eine Suchen und Ersetzen-Funktion um Daten aufzufinden und Massenweise anzupassen.
+</p>
+<h4><b>Suche öffnen</b></h4>
+<p class="mb-2">
+    Die Suche kann über das Bearbeiten Menü oder mit dem Hotkey STRG-F geöffnet werden. Die Suche durchsucht
+    ausschließlich geöffnete DMN Dateien und dockt sich direkt innerhalb des
+    <span (click)="dispatch('Der Editor')">Editor-Bereichs</span> ein.
+</p>
+<div class="mb-2"><img src="assets/img/screen_search.png" style="height: 40px" /></div>
+<h4><b>Die Suchfunktionen</b></h4>
+<table class="mb-2">
+    <tr>
+        <td style="vertical-align: top;"><b>Suchwort</b></td>
+        <td>
+            <p>
+                Zeichenkette die gesucht werden soll. Die Suche sucht in jedem Datenfeld der Tabelle ob die
+                Zeichenkette enthalten ist. Wird die Suche innerhalb der DRD Ansicht (Tabellenübersicht)
+                geöffnet werden alle Tabellen der Datei durchsucht.
+            </p>
+            <p>
+                Alle Zeilen die das gesuchte Wort nicht enthalten werden nach der Suche ausgeblendet. In
+                der DRD Ansicht werden alle Tabellen ausgeblendet die keine gefundenen Zeilen enthalten.
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;"><b>Suchspalte</b></td>
+        <td>
+            <p>
+                Mit Hilfe einer gewählten Suchspalte kann die Suche auf eine konkrete Spalte Input oder Output
+                beschränkt werden. Die Annotation-Spalte kann ebenfalls durchsucht werden.
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;"><b>Minimieren</b></td>
+        <td>
+            <p>
+                Der Suchdialog kann minimiert werden. Wird der Suchdialog minimiert, kann in der DMN Datei
+                navigiert und zwischen den Tabellen gewechselt werden ohne das die Suchparameter verloren
+                gehen.
+            </p>
+        </td>
+    </tr>
+</table>
+<h4><b>Ersetzen</b></h4>
+<p class="mb-2">
+    Die Ersetzen Funktion wird über den Pfeilknopf auf der linken Seite geöffnet. Der Suchdialog erweitert
+    sich hierbei nach unten um die Eingabefelder zum Ersetzen von Daten.
+</p>
+<div class="mb-2"><img src="assets/img/screen_search_replace.png" style="height: 80px" /></div>
+<p class="mb-2">
+    Alle Ersetzungen werden stets auf die sichtbaren Zeilen angwendet. Die Suche schränkt somit die Zeilenzahl
+    ein in der Daten ersetzt werden. Innerhalb der gesuchten Zeilen kann dennoch ein Suchbegriff den exakten
+    zu ersetzenden Wert einschränken.
+</p>
+<p class="mb-2">
+    Nach der Durchführung einer Ersetzung wird die Anzahl der Ersetzten Begriffe angezeigt.
+</p>
+<h4><b>Ersetzen-Funktionen</b></h4>
+<table class="mb-2">
+    <tr>
+        <td style="vertical-align: top;"><b>Ersetzen</b></td>
+        <td>
+            <p>
+                Definiert die Zeichenkette die ersetzt werden soll. Kann leer gelassen werden.
+                Ein leerer Wert füjhrt dazu das der Ersatzwert in alle leeren Zellen eingefügt wird.
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;"><b>Ersetzen mit</b></td>
+        <td>
+            <p>
+                Definiert den Bergiff mit dem die definierte Zeichenkette ersetzt wird. Ist die Suchzeichenkette
+                leer, wird dieser Wert in alle leeren Zellen eingesetzt.
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="vertical-align: top;"><b>In Spalte</b></td>
+        <td>
+            Schränkt die Ersetzen Funktion auf genau eine definierte Spalte ein.
+        </td>
+    </tr>
+</table>
+
