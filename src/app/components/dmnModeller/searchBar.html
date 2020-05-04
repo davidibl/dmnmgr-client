@@ -1,9 +1,13 @@
 <div *ngIf="searchOpen" class="search mb-1" [class.minimized]="(searchMinimized$ | async)">
-    <div (click)="maximize()" *ngIf="(searchMinimized$ | async)">
-        <button (click)="minimize()" style="padding-top: 4px;" class="small right mr-05 no-border no-background">
-            <i class="fa fa-window-minimize" aria-hidden="true"></i>
-        </button>
-    </div>
+    <table *ngIf="(searchMinimized$ | async)">
+        <tr>
+            <td class="p-0 small">
+                <button (click)="maximize()" style="padding-top: 10px;" class="small right mr-05 no-border no-background">
+                    <i class="fa fa-window-maximize" aria-hidden="true"></i>
+                </button>
+            </td>
+        </tr>
+    </table>
     <table *ngIf="!(searchMinimized$ | async)">
         <tr>
             <td class="p-0" style="width: 40px;">
