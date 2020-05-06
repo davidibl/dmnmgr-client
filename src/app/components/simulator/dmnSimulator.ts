@@ -107,7 +107,7 @@ export class DmnSimulatorComponent implements OnInit {
             .subscribe(value => {
                 const newTestData = {
                     testdata: JSON.parse(JSON.stringify(value)),
-                    expectedResult: expectedResultData
+                    expectedResult: JSON.parse(JSON.stringify(expectedResultData)),
                 };
                 const ev = new BaseEvent(EventType.NEW_TEST, newTestData);
                 this._eventService.publishEvent(ev);
