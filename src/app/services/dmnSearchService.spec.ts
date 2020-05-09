@@ -53,7 +53,7 @@ describe('DmnModelService', async () => {
         ];
 
         beforeEach(fakeAsync(() => {
-            rules = modeller._activeView.element.decisionTable.rule;
+            rules = modeller._activeView.element.decisionLogic.rule;
         }));
 
         it('should find a single row by given searchexpression', async(() => {
@@ -153,7 +153,7 @@ describe('DmnModelService', async () => {
         ];
 
         beforeEach(fakeAsync(() => {
-            rules = modeller._activeView.element.decisionTable.rule;
+            rules = modeller._activeView.element.decisionLogic.rule;
         }));
 
         it('should replace a whole entry with another word and count occurance', async(() => {
@@ -191,7 +191,7 @@ describe('DmnModelService', async () => {
         let rules: DmnModdleRule[];
 
         beforeEach(fakeAsync(() => {
-            rules = modeller._activeView.element.decisionTable.rule;
+            rules = modeller._activeView.element.decisionLogic.rule;
         }));
 
         it('should return the table not containing a matching rule', async(() => {
@@ -238,7 +238,7 @@ describe('DmnModelService', async () => {
 
             const theOnlyTable = modeller.getViews()
                 .map(view => view.element)
-                .filter(element => element.$type === 'dmn:Decision')[0].decisionTable;
+                .filter(element => element.$type === 'dmn:Decision')[0].decisionLogic;
 
             const result = cut.getColumnsFromTable(theOnlyTable.input, theOnlyTable.output);
 

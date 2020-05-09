@@ -15,7 +15,7 @@ export class DmnSearchService {
     ): DmnModdleElement[] {
         return tables
             .map(table => ({table: table, columns: this.getColumnsFromTable(table.input, table.output)}))
-            .filter(value => this.searchRules(value.table.decisionTable.rule, value.columns, false, searchRequest).length < 1)
+            .filter(value => this.searchRules(value.table.decisionLogic.rule, value.columns, false, searchRequest).length < 1)
             .map(value => value.table);
     }
 

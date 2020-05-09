@@ -69,9 +69,9 @@ describe('DmnModelService', async () => {
             dataModelService.getEnumValuesByPath.and.returnValue(of([]));
 
             cut.updateInputColumns(modeller.getActiveViewer().get('modeling'),
-                modeller?._activeView?.element?.decisionTable);
+                modeller?._activeView?.element?.decisionLogic);
 
-            expect(modeller._activeView.element.decisionTable.input[0].inputExpression.typeRef).toBe(DmnDatatypeMapping.integer);
+            expect(modeller._activeView.element.decisionLogic.input[0].inputExpression.typeRef).toBe(DmnDatatypeMapping.integer);
         }));
 
         it('should return immidiatly when there is no input', async(() => {
@@ -79,10 +79,10 @@ describe('DmnModelService', async () => {
             dataModelService.getDatatypeByPath.and.returnValue(of(JsonDatatype.INTEGER));
             dataModelService.getEnumValuesByPath.and.returnValue(of([]));
 
-            modeller._activeView.element.decisionTable.input = null;
+            modeller._activeView.element.decisionLogic.input = null;
 
             cut.updateInputColumns(modeller.getActiveViewer().get('modeling'),
-                modeller?._activeView?.element?.decisionTable);
+                modeller?._activeView?.element?.decisionLogic);
         }));
 
         it('should set input restriction on inputs', async(() => {
@@ -100,12 +100,12 @@ describe('DmnModelService', async () => {
             });
 
             cut.updateInputColumns(modeller.getActiveViewer().get('modeling'),
-                modeller?._activeView?.element?.decisionTable);
+                modeller?._activeView?.element?.decisionLogic);
 
-            expect(modeller._activeView.element.decisionTable.input[0].inputValues.text)
+            expect(modeller._activeView.element.decisionLogic.input[0].inputValues.text)
                 .toBe(`"${restrictionValue1}","${restrictionValue2}"`);
 
-            expect(modeller._activeView.element.decisionTable.input[1].inputValues).toBeUndefined();
+            expect(modeller._activeView.element.decisionLogic.input[1].inputValues).toBeUndefined();
         }));
 
         it('should do nothing breaking when setting the same restriction values again', async(() => {
@@ -122,9 +122,9 @@ describe('DmnModelService', async () => {
             });
 
             cut.updateInputColumns(modeller.getActiveViewer().get('modeling'),
-                modeller?._activeView?.element?.decisionTable);
+                modeller?._activeView?.element?.decisionLogic);
 
-            expect(modeller._activeView.element.decisionTable.input[2].inputValues.text)
+            expect(modeller._activeView.element.decisionLogic.input[2].inputValues.text)
                 .toBe(`"${restrictionValue1}"`);
         }));
 
@@ -136,14 +136,14 @@ describe('DmnModelService', async () => {
             dataModelService.getDatatypeByPath.and.returnValue(of(JsonDatatype.STRING));
             dataModelService.getEnumValuesByPath.and.returnValue(of(restrictionSet));
 
-            const changedInput = modeller._activeView.element.decisionTable.input[0];
+            const changedInput = modeller._activeView.element.decisionLogic.input[0];
 
             cut.setDataModelPropertiesOnColumns(modeller.getActiveViewer().get('modeling'),
                 { element: null, elements: [changedInput, changedInput.inputExpression] });
 
-            expect(modeller._activeView.element.decisionTable.input[0].inputValues.text)
+            expect(modeller._activeView.element.decisionLogic.input[0].inputValues.text)
                 .toBe(`"${restrictionValue1}"`);
-            expect(modeller._activeView.element.decisionTable.input[0].inputExpression.typeRef)
+            expect(modeller._activeView.element.decisionLogic.input[0].inputExpression.typeRef)
                 .toBe(DmnDatatypeMapping.string);
         }));
     });
@@ -180,12 +180,12 @@ describe('DmnModelService', async () => {
             cut.importData(
                 testImportData,
                 modeller._moddle,
-                modeller._activeView.element.decisionTable,
+                modeller._activeView.element.decisionLogic,
                 false);
 
             tick(1);
 
-            const table = modeller._activeView.element.decisionTable;
+            const table = modeller._activeView.element.decisionLogic;
             expect(table.rule.length).toBe(4);
             expect(table.rule[2].inputEntry[1].text).toBe(firstInputInt);
             expect(table.rule[3].inputEntry[0].text).toBe(lastInputString);
@@ -203,12 +203,12 @@ describe('DmnModelService', async () => {
             cut.importData(
                 testImportData,
                 modeller._moddle,
-                modeller._activeView.element.decisionTable,
+                modeller._activeView.element.decisionLogic,
                 true);
 
             tick(1);
 
-            const table = modeller._activeView.element.decisionTable;
+            const table = modeller._activeView.element.decisionLogic;
             expect(table.rule.length).toBe(testImportData.length);
             expect(table.rule[0].inputEntry[1].text).toBe(firstInputInt);
             expect(table.rule[1].inputEntry[0].text).toBe(lastInputString);
@@ -226,12 +226,12 @@ describe('DmnModelService', async () => {
             cut.importData(
                 testImportData,
                 modeller._moddle,
-                modeller._activeView.element.decisionTable,
+                modeller._activeView.element.decisionLogic,
                 true);
 
             tick(1);
 
-            const table = modeller._activeView.element.decisionTable;
+            const table = modeller._activeView.element.decisionLogic;
             expect(table.rule.length).toBe(testImportData.length);
             expect(table.rule[1].inputEntry[0].text).toBe(`"${lastInputString}"`);
         }));

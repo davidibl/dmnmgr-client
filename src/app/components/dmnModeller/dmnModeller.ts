@@ -10,7 +10,7 @@ import {
     ChangeDetectionStrategy,
 } from '@angular/core';
 import { ReplaySubject, BehaviorSubject, } from 'rxjs';
-import { take, filter, } from 'rxjs/operators';
+import { take, filter, switchMap } from 'rxjs/operators';
 
 import { DMNJS } from '../../model/dmn/dmnJS';
 import { DmnColumn } from '../../model/dmn/dmnColumn';
@@ -48,6 +48,8 @@ import { DmnClipboardService, ClipBoardDataType } from '../../services/dmnClipbo
 import { CsvExportService } from '../../services/csvExportService';
 import { SearchRequest, ReplaceRequest } from '../../model/searchRequest';
 import { DmnSearchService } from '../../services/dmnSearchService';
+
+import { migrateDiagram } from '@bpmn-io/dmn-migrate';
 
 declare var DmnJS: {
     new(object: object, object2?: object): DMNJS;
@@ -126,7 +128,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._eventService
             .getEvent((ev) => ev.type === EventType.EXPORT)
             .subscribe((ev) => this._exportService.exportTable(
-                this._modeller._activeView.element.decisionTable, ev.data));
+                this._modeller._activeView.element.decisionLogic, ev.data));
 
         this._eventService
             .getEvent((ev) => ev.type === EventType.JUMP_TO_TEST)
@@ -168,6 +170,9 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
         this._dmnXmlService
             .getDmnXml()
+            .pipe(
+                switchMap(xml => migrateDiagram(xml) as string)
+            )
             .subscribe(xml => {
                 this._modeller.importXML(xml, (err) => {
                     if (err) {
@@ -213,7 +218,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     public searchAndReplace(replaceRequest: ReplaceRequest): void {
         const replaceCount = this._dmnSearchService
             .searchRules(
-                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this._modeller?._activeView?.element?.decisionLogic?.rule,
                 this.currentColumns,
                 false, replaceRequest)
             .reduce((count, filteredRow) => {
@@ -225,14 +230,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     }
 
     private refreshTableColumnsList() {
-        if (!this._modeller._activeView.element.decisionTable) {
+        if (!this._modeller._activeView.element.decisionLogic) {
             this.currentColumns = [];
             return;
         }
 
         this.currentColumns = this._dmnSearchService.getColumnsFromTable(
-            this._modeller._activeView?.element?.decisionTable?.input,
-            this._modeller._activeView?.element?.decisionTable?.output,
+            this._modeller._activeView?.element?.decisionLogic?.input,
+            this._modeller._activeView?.element?.decisionLogic?.output,
         );
     }
 
@@ -345,7 +350,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const outputColumns = this._modeller
                                 ._activeView
                                 .element
-                                .decisionTable
+                                .decisionLogic
                                 .output || [];
         return outputColumns
             .filter(output => this.hasOutputClauseError(output))
@@ -356,7 +361,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         const inputColumns = this._modeller
                                 ._activeView
                                 .element
-                                .decisionTable
+                                .decisionLogic
                                 .input || [];
         return inputColumns
             .filter(input => this.hasInputClauseError(input))
@@ -423,7 +428,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this._dmnModelService.importData(
             event.data,
             this._modeller._moddle,
-            this._modeller._activeView.element.decisionTable,
+            this._modeller._activeView.element.decisionLogic,
             event.replaceRules);
 
         this._modeller.saveXML(DmnModellerComponent.SAVE_OPTIONS, (error, xml) => {
@@ -440,7 +445,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
             type: JsonDatatype.ARRAY,
             items: { type: JsonDatatype.OBJECT, properties: [] }
         };
-        this._modeller._activeView.element.decisionTable.output.forEach(outputClause => {
+        this._modeller._activeView.element.decisionLogic.output.forEach(outputClause => {
             responseModel.items.properties.push(
                 { name: outputClause.name, type: DmnDatatypeMapping[outputClause.typeRef] });
         });
@@ -449,7 +454,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
 
     private updateInputColumns() {
         this._dmnModelService.updateInputColumns(
-            this.getModeling(), this._modeller?._activeView?.element?.decisionTable);
+            this.getModeling(), this._modeller?._activeView?.element?.decisionLogic);
     }
 
     private getModeling() {
@@ -486,7 +491,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private searchRowsInTable(searchRequest: SearchRequest): void {
         this._dmnSearchService
             .searchRules(
-                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this._modeller?._activeView?.element?.decisionLogic?.rule,
                 this.currentColumns,
                 true, searchRequest)
             .forEach(filteredRule => {
@@ -498,7 +503,7 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
     private copyRulesInSearch(): void {
         const foundRules = this._dmnSearchService
             .searchRules(
-                this._modeller?._activeView?.element?.decisionTable?.rule,
+                this._modeller?._activeView?.element?.decisionLogic?.rule,
                 this.currentColumns,
                 false, this._currentSearchRequest);
         this._clipboardService.copyData(

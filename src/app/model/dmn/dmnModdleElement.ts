@@ -14,7 +14,7 @@ export interface DmnModdleElement {
     inputExpression?: DmnModdleElement;
     input?: DmnModdleElement[];
     output?: DmnModdleElement[];
-    decisionTable?: DmnModdleTable;
+    decisionLogic?: DmnModdleTable;
     $model: MyDmnModdle;
     typeRef: string;
     $parent: DmnModdleRule;
