@@ -18,12 +18,13 @@
     },
     "scripts": {
         "ng": "ng",
+        "build-main": "tsc ./main.ts",
         "changelog": "conventional-changelog -p -i .\\src\\assets\\CHANGELOG.md -s -r 0",
         "start": "ng serve --aot=true",
         "start-prod": "ng serve --prod",
-        "build": "ng build",
-        "build-prod": "ng build --prod",
-        "electron": "ng build --prod && electron .",
+        "build": "npm run build-main && ng build",
+        "build-prod": "npm run build-main && ng build --prod",
+        "electron": "npm run build-main && ng build --prod && electron .",
         "electron:serve-tsc": "tsc -p tsconfig-serve.json",
         "electron:serve": "wait-on http-get://localhost:4200/ && npm run electron:serve-tsc && electron . --serve",
         "electron:local": "npm run build-prod && electron .",
@@ -35,7 +36,7 @@
         "test": "ng test",
         "lint": "ng lint",
         "e2e": "ng e2e",
-        "rebuild": ".\\node_modules\\.bin\\electron-rebuild.cmd"
+        "rebuild": ".\\node_modules\\.bin\\electron-rebuild"
     },
     "private": true,
     "dependencies": {
