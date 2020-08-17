@@ -402,11 +402,14 @@ export class DmnModellerComponent implements AfterViewInit, OnInit {
         this.clearHint();
         const color = (hint.severity === 'ERROR') ? '#f13943' : 'orange';
         this.selectTable(hint.tableId);
-        if (!!hint.ruleId) {
+        if (!!hint.ruleId && !hint.cellId) {
             this._hintStylesheet.insertRule(`td[data-row-id="${hint.ruleId}"]:first-child { background-color: ${color}; }`);
         }
-        if (!!hint.counterRuleId) {
+        if (!!hint.counterRuleId && !hint.cellId) {
             this._hintStylesheet.insertRule(`td[data-row-id="${hint.counterRuleId}"]:first-child { background-color: ${color}; }`);
+        }
+        if (!!hint.cellId) {
+            this._hintStylesheet.insertRule(`td[data-element-id="${hint.cellId}"] { background-color: ${color}; }`);
         }
     }
 
