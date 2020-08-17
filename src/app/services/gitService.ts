@@ -64,7 +64,7 @@ export class GitService {
             .pipe(
                 filter(repository => !!repository),
                 switchMap(repository => toObservable('branch', repository.getCurrentBranch(), { repository: repository })),
-                switchMap(repositoryBranch => repositoryBranch.repository.getMasterCommit()),
+                switchMap(repositoryBranch => repositoryBranch.repository.getBranchCommit(repositoryBranch.branch.name())),
                 switchMap(branchCommit => this.getCommitHistoryFramLatest(branchCommit)),
                 switchMap(commits => zip(...commits.map(commit => this.toGitCommit(commit))))
             )
@@ -184,14 +184,14 @@ export class GitService {
                     return from(data.repository.fetchAll(data.creds).catch(error => this.handleError(error)))
                         .pipe(map(_ => data));
                 }),
-                switchMap(_ => this.getCurrentBranchname(),
+                switchMap(_ => this.getCurrentBranchname().pipe(take(1)),
                     (data, branchname) => Object.assign(data, { branchname: branchname })),
                 switchMap(_ => this.createSignature(), (data, signature) => Object.assign(data, {signature: signature})),
                 switchMap(data => toObservable('mergeResult',
                     data.repository.mergeBranches(data.branchname, `origin/${data.branchname}`), data,
                     (error) => this.handleError(error)
                 )),
-                tap(_ => this.triggerRefreshFile())
+                tap(_ => this.resetCurrentChanges())
             );
     }
 
