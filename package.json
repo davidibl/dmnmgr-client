@@ -79,7 +79,7 @@
         "@types/nodegit": "0.24.13",
         "codelyzer": "^5.1.2",
         "conventional-changelog": "3.1.18",
-        "electron": "^8.2.0",
+        "electron": "^13.6.6",
         "electron-builder": "22.3.2",
         "electron-rebuild": "1.10.1",
         "electron-reload": "1.5.0",
